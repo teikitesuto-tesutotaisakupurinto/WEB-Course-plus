@@ -7,73 +7,56 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc() {
+    function myProfile() {
       return get(
         /databases/$(database)/documents/users/$(request.auth.uid)
-      );
-    }
-
-    function userRole() {
-      return signedIn() && userDoc().exists()
-        ? userDoc().data.role
-        : null;
+      ).data;
     }
 
     function isAdmin() {
-      return signedIn() && userRole() == 'admin';
+      return signedIn() && myProfile().role == 'admin';
     }
 
     function isTeacher() {
-      return signedIn() && userRole() == 'teacher';
+      return signedIn() && myProfile().role == 'teacher';
     }
 
     function isStudent() {
-      return signedIn() && userRole() == 'student';
+      return signedIn() && myProfile().role == 'student';
     }
 
-    function lessonDoc(lessonId) {
-      return get(
-        /databases/$(database)/documents/lessons/$(lessonId)
+    function lessonExists(id) {
+      return exists(
+        /databases/$(database)/documents/lessons/$(id)
       );
     }
 
-    function isLessonTeacher(lessonId) {
+    function lessonData(id) {
+      return get(
+        /databases/$(database)/documents/lessons/$(id)
+      ).data;
+    }
+
+    function canAccessLesson(id) {
       return signedIn()
-        && isTeacher()
-        && lessonDoc(lessonId).exists()
-        && lessonDoc(lessonId).data.teacherId == request.auth.uid;
+        && lessonExists(id)
+        && (
+          isAdmin()
+          || (isTeacher() && lessonData(id).teacherId == request.auth.uid)
+          || (isStudent() && lessonData(id).studentId == request.auth.uid)
+        );
     }
 
-    function isLessonStudent(lessonId) {
-      return signedIn()
-        && isStudent()
-        && lessonDoc(lessonId).exists()
-        && lessonDoc(lessonId).data.studentId == request.auth.uid;
-    }
-
-    function isLessonParticipant(lessonId) {
-      return isAdmin()
-        || isLessonTeacher(lessonId)
-        || isLessonStudent(lessonId);
-    }
-
-    // -----------------------------------------
     // ユーザー
-    // -----------------------------------------
-
     match /users/{uid} {
-      allow get: if signedIn()
+      allow read: if signedIn()
         && (
           request.auth.uid == uid
           || isAdmin()
-          || (isTeacher() && resource.data.role == 'student')
+          || isTeacher()
         );
 
-      allow list: if isAdmin()
-        || (isTeacher() && resource.data.role == 'student');
-
       allow create: if isAdmin();
-
       allow update: if isAdmin()
         || (
           signedIn()
@@ -87,140 +70,61 @@ service cloud.firestore {
               'updatedAt'
             ])
         );
-
       allow delete: if isAdmin();
     }
 
-    // -----------------------------------------
     // 授業
-    // -----------------------------------------
-
-    match /lessons/{lessonId} {
-      allow get, list: if isAdmin()
-        || (
-          isTeacher()
-          && resource.data.teacherId == request.auth.uid
-        )
-        || (
-          isStudent()
-          && resource.data.studentId == request.auth.uid
+    match /lessons/{id} {
+      allow read: if signedIn()
+        && (
+          isAdmin()
+          || (isTeacher() && resource.data.teacherId == request.auth.uid)
+          || (isStudent() && resource.data.studentId == request.auth.uid)
         );
 
       allow create: if isTeacher()
-        && request.resource.data.teacherId == request.auth.uid
-        && request.resource.data.studentId is string
-        && request.resource.data.title is string
-        && request.resource.data.status == 'scheduled'
-        && get(
-          /databases/$(database)/documents/users/$(request.resource.data.studentId)
-        ).data.role == 'student'
-        && get(
-          /databases/$(database)/documents/users/$(request.resource.data.studentId)
-        ).data.status == 'active';
+        && request.resource.data.teacherId == request.auth.uid;
 
       allow update: if isAdmin()
         || (
           isTeacher()
           && resource.data.teacherId == request.auth.uid
-          && request.resource.data.diff(resource.data)
-            .affectedKeys()
-            .hasOnly(['status', 'updatedAt'])
         );
 
       allow delete: if isAdmin();
     }
 
-    // -----------------------------------------
     // 授業記録
-    // -----------------------------------------
-
-    match /lessonRecords/{recordId} {
-      allow get, list: if isAdmin()
-        || (
-          isTeacher()
-          && resource.data.teacherId == request.auth.uid
-        )
-        || (
-          isStudent()
-          && resource.data.studentId == request.auth.uid
-        );
-
-      allow create: if isTeacher()
-        && request.resource.data.teacherId == request.auth.uid
-        && request.resource.data.lessonId is string
-        && isLessonTeacher(request.resource.data.lessonId)
-        && lessonDoc(request.resource.data.lessonId).data.studentId
-          == request.resource.data.studentId;
-
-      allow update, delete: if isAdmin();
-    }
-
-    // -----------------------------------------
-    // システム設定
-    // -----------------------------------------
-
-    match /settings/{settingId} {
-      allow get: if signedIn()
+    match /lessonRecords/{id} {
+      allow read: if signedIn()
         && (
-          settingId == 'system'
-          || isAdmin()
+          isAdmin()
+          || (isTeacher() && resource.data.teacherId == request.auth.uid)
+          || (isStudent() && resource.data.studentId == request.auth.uid)
         );
 
-      allow list: if isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow create: if isTeacher();
+      allow update, delete: if isAdmin()
+        || (isTeacher() && resource.data.teacherId == request.auth.uid);
     }
 
-    // -----------------------------------------
-    // 授業画面へのリアルタイム書き込み
-    //
-    // lessonBoards/{lessonId}/strokes/{strokeId}
-    // -----------------------------------------
+    // システム設定
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
 
+    // ホワイトボード
     match /lessonBoards/{lessonId}/strokes/{strokeId} {
-
-      allow get, list: if isLessonParticipant(lessonId);
-
-      allow create: if isLessonParticipant(lessonId)
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.points is list
-        && request.resource.data.points.size() <= 1000
-        && request.resource.data.color is string
-        && request.resource.data.width is number
-        && request.resource.data.mode in ['pen', 'erase'];
-
-      allow update: if isLessonParticipant(lessonId)
-        && resource.data.createdBy == request.auth.uid
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.points is list
-        && request.resource.data.points.size() <= 1000;
-
-      allow delete: if isLessonParticipant(lessonId);
+      allow read, write: if canAccessLesson(lessonId);
     }
 
-    // -----------------------------------------
-    // 授業チャット
-    //
-    // lessonMessages/{lessonId}/messages/{messageId}
-    // -----------------------------------------
-
+    // チャット
     match /lessonMessages/{lessonId}/messages/{messageId} {
-
-      allow get, list: if isLessonParticipant(lessonId);
-
-      allow create: if isLessonParticipant(lessonId)
-        && request.resource.data.senderId == request.auth.uid
-        && request.resource.data.senderName is string
-        && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 500;
-
-      allow update, delete: if false;
+      allow read, write: if canAccessLesson(lessonId);
     }
 
-    // -----------------------------------------
-    // その他のコレクションは拒否
-    // -----------------------------------------
-
+    // その他
     match /{document=**} {
       allow read, write: if false;
     }
