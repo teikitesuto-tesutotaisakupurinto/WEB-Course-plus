@@ -1,38 +1,16 @@
-@@ -1,71 +1,345 @@
-import { Auth } from "./auth.js";
 
-export function initializeSidebar() {
-  const toggle = document.querySelector("#sidebarToggle");
-  const sidebar = document.querySelector(".sidebar");
 import { auth, db } from "./firebase.js";
 
-  if (!toggle || !sidebar) return;
 import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
-  toggle.addEventListener("click", () => {
-    sidebar.classList.toggle("collapsed");
-  });
-}
 import {
   doc,
   getDoc
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-export function initializeLogout() {
-  document.querySelectorAll("[data-logout]").forEach(button => {
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-
-      try {
-        await Auth.logout();
-      } catch (error) {
-        button.disabled = false;
-        alert("ログアウトに失敗しました。");
-      }
-    });
 // ========================================
 // 共通定数
 // ========================================
@@ -60,22 +38,15 @@ export function escapeHTML(value) {
   });
 }
 
-export function showError(container, message) {
-  if (!container) return;
 // ========================================
 // 日付表示
 // ========================================
 
-  container.innerHTML = "";
 export function formatDate(value) {
   const date = toDate(value);
 
-  const element = document.createElement("div");
-  element.className = "error-message";
-  element.textContent = message;
   if (!date) return "-";
 
-  container.appendChild(element);
   return new Intl.DateTimeFormat("ja-JP", {
     year: "numeric",
     month: "long",
@@ -83,39 +54,26 @@ export function formatDate(value) {
   }).format(date);
 }
 
-export function formatDate(value) {
-  if (!value) return "-";
 export function formatDateTime(value) {
   const date = toDate(value);
 
-  const date = value.toDate
-    ? value.toDate()
-    : new Date(value);
   if (!date) return "-";
 
   return new Intl.DateTimeFormat("ja-JP", {
     year: "numeric",
     month: "2-digit",
-    day: "2-digit"
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
 }
 
-export function formatDateTime(value) {
-  if (!value) return "-";
 export function formatTime(value) {
   const date = toDate(value);
 
-  const date = value.toDate
-    ? value.toDate()
-    : new Date(value);
   if (!date) return "-";
 
   return new Intl.DateTimeFormat("ja-JP", {
-    dateStyle: "medium",
-    timeStyle: "short"
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
