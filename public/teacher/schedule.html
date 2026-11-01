@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>授業スケジュール | WEB Course-plus</title>
+<link rel="stylesheet" href="/assets/css/common.css">
+<style>
+.schedule-item{padding:18px 0;border-bottom:1px solid var(--border)}
+.schedule-item:last-child{border-bottom:0}
+.schedule-date{font-size:13px;color:var(--muted)}
+.schedule-title{font-weight:700;margin-top:6px}
+.schedule-info{font-size:13px;color:var(--muted);margin-top:5px}
+.schedule-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">WEB <span>Course-plus</span></div>
+  <div>
+    <span id="teacherName"></span>
+    <button class="btn btn-secondary" id="logout">ログアウト</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
+    <nav>
+      <a href="/teacher/dashboard.html">ホーム</a>
+      <a href="/teacher/students.html">担当生徒</a>
+      <a href="/teacher/lessons.html">授業設定</a>
+      <a href="/teacher/schedule.html" class="active">授業スケジュール</a>
+      <a href="/teacher/records.html">指導記録</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <h1 class="page-title">授業スケジュール</h1>
+    <p class="page-description">登録した授業を確認できます。</p>
+
+    <section class="card">
+      <div class="filters">
+        <select id="period">
+          <option value="all">すべての予定</option>
+          <option value="today">今日</option>
+          <option value="week">今後7日間</option>
+          <option value="month">今後30日間</option>
+        </select>
+
+        <select id="status">
+          <option value="all">すべての状態</option>
+          <option value="scheduled">予定</option>
+          <option value="in_progress">授業中</option>
+          <option value="completed">完了</option>
+          <option value="cancelled">キャンセル</option>
+        </select>
+
+        <button class="btn btn-secondary" id="reload">再読み込み</button>
+        <a href="/teacher/lessons.html" class="btn">授業を設定</a>
+      </div>
+
+      <div id="scheduleList" aria-live="polite">
+        <div class="empty">読み込み中...</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
+© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+import {auth,db} from "/assets/js/firebase.js";
+import {onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+import {doc,getDoc,collection,getDocs,query,where} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const list=document.getElementById("scheduleList");
+let lessons=[];
+
+document.getElementById("logout").onclick=async()=>{
+  await signOut(auth);
+  location.replace("/login.html");
+};
+
+function asDate(value){
+  if(value?.toDate)return value.toDate();
+  if(value)return new Date(value);
+  return null;
+}
+
+function formatDate(value){
+  const d=asDate(value);
+  if(!d||Number.isNaN(d.getTime()))return "日時未設定";
+  return new Intl.DateTimeFormat("ja-JP",{
+    year:"numeric",month:"long",day:"numeric",
+    weekday:"short",hour:"2-digit",minute:"2-digit"
+  }).format(d);
+}
+
+function statusName(status){
+  return {
+    scheduled:"予定",
+    in_progress:"授業中",
+    completed:"完了",
+    cancelled:"キャンセル"
+  }[status]||"未設定";
+}
+
+function render(){
+  list.replaceChildren();
+
+  const period=document.getElementById("period").value;
+  const status=document.getElementById("status").value;
+  const now=new Date();
+
+  let filtered=lessons.filter(item=>{
+    const date=asDate(item.startAt);
+    if(!date)return false;
+
+    if(status!=="all"&&item.status!==status)return false;
+
+    if(period==="today"){
+      return date.toDateString()===now.toDateString();
+    }
+    if(period==="week"){
+      return date>=now&&date<=new Date(now.getTime()+7*86400000);
+    }
+    if(period==="month"){
+      return date>=now&&date<=new Date(now.getTime()+30*86400000);
+    }
+    return true;
+  });
+
+  filtered.sort((a,b)=>asDate(a.startAt)-asDate(b.startAt));
+
+  if(!filtered.length){
+    const empty=document.createElement("div");
+    empty.className="empty";
+    empty.textContent="該当する授業はありません。";
+    list.appendChild(empty);
+    return;
+  }
+
+  filtered.forEach(item=>{
+    const row=document.createElement("article");
+    row.className="schedule-item";
+
+    const date=document.createElement("div");
+    date.className="schedule-date";
+    date.textContent=formatDate(item.startAt);
+
+    const title=document.createElement("div");
+    title.className="schedule-title";
+    title.textContent=item.title||"個別指導";
+
+    const info=document.createElement("div");
+    info.className="schedule-info";
+    info.textContent=
+      `${item.studentName||"生徒"} ／ ${item.subject||"教科未設定"} ／ ${item.durationMinutes||"?"}分 ／ ${statusName(item.status)}`;
+
+    const actions=document.createElement("div");
+    actions.className="schedule-actions";
+
+    if(["scheduled","in_progress"].includes(item.status)){
+      const room=document.createElement("a");
+      room.className="btn";
+      room.href="/lesson/room.html?lessonId="+encodeURIComponent(item.id);
+      room.textContent="授業画面へ";
+      actions.appendChild(room);
+    }
+
+    row.append(date,title,info,actions);
+    list.appendChild(row);
+  });
+}
+
+document.getElementById("period").addEventListener("change",render);
+document.getElementById("status").addEventListener("change",render);
+document.getElementById("reload").addEventListener("click",loadLessons);
+
+async function loadLessons(){
+  list.textContent="読み込み中...";
+
+  const q=query(
+    collection(db,"lessons"),
+    where("teacherId","==",auth.currentUser.uid)
+  );
+
+  const snapshot=await getDocs(q);
+  const studentIds=[...new Set(snapshot.docs.map(d=>d.data().studentId).filter(Boolean))];
+
+  const studentNames={};
+
+  await Promise.all(studentIds.map(async id=>{
+    const snap=await getDoc(doc(db,"users",id));
+    if(snap.exists()){
+      const data=snap.data();
+      studentNames[id]=data.displayName||data.name||"生徒";
+    }
+  }));
+
+  lessons=snapshot.docs.map(item=>{
+    const data=item.data();
+    return {
+      id:item.id,
+      ...data,
+      studentName:studentNames[data.studentId]||"生徒"
+    };
+  });
+
+  render();
+}
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    location.replace("/login.html");
+    return;
+  }
+
+  try{
+    const snap=await getDoc(doc(db,"users",user.uid));
+    if(!snap.exists())throw new Error("アカウント情報がありません。");
+
+    const profile=snap.data();
+    if(profile.role!=="teacher"||profile.status!=="active"){
+      await signOut(auth);
+      location.replace("/login.html");
+      return;
+    }
+
+    document.getElementById("teacherName").textContent=
+      profile.displayName||profile.name||"講師";
+
+    await loadLessons();
+  }catch(error){
+    list.textContent=error.message||"授業情報を取得できませんでした。";
+  }
+});
+</script>
+<script type="module" src="/assets/js/common.js"></script>
+</body>
+</html>
