@@ -15,11 +15,8 @@
       font-synthesis: none;
       text-rendering: optimizeLegibility;
       --blue: #2563eb;
-      --blue-dark: #1d4ed8;
       --border: #e1e7ef;
       --muted: #68778c;
-      --surface: #ffffff;
-      --danger: #dc2626;
     }
 
     * {
@@ -38,8 +35,11 @@
       flex-direction: column;
     }
 
-    button {
+    button, input {
       font: inherit;
+    }
+
+    button {
       cursor: pointer;
     }
 
@@ -61,7 +61,6 @@
       gap: 12px;
       font-size: 17px;
       font-weight: 750;
-      letter-spacing: -.3px;
     }
 
     .brand-mark {
@@ -118,6 +117,7 @@
       gap: 10px;
     }
 
+    /* 画面共有エリア */
     .share-stage {
       display: none;
       position: relative;
@@ -168,38 +168,33 @@
       cursor: crosshair;
     }
 
+    /* カメラ：横長21:9 */
     .camera-strip {
       flex: 1;
       min-height: 0;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .room-main.has-share .camera-strip {
-      flex: 0 0 145px;
-      min-height: 145px;
-      max-height: 145px;
+      gap: 14px;
+      align-items: center;
     }
 
     .camera-tile {
       position: relative;
+      width: 100%;
+      aspect-ratio: 21 / 9;
       min-width: 0;
-      min-height: 0;
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       background: #18263b;
       border: 1px solid #263449;
       border-radius: 13px;
     }
 
     .camera-tile video {
+      display: block;
       width: 100%;
       height: 100%;
-      display: block;
       object-fit: cover;
+      object-position: center;
       background: #18263b;
     }
 
@@ -253,13 +248,27 @@
       font-size: 10px;
     }
 
+    /* 画面共有中はカメラを下部に配置 */
+    .room-main.has-share .camera-strip {
+      flex: 0 0 145px;
+      min-height: 145px;
+      max-height: 145px;
+      align-items: stretch;
+    }
+
+    .room-main.has-share .camera-tile {
+      height: 100%;
+      aspect-ratio: auto;
+    }
+
+    /* チャット */
     .side-panel {
       min-width: 0;
       min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      background: var(--surface);
+      background: #fff;
       border: 1px solid var(--border);
       border-radius: 13px;
     }
@@ -364,7 +373,7 @@
     }
 
     .send-button {
-      width: 42px;
+      width: 52px;
       height: 40px;
       border: 0;
       border-radius: 8px;
@@ -379,6 +388,7 @@
       cursor: not-allowed;
     }
 
+    /* 操作バー：文字のみ */
     .toolbar {
       height: 76px;
       flex: 0 0 76px;
@@ -392,28 +402,19 @@
     }
 
     .tool-button {
-      min-width: 78px;
-      height: 52px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
+      min-width: 88px;
+      height: 48px;
+      padding: 0 12px;
       border: 1px solid var(--border);
       border-radius: 9px;
       color: #34445b;
       background: #fff;
-      font-size: 11px;
+      font-size: 12px;
+      font-weight: 600;
     }
 
     .tool-button:hover {
       background: #f3f6fb;
-    }
-
-    .tool-button .tool-icon {
-      font-size: 17px;
-      line-height: 1;
-      font-weight: 700;
     }
 
     .tool-button.active {
@@ -423,7 +424,7 @@
     }
 
     .tool-button.danger {
-      color: var(--danger);
+      color: #dc2626;
       border-color: #fecaca;
     }
 
@@ -526,19 +527,24 @@
       background: var(--blue);
     }
 
-    @media (max-width: 850px) {
+    @media (max-width: 1000px) {
       .room-main {
         grid-template-columns: minmax(0, 1fr) 290px;
         gap: 8px;
         padding: 8px;
       }
 
-      .toolbar {
-        gap: 5px;
+      .camera-strip {
+        gap: 8px;
       }
 
       .tool-button {
-        min-width: 65px;
+        min-width: 72px;
+        padding: 0 7px;
+      }
+
+      .toolbar {
+        gap: 6px;
       }
     }
 
@@ -558,6 +564,7 @@
       .room-main {
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr) 190px;
+        gap: 7px;
       }
 
       .side-panel {
@@ -568,14 +575,12 @@
         grid-row: 1;
       }
 
-      .room-main.has-share .camera-strip {
-        flex-basis: 90px;
-        min-height: 90px;
-        max-height: 90px;
-      }
-
       .camera-strip {
         gap: 6px;
+      }
+
+      .camera-tile {
+        aspect-ratio: 16 / 9;
       }
 
       .camera-placeholder .avatar {
@@ -588,6 +593,12 @@
         font-size: 10px;
       }
 
+      .room-main.has-share .camera-strip {
+        flex-basis: 90px;
+        min-height: 90px;
+        max-height: 90px;
+      }
+
       .toolbar {
         height: 66px;
         flex-basis: 66px;
@@ -598,12 +609,9 @@
       .tool-button {
         min-width: 0;
         flex: 1;
-        height: 48px;
+        height: 46px;
+        padding: 0 3px;
         font-size: 9px;
-      }
-
-      .tool-button .tool-icon {
-        font-size: 15px;
       }
 
       .footer {
@@ -614,7 +622,9 @@
 </head>
 
 <body>
-  <div class="loading-screen" id="loadingScreen">授業室に接続しています...</div>
+  <div class="loading-screen" id="loadingScreen">
+    授業室に接続しています...
+  </div>
 
   <div class="error-screen" id="errorScreen">
     <div class="error-card">
@@ -639,6 +649,7 @@
 
   <main class="room-main" id="roomMain">
     <section class="video-area">
+
       <div class="share-stage" id="shareStage">
         <video id="shareVideo" autoplay playsinline></video>
         <div class="share-label">画面共有</div>
@@ -646,32 +657,38 @@
       </div>
 
       <div class="camera-strip">
+
         <div class="camera-tile" id="localCameraTile">
           <video id="localVideo" autoplay playsinline muted></video>
+
           <div class="camera-placeholder" id="localPlaceholder">
             <div class="avatar" id="localAvatar">自</div>
             <span id="localPlaceholderText">カメラ OFF</span>
           </div>
+
           <div class="camera-name" id="localName">自分</div>
           <div class="camera-status" id="localCameraStatus">カメラ OFF</div>
         </div>
 
         <div class="camera-tile" id="remoteCameraTile">
           <video id="remoteVideo" autoplay playsinline></video>
+
           <div class="camera-placeholder" id="remotePlaceholder">
             <div class="avatar" id="remoteAvatar">相</div>
             <span id="remotePlaceholderText">相手の入室を待っています</span>
           </div>
+
           <div class="camera-name" id="remoteName">相手</div>
           <div class="camera-status" id="remoteCameraStatus">未接続</div>
         </div>
+
       </div>
     </section>
 
     <aside class="side-panel">
       <div class="side-heading">
         <span>チャット</span>
-        <span class="chat-count" id="chatCount">メッセージ</span>
+        <span class="chat-count" id="chatCount">0件</span>
       </div>
 
       <div class="chat-messages" id="chatMessages">
@@ -694,40 +711,13 @@
   </main>
 
   <nav class="toolbar">
-    <button class="tool-button" id="micButton" type="button">
-      <span class="tool-icon">●</span>
-      <span id="micLabel">マイク OFF</span>
-    </button>
-
-    <button class="tool-button" id="cameraButton" type="button">
-      <span class="tool-icon">▣</span>
-      <span id="cameraLabel">カメラ OFF</span>
-    </button>
-
-    <button class="tool-button" id="shareButton" type="button">
-      <span class="tool-icon">□</span>
-      <span id="shareLabel">画面共有</span>
-    </button>
-
-    <button class="tool-button" id="drawButton" type="button" disabled>
-      <span class="tool-icon">✎</span>
-      <span id="drawLabel">書き込み</span>
-    </button>
-
-    <button class="tool-button" id="eraseButton" type="button" disabled>
-      <span class="tool-icon">⌫</span>
-      <span>消しゴム</span>
-    </button>
-
-    <button class="tool-button" id="clearButton" type="button" disabled>
-      <span class="tool-icon">□</span>
-      <span>全消去</span>
-    </button>
-
-    <button class="tool-button danger" id="leaveButton" type="button">
-      <span class="tool-icon">×</span>
-      <span>退出</span>
-    </button>
+    <button class="tool-button" id="micButton" type="button">マイク OFF</button>
+    <button class="tool-button" id="cameraButton" type="button">カメラ OFF</button>
+    <button class="tool-button" id="shareButton" type="button">画面共有</button>
+    <button class="tool-button" id="drawButton" type="button" disabled>書き込み</button>
+    <button class="tool-button" id="eraseButton" type="button" disabled>消しゴム</button>
+    <button class="tool-button" id="clearButton" type="button" disabled>全消去</button>
+    <button class="tool-button danger" id="leaveButton" type="button">退出</button>
   </nav>
 
   <footer class="footer">
@@ -810,6 +800,7 @@
       element.classList.add("show");
 
       clearTimeout(toastTimer);
+
       toastTimer = setTimeout(() => {
         element.classList.remove("show");
       }, 2600);
@@ -853,17 +844,22 @@
       placeholder.style.display = visible ? "flex" : "none";
 
       const text = $(type + "PlaceholderText");
-      if (text && message) text.textContent = message;
+      if (text && message) {
+        text.textContent = message;
+      }
     }
 
     function setLocalCameraVisible(enabled) {
       $("localVideo").style.display = enabled ? "block" : "none";
       setVideoPlaceholder("local", !enabled, "カメラ OFF");
-      $("localCameraStatus").textContent = enabled ? "カメラ ON" : "カメラ OFF";
+
+      $("localCameraStatus").textContent =
+        enabled ? "カメラ ON" : "カメラ OFF";
     }
 
     function setRemoteCameraVisible(enabled) {
       $("remoteVideo").style.display = enabled ? "block" : "none";
+
       setVideoPlaceholder(
         "remote",
         !enabled,
@@ -871,7 +867,9 @@
           ? "カメラ OFF"
           : "相手の入室を待っています"
       );
-      $("remoteCameraStatus").textContent = enabled ? "カメラ ON" : "カメラ OFF";
+
+      $("remoteCameraStatus").textContent =
+        enabled ? "カメラ ON" : "カメラ OFF";
     }
 
     function attachCamera(track, videoElement, isLocal) {
@@ -917,6 +915,7 @@
       const hasShare = Boolean(localScreenTrack || remoteScreenTrack);
 
       roomMain.classList.toggle("has-share", hasShare);
+
       $("drawButton").disabled = !hasShare;
       $("eraseButton").disabled = !hasShare;
       $("clearButton").disabled = !hasShare;
@@ -924,10 +923,11 @@
       if (!hasShare) {
         drawingEnabled = false;
         drawingMode = "pen";
+
         roomMain.classList.remove("drawing");
         $("drawButton").classList.remove("active");
         $("eraseButton").classList.remove("active");
-        $("drawLabel").textContent = "書き込み";
+        $("drawButton").textContent = "書き込み";
         clearCanvas();
       }
 
@@ -935,13 +935,11 @@
     }
 
     function attachScreenTrack(track) {
-      const video = $("shareVideo");
-
       if (!track) return;
 
       try {
-        track.attach(video);
-        video.style.display = "block";
+        track.attach($("shareVideo"));
+        $("shareVideo").style.display = "block";
         updateShareLayout();
       } catch (error) {
         console.error("画面共有の表示に失敗:", error);
@@ -989,7 +987,7 @@
     }
 
     function drawStroke(ctx, stroke) {
-      if (!stroke || !Array.isArray(stroke.points) || stroke.points.length === 0) {
+      if (!stroke || !Array.isArray(stroke.points) || !stroke.points.length) {
         return;
       }
 
@@ -1072,7 +1070,7 @@
       activeStroke = {
         userId: currentUser.uid,
         mode: drawingMode,
-        color: drawingMode === "eraser" ? "#ffffff" : "#2563eb",
+        color: "#2563eb",
         width: drawingMode === "eraser" ? 22 : 3,
         points: [getCanvasPoint(event)]
       };
@@ -1096,21 +1094,17 @@
       renderBoard();
 
       try {
-        const strokesRef = collection(
-          db,
-          "lessonBoards",
-          lessonId,
-          "strokes"
+        await addDoc(
+          collection(db, "lessonBoards", lessonId, "strokes"),
+          {
+            userId: stroke.userId,
+            mode: stroke.mode,
+            color: stroke.color,
+            width: stroke.width,
+            points: stroke.points,
+            createdAt: serverTimestamp()
+          }
         );
-
-        await addDoc(strokesRef, {
-          userId: stroke.userId,
-          mode: stroke.mode,
-          color: stroke.color,
-          width: stroke.width,
-          points: stroke.points,
-          createdAt: serverTimestamp()
-        });
       } catch (error) {
         console.error(error);
         showToast("書き込みを保存できませんでした。");
@@ -1166,14 +1160,17 @@
 
         for (let i = 0; i < items.length; i += 450) {
           const batch = writeBatch(db);
+
           items.slice(i, i + 450).forEach((item) => {
             batch.delete(item.ref);
           });
+
           await batch.commit();
         }
 
         boardStrokes.clear();
         clearCanvas();
+
         showToast("書き込みをすべて消去しました。");
       } catch (error) {
         console.error(error);
@@ -1190,9 +1187,9 @@
       roomMain.classList.toggle("drawing", drawingEnabled);
       $("drawButton").classList.toggle("active", drawingEnabled);
       $("eraseButton").classList.remove("active");
-      $("drawLabel").textContent = drawingEnabled ? "書き込み中" : "書き込み";
 
-      showToast(drawingEnabled ? "書き込みモードにしました。" : "書き込みを終了しました。");
+      $("drawButton").textContent =
+        drawingEnabled ? "書き込み中" : "書き込み";
     });
 
     $("eraseButton").addEventListener("click", () => {
@@ -1204,9 +1201,7 @@
       roomMain.classList.add("drawing");
       $("drawButton").classList.remove("active");
       $("eraseButton").classList.add("active");
-      $("drawLabel").textContent = "書き込み";
-
-      showToast("消しゴムモードにしました。");
+      $("drawButton").textContent = "書き込み";
     });
 
     $("clearButton").addEventListener("click", clearBoard);
@@ -1232,7 +1227,9 @@
           if (snapshot.empty) {
             const empty = document.createElement("div");
             empty.className = "chat-empty";
-            empty.textContent = "授業中のメッセージをここでやり取りできます。";
+            empty.textContent =
+              "授業中のメッセージをここでやり取りできます。";
+
             chatMessages.appendChild(empty);
           }
 
@@ -1250,10 +1247,14 @@
             name.textContent = data.senderName || "参加者";
 
             const time = document.createElement("span");
+
             if (data.createdAt?.toDate) {
               time.textContent = data.createdAt.toDate().toLocaleTimeString(
                 "ja-JP",
-                { hour: "2-digit", minute: "2-digit" }
+                {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                }
               );
             }
 
@@ -1292,7 +1293,10 @@
           collection(db, "lessonMessages", lessonId, "messages"),
           {
             senderId: currentUser.uid,
-            senderName: userProfile?.displayName || currentUser.displayName || "参加者",
+            senderName:
+              userProfile?.displayName ||
+              currentUser.displayName ||
+              "参加者",
             text,
             createdAt: serverTimestamp()
           }
@@ -1309,10 +1313,14 @@
     });
 
     async function getLessonAndProfile(user) {
-      const profileSnapshot = await getDoc(doc(db, "users", user.uid));
+      const profileSnapshot = await getDoc(
+        doc(db, "users", user.uid)
+      );
 
       if (!profileSnapshot.exists()) {
-        throw new Error("ユーザー情報が登録されていません。管理者にお問い合わせください。");
+        throw new Error(
+          "ユーザー情報が登録されていません。管理者にお問い合わせください。"
+        );
       }
 
       userProfile = profileSnapshot.data();
@@ -1325,7 +1333,9 @@
         throw new Error("授業IDが指定されていません。");
       }
 
-      const lessonSnapshot = await getDoc(doc(db, "lessons", lessonId));
+      const lessonSnapshot = await getDoc(
+        doc(db, "lessons", lessonId)
+      );
 
       if (!lessonSnapshot.exists()) {
         throw new Error("指定された授業が見つかりません。");
@@ -1334,9 +1344,11 @@
       lessonData = lessonSnapshot.data();
 
       const isAdmin = userProfile.role === "admin";
+
       const isTeacher =
         userProfile.role === "teacher" &&
         lessonData.teacherId === user.uid;
+
       const isStudent =
         userProfile.role === "student" &&
         lessonData.studentId === user.uid;
@@ -1349,7 +1361,9 @@
         lessonData.title || "オンライン授業";
 
       $("localName").textContent =
-        userProfile.displayName || user.displayName || "自分";
+        userProfile.displayName ||
+        user.displayName ||
+        "自分";
 
       $("localAvatar").textContent =
         (userProfile.displayName || user.displayName || "自").slice(0, 1);
@@ -1379,7 +1393,11 @@
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || "接続トークンを取得できませんでした。");
+        throw new Error(
+          data.error ||
+          data.message ||
+          "接続トークンを取得できませんでした。"
+        );
       }
 
       const serverUrl = data.url || data.serverUrl;
@@ -1423,7 +1441,9 @@
         }
 
         $("remoteName").textContent = "相手";
-        $("remotePlaceholderText").textContent = "相手の入室を待っています";
+        $("remotePlaceholderText").textContent =
+          "相手の入室を待っています";
+
         setConnection(true, "接続済み");
       });
 
@@ -1492,7 +1512,9 @@
       });
 
       liveRoom.on(RoomEvent.TrackMuted, (publication, participant) => {
-        if (participant.identity === liveRoom.localParticipant.identity) return;
+        if (participant.identity === liveRoom.localParticipant.identity) {
+          return;
+        }
 
         if (publication.source === Track.Source.Camera) {
           setRemoteCameraVisible(false);
@@ -1500,9 +1522,14 @@
       });
 
       liveRoom.on(RoomEvent.TrackUnmuted, (publication, participant) => {
-        if (participant.identity === liveRoom.localParticipant.identity) return;
+        if (participant.identity === liveRoom.localParticipant.identity) {
+          return;
+        }
 
-        if (publication.source === Track.Source.Camera && remoteCameraTrack) {
+        if (
+          publication.source === Track.Source.Camera &&
+          remoteCameraTrack
+        ) {
           setRemoteCameraVisible(true);
         }
       });
@@ -1537,15 +1564,19 @@
       if (!liveRoom) return;
 
       try {
-        micEnabled = !micEnabled;
-        await liveRoom.localParticipant.setMicrophoneEnabled(micEnabled);
+        const next = !micEnabled;
+
+        await liveRoom.localParticipant.setMicrophoneEnabled(next);
+        micEnabled = next;
 
         $("micButton").classList.toggle("active", micEnabled);
-        $("micLabel").textContent = micEnabled ? "マイク ON" : "マイク OFF";
+        $("micButton").textContent =
+          micEnabled ? "マイク ON" : "マイク OFF";
 
-        showToast(micEnabled ? "マイクを ON にしました。" : "マイクを OFF にしました。");
+        showToast(
+          micEnabled ? "マイクを ON にしました。" : "マイクを OFF にしました。"
+        );
       } catch (error) {
-        micEnabled = !micEnabled;
         console.error(error);
         showToast("マイクを切り替えられませんでした。");
       }
@@ -1555,19 +1586,23 @@
       if (!liveRoom) return;
 
       try {
-        cameraEnabled = !cameraEnabled;
-        await liveRoom.localParticipant.setCameraEnabled(cameraEnabled);
+        const next = !cameraEnabled;
+
+        await liveRoom.localParticipant.setCameraEnabled(next);
+        cameraEnabled = next;
 
         $("cameraButton").classList.toggle("active", cameraEnabled);
-        $("cameraLabel").textContent = cameraEnabled ? "カメラ ON" : "カメラ OFF";
+        $("cameraButton").textContent =
+          cameraEnabled ? "カメラ ON" : "カメラ OFF";
 
         if (!cameraEnabled && localCameraTrack) {
           detachCamera(localCameraTrack, $("localVideo"), true);
         }
 
-        showToast(cameraEnabled ? "カメラを ON にしました。" : "カメラを OFF にしました。");
+        showToast(
+          cameraEnabled ? "カメラを ON にしました。" : "カメラを OFF にしました。"
+        );
       } catch (error) {
-        cameraEnabled = !cameraEnabled;
         console.error(error);
         showToast("カメラを切り替えられませんでした。");
       }
@@ -1582,7 +1617,7 @@
 
           screenEnabled = true;
           $("shareButton").classList.add("active");
-          $("shareLabel").textContent = "共有を停止";
+          $("shareButton").textContent = "共有を停止";
 
           showToast("画面共有を開始しました。");
         } else {
@@ -1590,7 +1625,7 @@
 
           screenEnabled = false;
           $("shareButton").classList.remove("active");
-          $("shareLabel").textContent = "画面共有";
+          $("shareButton").textContent = "画面共有";
 
           if (localScreenTrack) {
             detachScreenTrack(localScreenTrack);
@@ -1605,8 +1640,10 @@
         console.error(error);
 
         screenEnabled = Boolean(localScreenTrack);
+
         $("shareButton").classList.toggle("active", screenEnabled);
-        $("shareLabel").textContent = screenEnabled ? "共有を停止" : "画面共有";
+        $("shareButton").textContent =
+          screenEnabled ? "共有を停止" : "画面共有";
 
         showToast("画面共有を開始できませんでした。");
       }
@@ -1617,7 +1654,7 @@
 
       leaving = true;
       $("leaveButton").disabled = true;
-      $("leaveButton").querySelector("span:last-child").textContent = "退出中";
+      $("leaveButton").textContent = "退出中";
 
       try {
         if (liveRoom) {
@@ -1629,6 +1666,7 @@
 
       if (unsubscribeBoard) unsubscribeBoard();
       if (unsubscribeChat) unsubscribeChat();
+      if (resizeObserver) resizeObserver.disconnect();
 
       goDashboard();
     }
@@ -1678,6 +1716,7 @@
 
         $("loadingScreen").classList.add("hidden");
         setConnection(true, "接続済み");
+
       } catch (error) {
         console.error("授業室初期化エラー:", error);
 
