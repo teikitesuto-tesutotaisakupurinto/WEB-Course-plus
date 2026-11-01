@@ -9,6 +9,7 @@
 </head>
 <body>
 <div class="app">
+
   <header class="app-header">
     <div class="header-left">
       <button class="menu-toggle" data-sidebar-toggle aria-label="メニュー">☰</button>
@@ -17,7 +18,7 @@
       </a>
     </div>
     <div class="header-right">
-      <span id="header-name" class="user-name">読み込み中</span>
+      <span id="header-name" class="user-name">講師</span>
       <button class="btn btn-secondary btn-sm" data-logout>ログアウト</button>
     </div>
   </header>
@@ -26,7 +27,7 @@
     <div class="sidebar-section">講師メニュー</div>
     <a href="/teacher/dashboard.html" class="sidebar-link active">ダッシュボード</a>
     <a href="/teacher/lessons.html" class="sidebar-link">授業を設定する</a>
-    <a href="/teacher/students.html" class="sidebar-link">担当生徒</a>
+    <a href="/teacher/students.html" class="sidebar-link">生徒一覧</a>
     <a href="/teacher/schedule.html" class="sidebar-link">授業スケジュール</a>
     <a href="/teacher/records.html" class="sidebar-link">指導記録</a>
     <a href="/teacher/profile.html" class="sidebar-link">アカウント情報</a>
@@ -36,12 +37,17 @@
 
   <main class="app-main">
     <div class="page-container">
+
       <div class="page-heading">
         <div>
           <h1 class="page-title">講師ダッシュボード</h1>
-          <p class="page-description" id="welcome">授業と担当生徒の状況を確認できます。</p>
+          <p class="page-description" id="welcome">
+            授業予定と登録生徒を確認できます。
+          </p>
         </div>
-        <a href="/teacher/lessons.html" class="btn btn-primary">授業を設定する</a>
+        <a href="/teacher/lessons.html" class="btn btn-primary">
+          授業を設定する
+        </a>
       </div>
 
       <div id="message" class="hidden mb-2" role="alert"></div>
@@ -50,14 +56,19 @@
         <div class="stat-card">
           <div class="stat-label">本日の授業</div>
           <div class="stat-value" id="today-count">-</div>
+          <div class="stat-note">本日予定されている授業</div>
         </div>
+
         <div class="stat-card">
           <div class="stat-label">今後の授業</div>
           <div class="stat-value" id="upcoming-count">-</div>
+          <div class="stat-note">終了していない授業</div>
         </div>
+
         <div class="stat-card">
-          <div class="stat-label">担当生徒</div>
+          <div class="stat-label">登録生徒数</div>
           <div class="stat-value" id="student-count">-</div>
+          <div class="stat-note">利用中の生徒アカウント</div>
         </div>
       </section>
 
@@ -65,18 +76,43 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">直近の授業</h2>
-            <p class="card-description">担当している生徒の授業予定です。</p>
+            <p class="card-description">自分が設定した授業を表示します。</p>
           </div>
-          <a href="/teacher/schedule.html" class="btn btn-secondary btn-sm">すべて見る</a>
+          <a href="/teacher/schedule.html" class="btn btn-secondary btn-sm">
+            スケジュールを見る
+          </a>
         </div>
 
         <div id="loading" class="loading">
           <span class="spinner"></span>読み込み中...
         </div>
+
         <div id="lesson-list" class="grid" style="gap:12px"></div>
+
         <div id="empty" class="empty-state hidden">
           <div class="empty-state-title">授業予定はありません</div>
-          <p>「授業を設定する」から生徒に授業を設定できます。</p>
+          <p>「授業を設定する」から生徒に授業を登録できます。</p>
+        </div>
+      </section>
+
+      <section class="card mt-3">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">クイックメニュー</h2>
+            <p class="card-description">よく使う機能に移動できます。</p>
+          </div>
+        </div>
+
+        <div class="grid grid-3">
+          <a href="/teacher/lessons.html" class="btn btn-primary">
+            授業を設定する
+          </a>
+          <a href="/teacher/students.html" class="btn btn-secondary">
+            生徒一覧
+          </a>
+          <a href="/teacher/records.html" class="btn btn-secondary">
+            指導記録
+          </a>
         </div>
       </section>
 
@@ -88,12 +124,24 @@
 <script type="module">
   import { db } from "/assets/js/firebase.js";
   import { requireRole } from "/assets/js/auth.js";
+
   import {
-    initializeSidebar, initializeLogout, renderFooter,
-    showMessage, escapeHTML, toDate, formatDateTime
+    initializeSidebar,
+    initializeLogout,
+    renderFooter,
+    showMessage,
+    escapeHTML,
+    toDate,
+    formatDateTime
   } from "/assets/js/common.js";
+
   import {
-    collection, query, where, getDocs, doc, getDoc
+    collection,
+    query,
+    where,
+    getDocs,
+    doc,
+    getDoc
   } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
   initializeSidebar();
@@ -110,49 +158,75 @@
       && date.getDate() === now.getDate();
   }
 
-  async function studentName(uid) {
-    if (!uid) return "生徒未設定";
-    if (studentCache.has(uid)) return studentCache.get(uid);
+  async function getStudentName(uid) {
+    if (!uid) return "生徒";
 
-    const snap = await getDoc(doc(db, "users", uid));
-    const name = snap.exists()
-      ? (snap.data().displayName || snap.data().name || "生徒")
-      : "生徒";
+    if (studentCache.has(uid)) {
+      return studentCache.get(uid);
+    }
 
-    studentCache.set(uid, name);
-    return name;
+    try {
+      const snapshot = await getDoc(doc(db, "users", uid));
+
+      const name = snapshot.exists()
+        ? (
+            snapshot.data().displayName ||
+            snapshot.data().name ||
+            "生徒"
+          )
+        : "生徒";
+
+      studentCache.set(uid, name);
+      return name;
+
+    } catch (error) {
+      console.error("[Student Name]", error);
+      return "生徒";
+    }
   }
 
   async function loadDashboard(uid) {
-    const [lessonSnap, studentSnap] = await Promise.all([
-      getDocs(query(collection(db, "lessons"), where("teacherId", "==", uid))),
+    const [lessonSnapshot, studentSnapshot] = await Promise.all([
+      getDocs(query(
+        collection(db, "lessons"),
+        where("teacherId", "==", uid)
+      )),
       getDocs(query(
         collection(db, "users"),
-        where("assignedTeacherIds", "array-contains", uid)
+        where("role", "==", "student")
       ))
     ]);
 
     const now = new Date();
-    const lessons = lessonSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    const lessons = lessonSnapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
 
     lessons.sort((a, b) =>
       (toDate(a.startAt)?.getTime() || 0) -
       (toDate(b.startAt)?.getTime() || 0)
     );
 
-    const upcoming = lessons.filter(l =>
-      ["scheduled", "in_progress"].includes(l.status) &&
-      toDate(l.endAt) && toDate(l.endAt) >= now
+    const upcoming = lessons.filter(lesson =>
+      ["scheduled", "in_progress"].includes(lesson.status) &&
+      toDate(lesson.endAt) &&
+      toDate(lesson.endAt) >= now
     );
 
-    const today = upcoming.filter(l => {
-      const date = toDate(l.startAt);
+    const today = upcoming.filter(lesson => {
+      const date = toDate(lesson.startAt);
       return date && isToday(date);
     });
 
+    const activeStudents = studentSnapshot.docs.filter(item =>
+      item.data().status === "active"
+    );
+
     $("today-count").textContent = today.length;
     $("upcoming-count").textContent = upcoming.length;
-    $("student-count").textContent = studentSnap.size;
+    $("student-count").textContent = activeStudents.length;
 
     $("loading").classList.add("hidden");
 
@@ -161,31 +235,48 @@
       return;
     }
 
-    const displayLessons = upcoming.slice(0, 6);
-
-    for (const lesson of displayLessons) {
-      const name = await studentName(lesson.studentId);
+    for (const lesson of upcoming.slice(0, 6)) {
+      const name = await getStudentName(lesson.studentId);
       const start = toDate(lesson.startAt);
       const end = toDate(lesson.endAt);
 
-      const card = document.createElement("div");
+      const card = document.createElement("article");
       card.className = "card";
       card.style.padding = "16px";
 
-      const status = lesson.status === "in_progress" ? "授業中" : "予定";
+      const statusLabel =
+        lesson.status === "in_progress" ? "授業中" : "予定";
 
       card.innerHTML = `
         <div class="flex items-center justify-between gap-2">
-          <span class="badge badge-primary">${escapeHTML(lesson.subject || "教科未設定")}</span>
-          <span class="text-muted" style="font-size:12px">${escapeHTML(status)}</span>
+          <span class="badge badge-primary">
+            ${escapeHTML(lesson.subject || "教科未設定")}
+          </span>
+          <span class="badge ${lesson.status === "in_progress" ? "badge-success" : "badge-gray"}">
+            ${statusLabel}
+          </span>
         </div>
-        <h3 style="margin:12px 0 8px">${escapeHTML(lesson.title || "個別指導")}</h3>
-        <p class="text-muted" style="margin:0 0 8px">生徒：${escapeHTML(name)}</p>
+
+        <h3 style="margin:12px 0 8px">
+          ${escapeHTML(lesson.title || "個別指導")}
+        </h3>
+
+        <p class="text-muted" style="margin:0 0 8px">
+          生徒：${escapeHTML(name)}
+        </p>
+
         <p class="text-muted" style="margin:0 0 14px">
           ${start ? escapeHTML(formatDateTime(start)) : "日時未設定"}
-          ${end ? " ～ " + escapeHTML(end.toLocaleTimeString("ja-JP", {hour:"2-digit",minute:"2-digit"})) : ""}
+          ${end ? " ～ " + escapeHTML(end.toLocaleTimeString("ja-JP", {
+            hour: "2-digit",
+            minute: "2-digit"
+          })) : ""}
         </p>
-        <a class="btn btn-secondary btn-sm" href="/teacher/schedule.html">授業詳細を確認</a>
+
+        <a href="/teacher/schedule.html"
+           class="btn btn-secondary btn-sm">
+          スケジュールを確認
+        </a>
       `;
 
       $("lesson-list").appendChild(card);
@@ -201,13 +292,19 @@
       const name = profile.displayName || profile.name || "講師";
 
       $("header-name").textContent = name;
-      $("welcome").textContent = `${name}さん、お疲れさまです。担当授業を確認しましょう。`;
+      $("welcome").textContent =
+        `${name}さん、お疲れさまです。授業予定を確認しましょう。`;
 
       await loadDashboard(user.uid);
+
     } catch (error) {
-      console.error(error);
+      console.error("[Teacher Dashboard]", error);
       $("loading").classList.add("hidden");
-      showMessage(error.message || "データを読み込めませんでした。", "danger");
+
+      showMessage(
+        error.message || "ダッシュボードを読み込めませんでした。",
+        "danger"
+      );
     }
   }
 
