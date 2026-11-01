@@ -9,13 +9,7 @@ const admin = require("firebase-admin");
 const { AccessToken } = require("livekit-server-sdk");
 
 const app = express();
-
-const PORT = process.env.PORT || 3000;
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
-const LIVEKIT_URL = process.env.LIVEKIT_URL;
-
-const db = initializeFirebase();
+const PORT = Number(process.env.PORT) || 3000;
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
@@ -29,31 +23,85 @@ function initializeFirebase() {
     return admin.firestore();
   }
 
-  // 環境変数にサービスアカウントJSONを設定する方式
+  let credential;
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-    );
+    let serviceAccount;
+
+    try {
+      serviceAccount = JSON.parse(
+        process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+      );
+    } catch (error) {
+      throw new Error(
+        "FIREBASE_SERVICE_ACCOUNT_JSONをJSONとして読み込めません。"
+      );
+    }
+
+    if (!serviceAccount.project_id || !serviceAccount.private_key) {
+      throw new Error(
+        "FirebaseサービスアカウントJSONに必要な項目がありません。"
+      );
+    }
+
+    credential = admin.credential.cert(serviceAccount);
 
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+      credential,
+      projectId: serviceAccount.project_id
     });
   } else {
-    // Google CloudなどのApplication Default Credentials
     admin.initializeApp({
-      credential: admin.credential.applicationDefault()
+      credential: admin.credential.applicationDefault(),
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || "viewr-3a9f1"
     });
   }
 
   return admin.firestore();
 }
 
+const db = initializeFirebase();
+const serverTimestamp = () =>
+  admin.firestore.FieldValue.serverTimestamp();
+
 // ========================================
-// 共通設定
+// LiveKit設定
 // ========================================
 
-const SERVER_TIMESTAMP =
-  admin.firestore.FieldValue.serverTimestamp();
+function getLiveKitConfig() {
+  const apiKey = process.env.LIVEKIT_API_KEY;
+  const apiSecret = process.env.LIVEKIT_API_SECRET;
+  const url = process.env.LIVEKIT_URL;
+
+  if (!apiKey || !apiSecret || !url) {
+    throw new Error("LiveKitの環境変数が設定されていません。");
+  }
+
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error("LIVEKIT_URLの形式が正しくありません。");
+  }
+
+  if (
+    parsedUrl.protocol !== "wss:" &&
+    parsedUrl.protocol !== "ws:"
+  ) {
+    throw new Error("LIVEKIT_URLはwss://またはws://で指定してください。");
+  }
+
+  return {
+    apiKey,
+    apiSecret,
+    url
+  };
+}
+
+// ========================================
+// デフォルト設定
+// ========================================
 
 const DEFAULT_SETTINGS = {
   serviceName: "WEB Course-plus",
@@ -61,9 +109,7 @@ const DEFAULT_SETTINGS = {
   maintenanceMessage: "",
   allowStudentLogin: true,
   allowTeacherLogin: true,
-  allowAdminLogin: true,
-  createdAt: SERVER_TIMESTAMP,
-  updatedAt: SERVER_TIMESTAMP
+  allowAdminLogin: true
 };
 
 // ========================================
@@ -72,26 +118,28 @@ const DEFAULT_SETTINGS = {
 
 async function initializeDatabase() {
   const settingsRef = db.collection("settings").doc("system");
-
   const settingsSnap = await settingsRef.get();
 
   if (!settingsSnap.exists) {
-    await settingsRef.create(DEFAULT_SETTINGS);
+    await settingsRef.create({
+      ...DEFAULT_SETTINGS,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
     console.log("[Database] settings/system created.");
   } else {
-    // 新しい設定項目が追加された場合に不足分を補う
     const current = settingsSnap.data();
-
     const missing = {};
 
     for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
-      if (!(key in current) && key !== "createdAt") {
+      if (!(key in current)) {
         missing[key] = value;
       }
     }
 
     if (Object.keys(missing).length > 0) {
-      missing.updatedAt = SERVER_TIMESTAMP;
+      missing.updatedAt = serverTimestamp();
       await settingsRef.update(missing);
       console.log("[Database] Missing settings initialized.");
     }
@@ -112,7 +160,7 @@ function sendError(res, status, message) {
 }
 
 // ========================================
-// Firebase ID Token 認証
+// Firebase ID Token認証
 // ========================================
 
 async function authenticate(req, res, next) {
@@ -120,19 +168,17 @@ async function authenticate(req, res, next) {
     const authorization = req.headers.authorization || "";
 
     if (!authorization.startsWith("Bearer ")) {
-      return sendError(res, 401, "認証が必要です。");
+      return sendError(res, 401, "ログイン認証が必要です。");
     }
 
-    const idToken = authorization.substring(7);
+    const idToken = authorization.slice(7).trim();
 
     if (!idToken) {
       return sendError(res, 401, "認証トークンがありません。");
     }
 
     const decoded = await admin.auth().verifyIdToken(idToken);
-
-    const userRef = db.collection("users").doc(decoded.uid);
-    const userSnap = await userRef.get();
+    const userSnap = await db.collection("users").doc(decoded.uid).get();
 
     if (!userSnap.exists) {
       return sendError(res, 403, "利用者情報が登録されていません。");
@@ -144,6 +190,10 @@ async function authenticate(req, res, next) {
       return sendError(res, 403, "このアカウントは利用できません。");
     }
 
+    if (!["student", "teacher", "admin"].includes(profile.role)) {
+      return sendError(res, 403, "アカウントの権限設定が正しくありません。");
+    }
+
     req.user = {
       uid: decoded.uid,
       email: decoded.email || "",
@@ -152,10 +202,9 @@ async function authenticate(req, res, next) {
     };
 
     next();
-
   } catch (error) {
-    console.error("[Authentication]", error.message);
-    return sendError(res, 401, "認証に失敗しました。");
+    console.error("[Authentication]", error);
+    return sendError(res, 401, "ログイン認証に失敗しました。再ログインしてください。");
   }
 }
 
@@ -178,31 +227,26 @@ function requireRole(...allowedRoles) {
 }
 
 // ========================================
-// システム設定取得
+// システム設定
 // ========================================
 
 async function getSystemSettings() {
-  const snap = await db
-    .collection("settings")
-    .doc("system")
-    .get();
+  const snap = await db.collection("settings").doc("system").get();
 
   if (!snap.exists) {
     return DEFAULT_SETTINGS;
   }
 
-  return snap.data();
+  return {
+    ...DEFAULT_SETTINGS,
+    ...snap.data()
+  };
 }
-
-// ========================================
-// メンテナンス確認
-// ========================================
 
 async function checkMaintenance(req, res, next) {
   try {
     const settings = await getSystemSettings();
 
-    // 管理者はメンテナンス中でも利用可能
     if (
       settings.maintenanceMode === true &&
       req.user.role !== "admin"
@@ -217,7 +261,6 @@ async function checkMaintenance(req, res, next) {
     }
 
     next();
-
   } catch (error) {
     console.error("[Maintenance]", error);
     return sendError(res, 500, "システム設定を確認できません。");
@@ -238,7 +281,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // ========================================
-// システム状態取得
+// システム状態
 // ========================================
 
 app.get("/api/system/status", async (req, res) => {
@@ -251,7 +294,6 @@ app.get("/api/system/status", async (req, res) => {
       maintenanceMode: settings.maintenanceMode === true,
       maintenanceMessage: settings.maintenanceMessage || ""
     });
-
   } catch (error) {
     console.error("[System Status]", error);
     sendError(res, 500, "システム状態を取得できません。");
@@ -262,27 +304,23 @@ app.get("/api/system/status", async (req, res) => {
 // ログインユーザー情報
 // ========================================
 
-app.get(
-  "/api/me",
-  authenticate,
-  async (req, res) => {
-    res.json({
-      success: true,
-      user: {
-        uid: req.user.uid,
-        email: req.user.email,
-        role: req.user.role,
-        displayName:
-          req.user.profile.displayName ||
-          req.user.profile.name ||
-          ""
-      }
-    });
-  }
-);
+app.get("/api/me", authenticate, (req, res) => {
+  res.json({
+    success: true,
+    user: {
+      uid: req.user.uid,
+      email: req.user.email,
+      role: req.user.role,
+      displayName:
+        req.user.profile.displayName ||
+        req.user.profile.name ||
+        ""
+    }
+  });
+});
 
 // ========================================
-// LiveKit 授業参加トークン発行
+// LiveKit授業参加トークン発行
 // ========================================
 
 app.post(
@@ -291,7 +329,7 @@ app.post(
   checkMaintenance,
   async (req, res) => {
     try {
-      const { lessonId } = req.body;
+      const lessonId = req.body?.lessonId;
 
       if (
         typeof lessonId !== "string" ||
@@ -301,14 +339,7 @@ app.post(
         return sendError(res, 400, "授業IDが正しくありません。");
       }
 
-      if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
-        console.error("[LiveKit] Server credentials are missing.");
-        return sendError(
-          res,
-          503,
-          "ビデオ通話サービスが設定されていません。"
-        );
-      }
+      const livekit = getLiveKitConfig();
 
       const lessonRef = db.collection("lessons").doc(lessonId);
       const lessonSnap = await lessonRef.get();
@@ -331,14 +362,9 @@ app.post(
       const isAdmin = req.user.role === "admin";
 
       if (!isStudent && !isTeacher && !isAdmin) {
-        return sendError(
-          res,
-          403,
-          "この授業に参加する権限がありません。"
-        );
+        return sendError(res, 403, "この授業に参加する権限がありません。");
       }
 
-      // 授業状態確認
       if (!["scheduled", "in_progress"].includes(lesson.status)) {
         return sendError(
           res,
@@ -360,25 +386,14 @@ app.post(
         !Number.isFinite(endAt.getTime()) ||
         endAt <= startAt
       ) {
-        return sendError(
-          res,
-          400,
-          "授業日時の設定が正しくありません。"
-        );
+        return sendError(res, 400, "授業日時の設定が正しくありません。");
       }
 
       const now = new Date();
+      const allowedStart = startAt.getTime() - 5 * 60 * 1000;
+      const allowedEnd = endAt.getTime() + 30 * 60 * 1000;
 
-      // 開始5分前から終了30分後まで入室可能
-      const allowedStart = new Date(
-        startAt.getTime() - 5 * 60 * 1000
-      );
-
-      const allowedEnd = new Date(
-        endAt.getTime() + 30 * 60 * 1000
-      );
-
-      if (now < allowedStart) {
+      if (now.getTime() < allowedStart) {
         return sendError(
           res,
           403,
@@ -386,7 +401,7 @@ app.post(
         );
       }
 
-      if (now > allowedEnd) {
+      if (now.getTime() > allowedEnd) {
         return sendError(
           res,
           403,
@@ -394,15 +409,13 @@ app.post(
         );
       }
 
-      // 授業中に変更
       if (lesson.status === "scheduled" && now >= startAt) {
         await lessonRef.update({
           status: "in_progress",
-          updatedAt: SERVER_TIMESTAMP
+          updatedAt: serverTimestamp()
         });
       }
 
-      // LiveKitルーム名
       const roomName = `lesson-${lessonId}`;
 
       const participantName =
@@ -411,10 +424,9 @@ app.post(
         req.user.email ||
         req.user.uid;
 
-      // LiveKitトークン作成
-      const token = new AccessToken(
-        LIVEKIT_API_KEY,
-        LIVEKIT_API_SECRET,
+      const accessToken = new AccessToken(
+        livekit.apiKey,
+        livekit.apiSecret,
         {
           identity: req.user.uid,
           name: participantName,
@@ -426,7 +438,7 @@ app.post(
         }
       );
 
-      token.addGrant({
+      accessToken.addGrant({
         roomJoin: true,
         room: roomName,
         canPublish: true,
@@ -434,12 +446,18 @@ app.post(
         canPublishData: true
       });
 
-      const jwt = await token.toJwt();
+      const jwt = await accessToken.toJwt();
 
-      res.json({
+      console.log(
+        `[LiveKit] Token issued: lesson=${lessonId}, role=${req.user.role}`
+      );
+
+      // urlとserverUrlの両方を返す。クライアントとの互換性を確保。
+      return res.json({
         success: true,
         token: jwt,
-        serverUrl: LIVEKIT_URL,
+        url: livekit.url,
+        serverUrl: livekit.url,
         roomName,
         lessonId,
         participantName
@@ -447,13 +465,18 @@ app.post(
 
     } catch (error) {
       console.error("[LiveKit Token]", error);
-      sendError(res, 500, "授業への接続準備に失敗しました。");
+
+      return sendError(
+        res,
+        500,
+        "授業への接続準備に失敗しました。サーバーログを確認してください。"
+      );
     }
   }
 );
 
 // ========================================
-// 管理者専用：システム設定更新
+// 管理者：システム設定更新
 // ========================================
 
 app.patch(
@@ -494,7 +517,10 @@ app.patch(
         "allowTeacherLogin",
         "allowAdminLogin"
       ]) {
-        if (field in updates && typeof updates[field] !== "boolean") {
+        if (
+          field in updates &&
+          typeof updates[field] !== "boolean"
+        ) {
           return sendError(res, 400, `${field}の値が不正です。`);
         }
       }
@@ -506,18 +532,17 @@ app.patch(
         return sendError(res, 400, "メッセージの形式が不正です。");
       }
 
-      updates.updatedAt = SERVER_TIMESTAMP;
+      updates.updatedAt = serverTimestamp();
 
-      await db
-        .collection("settings")
-        .doc("system")
-        .set(updates, { merge: true });
+      await db.collection("settings").doc("system").set(
+        updates,
+        { merge: true }
+      );
 
       res.json({
         success: true,
         message: "システム設定を更新しました。"
       });
-
     } catch (error) {
       console.error("[Admin Settings]", error);
       sendError(res, 500, "設定を更新できませんでした。");
@@ -533,7 +558,6 @@ const publicDirectory = path.join(__dirname, "public");
 
 app.use(express.static(publicDirectory));
 
-// トップページ
 app.get("/", (req, res) => {
   res.sendFile(path.join(publicDirectory, "index.html"));
 });
@@ -582,7 +606,6 @@ async function startServer() {
       console.log(`Port: ${PORT}`);
       console.log("------------------------------------");
     });
-
   } catch (error) {
     console.error("[Startup Error]", error);
     process.exit(1);
