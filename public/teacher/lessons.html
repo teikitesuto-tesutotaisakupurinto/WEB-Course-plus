@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>授業設定 | WEB Course-plus</title>
+<link rel="stylesheet" href="/assets/css/common.css">
+<style>
+.form-card{max-width:850px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.form-group textarea{min-height:110px;resize:vertical}
+.notice{padding:13px;background:#eff6ff;border-radius:8px;color:#1d4ed8;font-size:13px;margin-bottom:20px}
+.result{margin-top:15px;font-size:14px;white-space:pre-wrap}
+@media(max-width:650px){.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">WEB <span>Course-plus</span></div>
+  <div>
+    <span id="teacherName"></span>
+    <button class="btn btn-secondary" id="logout">ログアウト</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
+    <nav>
+      <a href="/teacher/dashboard.html">ホーム</a>
+      <a href="/teacher/students.html">担当生徒</a>
+      <a href="/teacher/lessons.html" class="active">授業設定</a>
+      <a href="/teacher/schedule.html">授業スケジュール</a>
+      <a href="/teacher/records.html">指導記録</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <h1 class="page-title">授業設定</h1>
+    <p class="page-description">担当生徒を指定して授業を登録します。</p>
+
+    <section class="card form-card">
+      <div class="notice">
+        登録した授業は、指定した生徒のホーム画面に表示されます。
+      </div>
+
+      <form id="lessonForm">
+        <div class="form-group">
+          <label for="student">対象生徒</label>
+          <select id="student" required>
+            <option value="">生徒を読み込み中...</option>
+          </select>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="subject">教科</label>
+            <select id="subject" required>
+              <option value="">選択してください</option>
+              <option>国語</option>
+              <option>数学</option>
+              <option>英語</option>
+              <option>理科</option>
+              <option>社会</option>
+              <option>その他</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="duration">授業時間</label>
+            <select id="duration" required>
+              <option value="30">30分</option>
+              <option value="45">45分</option>
+              <option value="50" selected>50分</option>
+              <option value="60">60分</option>
+              <option value="90">90分</option>
+              <option value="120">120分</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="startAt">授業開始日時</label>
+            <input id="startAt" type="datetime-local" required>
+          </div>
+
+          <div class="form-group">
+            <label for="title">授業名</label>
+            <input id="title" maxlength="100" placeholder="例：数学・一次関数" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="description">授業内容・連絡事項</label>
+          <textarea id="description" maxlength="3000"
+            placeholder="学習範囲、準備する教材、宿題など"></textarea>
+        </div>
+
+        <button class="btn" id="submitButton" type="submit">授業を登録する</button>
+        <div id="result" class="result" role="status"></div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
+© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+import { auth, db } from "/assets/js/firebase.js";
+
+import {
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  Timestamp
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const studentSelect = document.getElementById("student");
+const form = document.getElementById("lessonForm");
+const result = document.getElementById("result");
+const submitButton = document.getElementById("submitButton");
+
+let currentTeacher = null;
+
+document.getElementById("logout").addEventListener("click", async () => {
+  await signOut(auth);
+  location.replace("/login.html");
+});
+
+function showResult(message, success = false) {
+  result.textContent = message;
+  result.style.color = success ? "#15803d" : "#dc2626";
+}
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    location.replace("/login.html");
+    return;
+  }
+
+  try {
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+
+    if (!profileSnap.exists()) throw new Error("アカウント情報がありません。");
+
+    currentTeacher = profileSnap.data();
+
+    if (currentTeacher.role !== "teacher" ||
+        currentTeacher.status !== "active") {
+      await signOut(auth);
+      location.replace("/login.html");
+      return;
+    }
+
+    document.getElementById("teacherName").textContent =
+      currentTeacher.displayName || currentTeacher.name || "講師";
+
+    await loadStudents(user.uid);
+  } catch (error) {
+    studentSelect.replaceChildren();
+    studentSelect.add(new Option("生徒を読み込めませんでした", ""));
+    showResult(error.message);
+  }
+});
+
+async function loadStudents(teacherId) {
+  studentSelect.replaceChildren();
+  studentSelect.add(new Option("生徒を選択してください", ""));
+
+  // 担当講師として登録されている生徒だけを取得
+  const q = query(
+    collection(db, "users"),
+    where("assignedTeacherIds", "array-contains", teacherId)
+  );
+
+  const snapshot = await getDocs(q);
+  let count = 0;
+
+  snapshot.forEach(item => {
+    const student = item.data();
+
+    if (student.role !== "student" || student.status !== "active") return;
+
+    const name = student.displayName || student.name || student.email || item.id;
+    studentSelect.add(new Option(name, item.id));
+    count++;
+  });
+
+  if (!count) {
+    studentSelect.replaceChildren();
+    studentSelect.add(new Option("担当生徒が登録されていません", ""));
+    showResult("管理者に担当生徒の登録を依頼してください。");
+  }
+}
+
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  if (!currentTeacher || !auth.currentUser) return;
+
+  const studentId = studentSelect.value;
+  const subject = document.getElementById("subject").value;
+  const duration = Number(document.getElementById("duration").value);
+  const startValue = document.getElementById("startAt").value;
+  const title = document.getElementById("title").value.trim();
+  const description = document.getElementById("description").value.trim();
+
+  if (!studentId || !subject || !startValue || !title) {
+    showResult("すべての必須項目を入力してください。");
+    return;
+  }
+
+  const startDate = new Date(startValue);
+
+  if (!Number.isFinite(startDate.getTime()) || startDate <= new Date()) {
+    showResult("授業開始日時は未来の日時を指定してください。");
+    return;
+  }
+
+  submitButton.disabled = true;
+  showResult("授業を登録しています...", true);
+
+  try {
+    // 登録直前にも担当関係を確認
+    const studentSnap = await getDoc(doc(db, "users", studentId));
+
+    if (!studentSnap.exists()) throw new Error("生徒が見つかりません。");
+
+    const student = studentSnap.data();
+
+    if (
+      student.role !== "student" ||
+      student.status !== "active" ||
+      !Array.isArray(student.assignedTeacherIds) ||
+      !student.assignedTeacherIds.includes(auth.currentUser.uid)
+    ) {
+      throw new Error("この生徒に授業を設定する権限がありません。");
+    }
+
+    const endDate = new Date(startDate.getTime() + duration * 60000);
+
+    const lessonData = {
+      studentId,
+      teacherId: auth.currentUser.uid,
+      title,
+      subject,
+      description,
+      durationMinutes: duration,
+      startAt: Timestamp.fromDate(startDate),
+      endAt: Timestamp.fromDate(endDate),
+      status: "scheduled",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    };
+
+    const created = await addDoc(collection(db, "lessons"), lessonData);
+
+    showResult(
+      "授業を登録しました。\n授業ID：" + created.id +
+      "\n指定した生徒のホーム画面に表示されます。",
+      true
+    );
+
+    form.reset();
+  } catch (error) {
+    showResult(error.message || "授業の登録に失敗しました。");
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+</script>
+<script type="module" src="/assets/js/common.js"></script>
+</body>
+</html>
