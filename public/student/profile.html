@@ -1,0 +1,249 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アカウント情報 | WEB Course-plus</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <div class="header-left">
+      <button class="menu-toggle" data-sidebar-toggle aria-label="メニュー">☰</button>
+      <a href="/student/dashboard.html" class="brand">
+        <span class="brand-mark">W</span> WEB Course-plus
+      </a>
+    </div>
+    <div class="header-right">
+      <span id="header-name" class="user-name">生徒</span>
+      <button class="btn btn-secondary btn-sm" data-logout>ログアウト</button>
+    </div>
+  </header>
+
+  <aside class="app-sidebar">
+    <div class="sidebar-section">生徒メニュー</div>
+    <a href="/student/dashboard.html" class="sidebar-link">ダッシュボード</a>
+    <a href="/student/history.html" class="sidebar-link">学習履歴</a>
+    <a href="/student/profile.html" class="sidebar-link active">アカウント情報</a>
+    <div class="sidebar-section">アカウント</div>
+    <button class="sidebar-link" data-logout
+      style="width:100%;border:0;background:transparent;text-align:left">
+      ログアウト
+    </button>
+  </aside>
+
+  <main class="app-main">
+    <div class="page-container">
+      <div class="page-heading">
+        <div>
+          <h1 class="page-title">アカウント情報</h1>
+          <p class="page-description">登録されているプロフィール情報を確認・変更できます。</p>
+        </div>
+      </div>
+
+      <div id="message" class="hidden mb-2" role="alert"></div>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">プロフィール</h2>
+        </div>
+
+        <div id="loading" class="loading">
+          <span class="spinner"></span>読み込み中...
+        </div>
+
+        <form id="profile-form" class="hidden">
+          <div class="form-group">
+            <label class="form-label" for="display-name">表示名 *</label>
+            <input id="display-name" class="form-control"
+              type="text" maxlength="50" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">メールアドレス</label>
+            <input id="email" class="form-control" type="email" disabled>
+            <small class="text-muted">メールアドレスの変更はここではできません。</small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="phone">電話番号</label>
+            <input id="phone" class="form-control"
+              type="tel" maxlength="30" placeholder="例：09012345678">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="introduction">自己紹介</label>
+            <textarea id="introduction" class="form-control"
+              rows="4" maxlength="1000"
+              placeholder="学習目標や講師に伝えたいことなど"></textarea>
+          </div>
+
+          <div class="flex" style="justify-content:flex-end">
+            <button id="save-button" type="submit" class="btn btn-primary">
+              変更を保存
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card mt-3">
+        <div class="card-header">
+          <h2 class="card-title">アカウント情報</h2>
+        </div>
+        <div class="grid grid-2">
+          <div>
+            <div class="text-muted">アカウント種別</div>
+            <strong>生徒</strong>
+          </div>
+          <div>
+            <div class="text-muted">アカウント状態</div>
+            <strong id="account-status">確認中</strong>
+          </div>
+          <div>
+            <div class="text-muted">ユーザーID</div>
+            <code id="user-id">読み込み中</code>
+          </div>
+        </div>
+      </section>
+
+      <footer id="app-footer"></footer>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { auth, db } from "/assets/js/firebase.js";
+  import { requireRole } from "/assets/js/auth.js";
+  import {
+    initializeSidebar, initializeLogout, renderFooter,
+    showMessage
+  } from "/assets/js/common.js";
+  import {
+    doc, getDoc, updateDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+  initializeSidebar();
+  initializeLogout();
+  renderFooter();
+
+  const $ = id => document.getElementById(id);
+  let currentUser;
+  let originalProfile = {};
+
+  function notify(message, type = "danger") {
+    showMessage(message, type);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function loadProfile() {
+    const snap = await getDoc(doc(db, "users", currentUser.uid));
+
+    if (!snap.exists()) {
+      throw new Error("ユーザー情報が見つかりません。管理者にお問い合わせください。");
+    }
+
+    originalProfile = snap.data();
+
+    $("display-name").value =
+      originalProfile.displayName || originalProfile.name || "";
+
+    $("email").value =
+      currentUser.email || originalProfile.email || "";
+
+    $("phone").value = originalProfile.phone || "";
+    $("introduction").value = originalProfile.introduction || "";
+
+    $("header-name").textContent =
+      originalProfile.displayName || originalProfile.name || "生徒";
+
+    $("account-status").textContent =
+      originalProfile.status === "active" ? "有効" : "無効";
+
+    $("user-id").textContent = currentUser.uid;
+
+    $("loading").classList.add("hidden");
+    $("profile-form").classList.remove("hidden");
+  }
+
+  $("profile-form").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const button = $("save-button");
+    if (button.disabled) return;
+
+    const displayName = $("display-name").value.trim();
+    const phone = $("phone").value.trim();
+    const introduction = $("introduction").value.trim();
+
+    if (!displayName) {
+      notify("表示名を入力してください。");
+      return;
+    }
+
+    if (displayName.length > 50 ||
+        phone.length > 30 ||
+        introduction.length > 1000) {
+      notify("入力内容が文字数制限を超えています。");
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "保存しています...";
+
+    try {
+      // 最新のユーザー情報を確認
+      const latest = await getDoc(doc(db, "users", currentUser.uid));
+
+      if (!latest.exists() ||
+          latest.data().role !== "student" ||
+          latest.data().status !== "active") {
+        throw new Error("アカウントの状態を確認できません。");
+      }
+
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        displayName,
+        phone,
+        introduction,
+        updatedAt: serverTimestamp()
+      });
+
+      $("header-name").textContent = displayName;
+      originalProfile = {
+        ...originalProfile,
+        displayName,
+        phone,
+        introduction
+      };
+
+      notify("プロフィールを更新しました。", "success");
+
+    } catch (error) {
+      console.error("[Profile Update]", error);
+      notify(error.message || "プロフィールの更新に失敗しました。");
+    } finally {
+      button.disabled = false;
+      button.textContent = "変更を保存";
+    }
+  });
+
+  async function init() {
+    try {
+      const result = await requireRole("student");
+      if (!result) return;
+
+      currentUser = result.user;
+      await loadProfile();
+
+    } catch (error) {
+      console.error(error);
+      $("loading").classList.add("hidden");
+      notify(error.message || "プロフィールを読み込めませんでした。");
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
