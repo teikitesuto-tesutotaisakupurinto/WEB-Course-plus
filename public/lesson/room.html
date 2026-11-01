@@ -859,6 +859,7 @@ let activeStrokeId = null;
 let strokeWriteQueue = Promise.resolve();
 let pendingStrokeTimer = null;
 let boardClearing = false;
+let leavingRoom = false;
 
 const canvas = $("annotationCanvas");
 const ctx = canvas.getContext("2d");
@@ -880,6 +881,7 @@ function showError(error) {
 }
 
 $("backButton").addEventListener("click", () => {
+  // エラー画面の戻るボタンはログイン画面へ戻る
   location.href = "../login.html";
 });
 
@@ -974,7 +976,7 @@ function subscribeBoard() {
   );
 
   unsubscribeBoard = onSnapshot(boardQuery, snapshot => {
-    if (boardClearing) return;
+    if (boardClearing || leavingRoom) return;
 
     strokes.clear();
 
@@ -1054,7 +1056,7 @@ async function flushStrokeSave() {
 /* ペン入力 */
 
 canvas.addEventListener("pointerdown", async event => {
-  if (!drawingEnabled || !isConnected || boardClearing) return;
+  if (!drawingEnabled || !isConnected || boardClearing || leavingRoom) return;
 
   event.preventDefault();
 
@@ -1087,7 +1089,7 @@ canvas.addEventListener("pointerdown", async event => {
 });
 
 canvas.addEventListener("pointermove", event => {
-  if (!drawingEnabled || !activeStroke || !activeStrokeId) return;
+  if (!drawingEnabled || !activeStroke || !activeStrokeId || leavingRoom) return;
   if (!(event.buttons & 1)) return;
 
   event.preventDefault();
@@ -1174,7 +1176,7 @@ $("drawButton").addEventListener("click", () => {
 /* 全消去 */
 
 async function clearBoard() {
-  if (boardClearing) return;
+  if (boardClearing || leavingRoom) return;
   if (!confirm("ホワイトボードをすべて消去しますか？")) return;
 
   boardClearing = true;
@@ -1216,6 +1218,8 @@ function subscribeChat() {
   );
 
   unsubscribeChat = onSnapshot(chatQuery, snapshot => {
+    if (leavingRoom) return;
+
     const list = $("chatList");
     list.innerHTML = "";
 
@@ -1262,7 +1266,7 @@ $("chatForm").addEventListener("submit", async event => {
   const text = input.value.trim();
 
   if (!text) return;
-  if (!isConnected) {
+  if (!isConnected || leavingRoom) {
     toast("授業に接続してから送信してください。");
     return;
   }
@@ -1493,6 +1497,8 @@ async function connectLiveKit() {
   });
 
   liveRoom.on(RoomEvent.Disconnected,() => {
+    if (leavingRoom) return;
+
     setConnection(false);
     toast("授業から切断されました。");
   });
@@ -1512,16 +1518,16 @@ async function connectLiveKit() {
 /* マイク */
 
 $("micButton").addEventListener("click",async () => {
-  if (!liveRoom) return;
+  if (!liveRoom || leavingRoom) return;
 
   try {
-    micEnabled = !micEnabled;
-    await liveRoom.localParticipant.setMicrophoneEnabled(micEnabled);
+    const nextState = !micEnabled;
+    await liveRoom.localParticipant.setMicrophoneEnabled(nextState);
+    micEnabled = nextState;
 
     $("micButton").textContent = micEnabled ? "マイク ON" : "マイク OFF";
     $("micButton").classList.toggle("active",micEnabled);
   } catch (error) {
-    micEnabled = !micEnabled;
     console.error(error);
     toast("マイクを変更できませんでした。");
   }
@@ -1530,18 +1536,18 @@ $("micButton").addEventListener("click",async () => {
 /* カメラ */
 
 $("cameraButton").addEventListener("click",async () => {
-  if (!liveRoom) return;
+  if (!liveRoom || leavingRoom) return;
 
   try {
-    cameraEnabled = !cameraEnabled;
-    await liveRoom.localParticipant.setCameraEnabled(cameraEnabled);
+    const nextState = !cameraEnabled;
+    await liveRoom.localParticipant.setCameraEnabled(nextState);
+    cameraEnabled = nextState;
 
     $("cameraButton").textContent =
       cameraEnabled ? "カメラ ON" : "カメラ OFF";
 
     $("cameraButton").classList.toggle("active",cameraEnabled);
   } catch (error) {
-    cameraEnabled = !cameraEnabled;
     console.error(error);
     toast("カメラを変更できませんでした。");
   }
@@ -1550,20 +1556,19 @@ $("cameraButton").addEventListener("click",async () => {
 /* 画面共有 */
 
 $("shareButton").addEventListener("click",async () => {
-  if (!liveRoom) return;
+  if (!liveRoom || leavingRoom) return;
 
   try {
-    screenEnabled = !screenEnabled;
+    const nextState = !screenEnabled;
 
-    await liveRoom.localParticipant.setScreenShareEnabled(screenEnabled);
+    await liveRoom.localParticipant.setScreenShareEnabled(nextState);
+    screenEnabled = nextState;
 
     $("shareButton").textContent =
       screenEnabled ? "共有を停止" : "画面共有";
 
     $("shareButton").classList.toggle("active",screenEnabled);
   } catch (error) {
-    screenEnabled = false;
-    $("shareButton").textContent = "画面共有";
     console.error(error);
     toast("画面共有を開始できませんでした。");
   }
@@ -1591,25 +1596,50 @@ $("chatButton").addEventListener("click",() => {
 /* 退出 */
 
 async function leaveRoom() {
+  if (leavingRoom) return;
+
   if (!confirm("授業ルームから退出しますか？")) return;
+
+  leavingRoom = true;
+
+  const leaveButton = $("leaveButton");
+  leaveButton.disabled = true;
+  leaveButton.textContent = "退出中...";
 
   setConnection(false);
 
-  if (unsubscribeBoard) unsubscribeBoard();
-  if (unsubscribeChat) unsubscribeChat();
+  // 描画・チャットのリアルタイム監視を停止
+  if (unsubscribeBoard) {
+    unsubscribeBoard();
+    unsubscribeBoard = null;
+  }
 
+  if (unsubscribeChat) {
+    unsubscribeChat();
+    unsubscribeChat = null;
+  }
+
+  // 描画中の線を保存
   try {
     await finishStroke();
     await flushStrokeSave();
-
-    if (liveRoom) {
-      await liveRoom.disconnect();
-    }
   } catch (error) {
-    console.error(error);
+    console.error("描画保存エラー:", error);
   }
 
-  location.href = "../login.html";
+  // LiveKitを切断
+  try {
+    if (liveRoom) {
+      await liveRoom.disconnect();
+      liveRoom = null;
+    }
+  } catch (error) {
+    console.error("LiveKit退出エラー:", error);
+  }
+
+  // Firebase Authからログアウトしない
+  // 生徒ホーム画面へ移動
+  location.replace("/student/index.html");
 }
 
 $("leaveButton").addEventListener("click",leaveRoom);
