@@ -1,180 +1,207 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>担当生徒 | WEB Course-plus</title>
-<link rel="stylesheet" href="/assets/css/common.css">
-<style>
-.toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
-.toolbar input{max-width:360px}
-.student-card{padding:18px 0;border-bottom:1px solid var(--border)}
-.student-card:last-child{border-bottom:0}
-.student-name{font-weight:700;font-size:16px}
-.student-info{color:var(--muted);font-size:13px;margin-top:5px}
-.status{display:inline-block;padding:4px 9px;border-radius:20px;background:#dcfce7;color:#166534;font-size:12px}
-.empty{padding:30px;text-align:center;color:var(--muted)}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>生徒一覧 | WEB Course-plus</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
 </head>
 <body>
-<header class="app-header">
-  <div class="brand">WEB <span>Course-plus</span></div>
-  <div>
-    <span id="teacherName"></span>
-    <button class="btn btn-secondary" id="logout">ログアウト</button>
-  </div>
-</header>
+<div class="app">
 
-<div class="app-layout">
-  <aside class="sidebar">
-    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
-    <nav>
-      <a href="/teacher/dashboard.html">ホーム</a>
-      <a href="/teacher/students.html" class="active">担当生徒</a>
-      <a href="/teacher/lessons.html">授業設定</a>
-      <a href="/teacher/schedule.html">授業スケジュール</a>
-      <a href="/teacher/records.html">指導記録</a>
-    </nav>
+  <header class="app-header">
+    <div class="header-left">
+      <button class="menu-toggle" data-sidebar-toggle aria-label="メニュー">☰</button>
+      <a href="/teacher/dashboard.html" class="brand">
+        <span class="brand-mark">W</span> WEB Course-plus
+      </a>
+    </div>
+    <div class="header-right">
+      <span id="header-name" class="user-name">講師</span>
+      <button class="btn btn-secondary btn-sm" data-logout>ログアウト</button>
+    </div>
+  </header>
+
+  <aside class="app-sidebar">
+    <div class="sidebar-section">講師メニュー</div>
+    <a href="/teacher/dashboard.html" class="sidebar-link">ダッシュボード</a>
+    <a href="/teacher/lessons.html" class="sidebar-link">授業を設定する</a>
+    <a href="/teacher/students.html" class="sidebar-link active">生徒一覧</a>
+    <a href="/teacher/schedule.html" class="sidebar-link">授業スケジュール</a>
+    <a href="/teacher/records.html" class="sidebar-link">指導記録</a>
+    <a href="/teacher/profile.html" class="sidebar-link">アカウント情報</a>
+    <div class="sidebar-section">アカウント</div>
+    <button class="sidebar-link" data-logout style="width:100%;border:0;background:transparent;text-align:left">ログアウト</button>
   </aside>
 
-  <main class="main-content">
-    <h1 class="page-title">担当生徒</h1>
-    <p class="page-description">あなたが担当する生徒を確認できます。</p>
+  <main class="app-main">
+    <div class="page-container">
 
-    <section class="card">
-      <div class="toolbar">
-        <input id="search" type="search" placeholder="生徒名・メールアドレスで検索">
-        <button class="btn btn-secondary" id="reload">再読み込み</button>
+      <div class="page-heading">
+        <div>
+          <h1 class="page-title">生徒一覧</h1>
+          <p class="page-description">
+            登録されている生徒を確認し、授業の対象者を選択できます。
+          </p>
+        </div>
+        <a href="/teacher/lessons.html" class="btn btn-primary">
+          授業を設定する
+        </a>
       </div>
 
-      <div id="studentCount" class="stat-label">読み込み中</div>
-      <div id="studentList" aria-live="polite">
-        <div class="empty">生徒情報を読み込んでいます。</div>
-      </div>
-    </section>
+      <div id="message" class="hidden mb-2" role="alert"></div>
+
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">登録生徒</h2>
+            <p class="card-description">
+              担当講師の固定割り当てはありません。
+            </p>
+          </div>
+          <span class="badge badge-primary" id="student-count">0名</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="search">生徒を検索</label>
+          <input
+            id="search"
+            class="form-control"
+            type="search"
+            placeholder="氏名で検索"
+          >
+        </div>
+
+        <div id="loading" class="loading">
+          <span class="spinner"></span>生徒情報を読み込んでいます...
+        </div>
+
+        <div id="student-list" class="grid grid-2" style="gap:14px"></div>
+
+        <div id="empty" class="empty-state hidden">
+          <div class="empty-state-title">該当する生徒はいません</div>
+          <p>検索条件を変更してください。</p>
+        </div>
+      </section>
+
+      <footer id="app-footer"></footer>
+    </div>
   </main>
 </div>
 
-<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
-© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
-</footer>
-
 <script type="module">
-import {auth,db} from "/assets/js/firebase.js";
-import {onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
-import {doc,getDoc,collection,getDocs,query,where} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+  import { db } from "/assets/js/firebase.js";
+  import { requireRole } from "/assets/js/auth.js";
+  import {
+    initializeSidebar, initializeLogout, renderFooter,
+    escapeHTML, showMessage
+  } from "/assets/js/common.js";
+  import {
+    collection, query, where, getDocs
+  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-const list=document.getElementById("studentList");
-const search=document.getElementById("search");
-let students=[];
+  initializeSidebar();
+  initializeLogout();
+  renderFooter();
 
-document.getElementById("logout").onclick=async()=>{
-  await signOut(auth);
-  location.replace("/login.html");
-};
+  const $ = id => document.getElementById(id);
+  let students = [];
 
-function render(){
-  const word=search.value.trim().toLowerCase();
-  const filtered=students.filter(s=>
-    (s.name+" "+s.email).toLowerCase().includes(word)
-  );
+  function renderStudents() {
+    const keyword = $("search").value.trim().toLocaleLowerCase("ja");
+    const list = $("student-list");
 
-  list.replaceChildren();
-  document.getElementById("studentCount").textContent=
-    `担当生徒：${filtered.length}名`;
+    list.innerHTML = "";
 
-  if(!filtered.length){
-    const empty=document.createElement("div");
-    empty.className="empty";
-    empty.textContent="該当する生徒はいません。";
-    list.appendChild(empty);
-    return;
-  }
+    const filtered = students.filter(student => {
+      const name = student.displayName || student.name || "氏名未設定";
+      return name.toLocaleLowerCase("ja").includes(keyword);
+    });
 
-  filtered.forEach(s=>{
-    const card=document.createElement("div");
-    card.className="student-card";
+    $("student-count").textContent = `${filtered.length}名`;
 
-    const name=document.createElement("div");
-    name.className="student-name";
-    name.textContent=s.name;
-
-    const email=document.createElement("div");
-    email.className="student-info";
-    email.textContent=s.email;
-
-    const status=document.createElement("span");
-    status.className="status";
-    status.textContent="有効";
-
-    const actions=document.createElement("div");
-    actions.style.marginTop="12px";
-
-    const link=document.createElement("a");
-    link.className="btn btn-secondary";
-    link.href="/teacher/lessons.html";
-    link.textContent="この生徒に授業を設定";
-    actions.appendChild(link);
-
-    card.append(name,email,status,actions);
-    list.appendChild(card);
-  });
-}
-
-search.addEventListener("input",render);
-document.getElementById("reload").onclick=()=>loadStudents();
-
-async function loadStudents(){
-  list.textContent="読み込み中...";
-  const user=auth.currentUser;
-  if(!user)return;
-
-  const q=query(
-    collection(db,"users"),
-    where("assignedTeacherIds","array-contains",user.uid)
-  );
-
-  const snapshot=await getDocs(q);
-  students=snapshot.docs.map(item=>{
-    const d=item.data();
-    return {
-      id:item.id,
-      name:d.displayName||d.name||"氏名未登録",
-      email:d.email||"メールアドレス未登録",
-      role:d.role,
-      status:d.status
-    };
-  }).filter(s=>s.role==="student"&&s.status==="active");
-
-  render();
-}
-
-onAuthStateChanged(auth,async user=>{
-  if(!user){
-    location.replace("/login.html");
-    return;
-  }
-
-  try{
-    const snap=await getDoc(doc(db,"users",user.uid));
-    if(!snap.exists())throw new Error("アカウント情報がありません。");
-    const profile=snap.data();
-
-    if(profile.role!=="teacher"||profile.status!=="active"){
-      await signOut(auth);
-      location.replace("/login.html");
+    if (!filtered.length) {
+      $("empty").classList.remove("hidden");
       return;
     }
 
-    document.getElementById("teacherName").textContent=
-      profile.displayName||profile.name||"講師";
+    $("empty").classList.add("hidden");
 
-    await loadStudents();
-  }catch(error){
-    list.textContent=error.message||"読み込みに失敗しました。";
+    for (const student of filtered) {
+      const name = student.displayName || student.name || "氏名未設定";
+
+      const card = document.createElement("article");
+      card.className = "card";
+      card.style.padding = "17px";
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+          <strong>${escapeHTML(name)}</strong>
+          <span class="badge badge-success">利用中</span>
+        </div>
+
+        <p class="text-muted" style="margin:10px 0 14px">
+          ${escapeHTML(student.email || "メールアドレス未登録")}
+        </p>
+
+        <a
+          class="btn btn-primary btn-sm"
+          href="/teacher/lessons.html?studentId=${encodeURIComponent(student.uid)}"
+        >
+          この生徒に授業を設定
+        </a>
+      `;
+
+      list.appendChild(card);
+    }
   }
-});
+
+  async function init() {
+    try {
+      const result = await requireRole("teacher");
+      if (!result) return;
+
+      const profile = result.profile;
+
+      $("header-name").textContent =
+        profile.displayName || profile.name || "講師";
+
+      // 全生徒を取得。assignedTeacherIdsによる絞り込みはしない。
+      const snapshot = await getDocs(query(
+        collection(db, "users"),
+        where("role", "==", "student")
+      ));
+
+      students = snapshot.docs
+        .map(item => ({
+          uid: item.id,
+          ...item.data()
+        }))
+        .filter(student => student.status === "active")
+        .sort((a, b) =>
+          (a.displayName || a.name || "").localeCompare(
+            b.displayName || b.name || "", "ja"
+          )
+        );
+
+      $("loading").classList.add("hidden");
+      renderStudents();
+
+    } catch (error) {
+      console.error("[Student List]", error);
+      $("loading").classList.add("hidden");
+
+      showMessage(
+        error.message || "生徒一覧を取得できませんでした。",
+        "danger"
+      );
+    }
+  }
+
+  $("search").addEventListener("input", renderStudents);
+
+  init();
 </script>
-<script type="module" src="/assets/js/common.js"></script>
 </body>
 </html>
