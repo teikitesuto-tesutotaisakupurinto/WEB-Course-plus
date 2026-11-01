@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>生徒ホーム | WEB Course-plus</title>
+<link rel="stylesheet" href="/assets/css/common.css">
+<style>
+*{box-sizing:border-box}
+.welcome{margin-bottom:25px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-bottom:25px}
+.stat-card{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px}
+.stat-label{font-size:13px;color:#64748b}
+.stat-value{font-size:29px;font-weight:750;margin-top:7px;color:#172b4d}
+.lesson-card{border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-top:14px}
+.lesson-top{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.lesson-title{font-size:17px;font-weight:700}
+.lesson-meta{font-size:13px;color:#64748b;margin-top:9px;line-height:1.8}
+.lesson-description{font-size:14px;line-height:1.7;margin-top:12px;white-space:pre-wrap}
+.status{display:inline-block;padding:5px 10px;border-radius:20px;background:#eff6ff;color:#1d4ed8;font-size:12px}
+.status-progress{background:#dcfce7;color:#166534}
+.status-completed{background:#f1f5f9;color:#475569}
+.join-button{display:inline-block;margin-top:15px;padding:10px 18px;border-radius:8px;background:#2563eb;color:white;text-decoration:none;font-size:14px;font-weight:650}
+.join-button.disabled{background:#cbd5e1;pointer-events:none}
+.empty{padding:35px 15px;text-align:center;color:#64748b}
+.dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.profile-line{padding:12px 0;border-bottom:1px solid #e2e8f0;font-size:14px}
+.profile-line:last-child{border:0}
+@media(max-width:700px){
+  .stats{grid-template-columns:1fr}
+  .dashboard-grid{grid-template-columns:1fr}
+  .lesson-top{align-items:flex-start;flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">WEB <span>Course-plus</span></div>
+  <div>
+    <span id="studentName"></span>
+    <button class="btn btn-secondary" id="logout">ログアウト</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
+    <nav>
+      <a href="/student/dashboard.html" class="active">ホーム</a>
+      <a href="/student/history.html">授業履歴</a>
+      <a href="/student/profile.html">プロフィール</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <section class="welcome">
+      <h1 class="page-title">生徒ホーム</h1>
+      <p class="page-description">
+        <span id="welcomeName">読み込み中</span>さん、今日も学習を頑張りましょう。
+      </p>
+    </section>
+
+    <section class="stats">
+      <div class="stat-card">
+        <div class="stat-label">今日の授業</div>
+        <div class="stat-value" id="todayCount">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今後の授業</div>
+        <div class="stat-value" id="upcomingCount">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">授業完了数</div>
+        <div class="stat-value" id="completedCount">--</div>
+      </div>
+    </section>
+
+    <div class="dashboard-grid">
+      <section class="card">
+        <h2>次の授業</h2>
+        <div id="nextLesson" class="empty">授業情報を読み込んでいます。</div>
+      </section>
+
+      <section class="card">
+        <h2>アカウント情報</h2>
+        <div class="profile-line">
+          <strong>氏名：</strong><span id="profileName">--</span>
+        </div>
+        <div class="profile-line">
+          <strong>メール：</strong><span id="profileEmail">--</span>
+        </div>
+        <div class="profile-line">
+          <strong>アカウント：</strong>生徒
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:25px">
+      <h2>授業予定一覧</h2>
+      <p class="page-description">講師が設定した授業がここに表示されます。</p>
+      <div id="lessonList">
+        <div class="empty">授業情報を読み込んでいます。</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
+© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+import {auth,db} from "/assets/js/firebase.js";
+
+import {
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const lessonList=document.getElementById("lessonList");
+const nextLesson=document.getElementById("nextLesson");
+
+let allLessons=[];
+
+document.getElementById("logout").addEventListener("click",async()=>{
+  await signOut(auth);
+  location.replace("/login.html");
+});
+
+function asDate(value){
+  if(value?.toDate)return value.toDate();
+  if(value)return new Date(value);
+  return null;
+}
+
+function formatDate(value){
+  const date=asDate(value);
+  if(!date||Number.isNaN(date.getTime()))return "日時未設定";
+
+  return new Intl.DateTimeFormat("ja-JP",{
+    year:"numeric",
+    month:"long",
+    day:"numeric",
+    weekday:"short",
+    hour:"2-digit",
+    minute:"2-digit"
+  }).format(date);
+}
+
+function statusLabel(status){
+  const labels={
+    scheduled:"授業予定",
+    in_progress:"授業中",
+    completed:"完了",
+    cancelled:"キャンセル"
+  };
+  return labels[status]||"状態未設定";
+}
+
+function createLessonCard(lesson){
+  const card=document.createElement("article");
+  card.className="lesson-card";
+
+  const top=document.createElement("div");
+  top.className="lesson-top";
+
+  const title=document.createElement("div");
+  title.className="lesson-title";
+  title.textContent=lesson.title||"個別指導";
+
+  const status=document.createElement("span");
+  status.className="status";
+
+  if(lesson.status==="in_progress")status.classList.add("status-progress");
+  if(lesson.status==="completed")status.classList.add("status-completed");
+
+  status.textContent=statusLabel(lesson.status);
+
+  top.append(title,status);
+
+  const meta=document.createElement("div");
+  meta.className="lesson-meta";
+  meta.textContent=
+    `日時：${formatDate(lesson.startAt)}\n`+
+    `教科：${lesson.subject||"未設定"}\n`+
+    `担当講師：${lesson.teacherName||"担当講師"}\n`+
+    `授業時間：${lesson.durationMinutes||"未設定"}分`;
+
+  const description=document.createElement("div");
+  description.className="lesson-description";
+  description.textContent=lesson.description||"授業内容の詳細は設定されていません。";
+
+  card.append(top,meta,description);
+
+  if(lesson.status==="scheduled"||lesson.status==="in_progress"){
+    const button=document.createElement("a");
+    button.className="join-button";
+    button.href="/lesson/room.html?lessonId="+encodeURIComponent(lesson.id);
+
+    const start=asDate(lesson.startAt);
+    const now=new Date();
+
+    if(start&&now<start){
+      button.textContent="授業開始前";
+      button.classList.add("disabled");
+      button.setAttribute("aria-disabled","true");
+      button.removeAttribute("href");
+    }else{
+      button.textContent="授業に参加する";
+    }
+
+    card.appendChild(button);
+  }
+
+  return card;
+}
+
+function render(){
+  const now=new Date();
+
+  const upcoming=allLessons.filter(lesson=>{
+    const start=asDate(lesson.startAt);
+    return start&&start>=now&&
+      ["scheduled","in_progress"].includes(lesson.status);
+  });
+
+  const today=allLessons.filter(lesson=>{
+    const start=asDate(lesson.startAt);
+    return start&&start.toDateString()===now.toDateString()&&
+      ["scheduled","in_progress"].includes(lesson.status);
+  });
+
+  const completed=allLessons.filter(lesson=>lesson.status==="completed");
+
+  upcoming.sort((a,b)=>asDate(a.startAt)-asDate(b.startAt));
+
+  document.getElementById("todayCount").textContent=today.length;
+  document.getElementById("upcomingCount").textContent=upcoming.length;
+  document.getElementById("completedCount").textContent=completed.length;
+
+  nextLesson.replaceChildren();
+
+  if(upcoming.length){
+    nextLesson.appendChild(createLessonCard(upcoming[0]));
+  }else{
+    const empty=document.createElement("div");
+    empty.className="empty";
+    empty.textContent="次の授業はまだ設定されていません。";
+    nextLesson.appendChild(empty);
+  }
+
+  lessonList.replaceChildren();
+
+  if(!upcoming.length){
+    const empty=document.createElement("div");
+    empty.className="empty";
+    empty.textContent="現在、予定されている授業はありません。";
+    lessonList.appendChild(empty);
+    return;
+  }
+
+  upcoming.forEach(lesson=>{
+    lessonList.appendChild(createLessonCard(lesson));
+  });
+}
+
+async function loadDashboard(user){
+  const profileSnap=await getDoc(doc(db,"users",user.uid));
+
+  if(!profileSnap.exists()){
+    throw new Error("生徒アカウント情報が登録されていません。");
+  }
+
+  const profile=profileSnap.data();
+
+  if(profile.role!=="student"||profile.status!=="active"){
+    await signOut(auth);
+    location.replace("/login.html");
+    return;
+  }
+
+  const name=profile.displayName||profile.name||"生徒";
+
+  document.getElementById("studentName").textContent=name;
+  document.getElementById("welcomeName").textContent=name;
+  document.getElementById("profileName").textContent=name;
+  document.getElementById("profileEmail").textContent=user.email||"未登録";
+
+  // 講師が設定した授業を生徒IDで取得
+  const lessonsQuery=query(
+    collection(db,"lessons"),
+    where("studentId","==",user.uid)
+  );
+
+  const snapshot=await getDocs(lessonsQuery);
+
+  const teacherIds=[
+    ...new Set(snapshot.docs.map(item=>item.data().teacherId).filter(Boolean))
+  ];
+
+  const teacherNames={};
+
+  await Promise.all(teacherIds.map(async teacherId=>{
+    const teacherSnap=await getDoc(doc(db,"users",teacherId));
+
+    if(teacherSnap.exists()){
+      const teacher=teacherSnap.data();
+      teacherNames[teacherId]=
+        teacher.displayName||teacher.name||"担当講師";
+    }
+  }));
+
+  allLessons=snapshot.docs.map(item=>{
+    const data=item.data();
+
+    return {
+      id:item.id,
+      ...data,
+      teacherName:teacherNames[data.teacherId]||"担当講師"
+    };
+  }).filter(item=>item.status!=="cancelled");
+
+  render();
+}
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    location.replace("/login.html");
+    return;
+  }
+
+  try{
+    await loadDashboard(user);
+  }catch(error){
+    lessonList.replaceChildren();
+
+    const message=document.createElement("div");
+    message.className="empty";
+    message.textContent=
+      error.message||"ダッシュボードの読み込みに失敗しました。";
+
+    lessonList.appendChild(message);
+    nextLesson.textContent="情報を取得できませんでした。";
+  }
+});
+</script>
+
+<script type="module" src="/assets/js/common.js"></script>
+</body>
+</html>
