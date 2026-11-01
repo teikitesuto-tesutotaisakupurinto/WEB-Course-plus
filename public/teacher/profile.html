@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>プロフィール | WEB Course-plus</title>
+<link rel="stylesheet" href="/assets/css/common.css">
+<style>
+.profile-card{max-width:750px}
+.field{margin-bottom:18px}
+.field label{display:block;font-weight:650;font-size:14px;margin-bottom:7px}
+.field input,.field textarea{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+.field textarea{min-height:110px;resize:vertical}
+.field input:disabled{background:#f1f5f9;color:#64748b}
+.account-info{padding:16px;background:#f8fafc;border-radius:9px;margin-bottom:22px}
+.info-row{padding:8px 0;font-size:14px}
+.message{font-size:13px;margin-top:14px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">WEB <span>Course-plus</span></div>
+  <div>
+    <span id="teacherName"></span>
+    <button class="btn btn-secondary" id="logout">ログアウト</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
+    <nav>
+      <a href="/teacher/dashboard.html">ホーム</a>
+      <a href="/teacher/students.html">担当生徒</a>
+      <a href="/teacher/lessons.html">授業設定</a>
+      <a href="/teacher/schedule.html">授業スケジュール</a>
+      <a href="/teacher/records.html">指導記録</a>
+      <a href="/teacher/profile.html" class="active">プロフィール</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <h1 class="page-title">プロフィール</h1>
+    <p class="page-description">講師アカウントの登録情報を確認・編集できます。</p>
+
+    <section class="card profile-card">
+      <h2>アカウント情報</h2>
+
+      <div class="account-info">
+        <div class="info-row">
+          <strong>メールアドレス：</strong>
+          <span id="email">読み込み中</span>
+        </div>
+        <div class="info-row">
+          <strong>アカウント権限：</strong>講師
+        </div>
+        <div class="info-row">
+          <strong>アカウント状態：</strong>
+          <span id="accountStatus">確認中</span>
+        </div>
+      </div>
+
+      <form id="profileForm">
+        <div class="field">
+          <label for="displayName">氏名・表示名</label>
+          <input id="displayName" maxlength="50" required>
+        </div>
+
+        <div class="field">
+          <label for="phone">電話番号</label>
+          <input id="phone" type="tel" maxlength="30"
+            placeholder="電話番号（任意）">
+        </div>
+
+        <div class="field">
+          <label for="introduction">自己紹介・担当教科など</label>
+          <textarea id="introduction" maxlength="2000"
+            placeholder="自己紹介や指導可能な教科など"></textarea>
+        </div>
+
+        <button class="btn" id="saveButton" type="submit">
+          変更を保存する
+        </button>
+
+        <div id="message" class="message" role="status"></div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
+© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+import {auth,db} from "/assets/js/firebase.js";
+import {
+  onAuthStateChanged,signOut
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+import {
+  doc,getDoc,updateDoc,serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const form=document.getElementById("profileForm");
+const saveButton=document.getElementById("saveButton");
+const message=document.getElementById("message");
+
+let currentUser=null;
+let originalProfile={};
+
+document.getElementById("logout").onclick=async()=>{
+  await signOut(auth);
+  location.replace("/login.html");
+};
+
+function showMessage(text,success=false){
+  message.textContent=text;
+  message.style.color=success?"#15803d":"#dc2626";
+}
+
+async function loadProfile(user){
+  const snap=await getDoc(doc(db,"users",user.uid));
+
+  if(!snap.exists())throw new Error("講師情報が登録されていません。");
+
+  const data=snap.data();
+
+  if(data.role!=="teacher"||data.status!=="active"){
+    await signOut(auth);
+    location.replace("/login.html");
+    return;
+  }
+
+  originalProfile=data;
+
+  document.getElementById("teacherName").textContent=
+    data.displayName||data.name||"講師";
+
+  document.getElementById("email").textContent=user.email||"未登録";
+  document.getElementById("accountStatus").textContent="有効";
+
+  document.getElementById("displayName").value=
+    data.displayName||data.name||"";
+
+  document.getElementById("phone").value=data.phone||"";
+  document.getElementById("introduction").value=data.introduction||"";
+}
+
+form.addEventListener("submit",async event=>{
+  event.preventDefault();
+
+  if(!currentUser||saveButton.disabled)return;
+
+  const displayName=document.getElementById("displayName").value.trim();
+  const phone=document.getElementById("phone").value.trim();
+  const introduction=document.getElementById("introduction").value.trim();
+
+  if(!displayName){
+    showMessage("氏名・表示名を入力してください。");
+    return;
+  }
+
+  saveButton.disabled=true;
+
+  try{
+    const ref=doc(db,"users",currentUser.uid);
+    const latest=await getDoc(ref);
+
+    if(!latest.exists())throw new Error("アカウント情報がありません。");
+
+    const latestData=latest.data();
+
+    if(latestData.role!=="teacher"||latestData.status!=="active"){
+      throw new Error("プロフィールを変更する権限がありません。");
+    }
+
+    await updateDoc(ref,{
+      displayName,
+      phone,
+      introduction,
+      updatedAt:serverTimestamp()
+    });
+
+    originalProfile={
+      ...originalProfile,
+      displayName,
+      phone,
+      introduction
+    };
+
+    document.getElementById("teacherName").textContent=displayName;
+    showMessage("プロフィールを保存しました。",true);
+
+  }catch(error){
+    showMessage(error.message||"保存に失敗しました。");
+  }finally{
+    saveButton.disabled=false;
+  }
+});
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    location.replace("/login.html");
+    return;
+  }
+
+  currentUser=user;
+
+  try{
+    await loadProfile(user);
+  }catch(error){
+    showMessage(error.message||"プロフィールを取得できませんでした。");
+  }
+});
+</script>
+<script type="module" src="/assets/js/common.js"></script>
+</body>
+</html>
