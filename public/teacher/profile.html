@@ -1,218 +1,237 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>プロフィール | WEB Course-plus</title>
-<link rel="stylesheet" href="/assets/css/common.css">
-<style>
-.profile-card{max-width:750px}
-.field{margin-bottom:18px}
-.field label{display:block;font-weight:650;font-size:14px;margin-bottom:7px}
-.field input,.field textarea{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
-.field textarea{min-height:110px;resize:vertical}
-.field input:disabled{background:#f1f5f9;color:#64748b}
-.account-info{padding:16px;background:#f8fafc;border-radius:9px;margin-bottom:22px}
-.info-row{padding:8px 0;font-size:14px}
-.message{font-size:13px;margin-top:14px;white-space:pre-wrap}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>講師プロフィール | WEB Course-plus</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
 </head>
 <body>
-<header class="app-header">
-  <div class="brand">WEB <span>Course-plus</span></div>
-  <div>
-    <span id="teacherName"></span>
-    <button class="btn btn-secondary" id="logout">ログアウト</button>
-  </div>
-</header>
+<div class="app">
+  <header class="app-header">
+    <div class="header-left">
+      <button class="menu-toggle" data-sidebar-toggle aria-label="メニュー">☰</button>
+      <a href="/teacher/dashboard.html" class="brand">
+        <span class="brand-mark">W</span> WEB Course-plus
+      </a>
+    </div>
+    <div class="header-right">
+      <span id="header-name" class="user-name">講師</span>
+      <button class="btn btn-secondary btn-sm" data-logout>ログアウト</button>
+    </div>
+  </header>
 
-<div class="app-layout">
-  <aside class="sidebar">
-    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
-    <nav>
-      <a href="/teacher/dashboard.html">ホーム</a>
-      <a href="/teacher/students.html">担当生徒</a>
-      <a href="/teacher/lessons.html">授業設定</a>
-      <a href="/teacher/schedule.html">授業スケジュール</a>
-      <a href="/teacher/records.html">指導記録</a>
-      <a href="/teacher/profile.html" class="active">プロフィール</a>
-    </nav>
+  <aside class="app-sidebar">
+    <div class="sidebar-section">講師メニュー</div>
+    <a href="/teacher/dashboard.html" class="sidebar-link">ダッシュボード</a>
+    <a href="/teacher/lessons.html" class="sidebar-link">授業を設定する</a>
+    <a href="/teacher/students.html" class="sidebar-link">生徒一覧</a>
+    <a href="/teacher/schedule.html" class="sidebar-link">授業スケジュール</a>
+    <a href="/teacher/records.html" class="sidebar-link">指導記録</a>
+    <a href="/teacher/profile.html" class="sidebar-link active">アカウント情報</a>
+    <div class="sidebar-section">アカウント</div>
+    <button class="sidebar-link" data-logout
+      style="width:100%;border:0;background:transparent;text-align:left">
+      ログアウト
+    </button>
   </aside>
 
-  <main class="main-content">
-    <h1 class="page-title">プロフィール</h1>
-    <p class="page-description">講師アカウントの登録情報を確認・編集できます。</p>
-
-    <section class="card profile-card">
-      <h2>アカウント情報</h2>
-
-      <div class="account-info">
-        <div class="info-row">
-          <strong>メールアドレス：</strong>
-          <span id="email">読み込み中</span>
-        </div>
-        <div class="info-row">
-          <strong>アカウント権限：</strong>講師
-        </div>
-        <div class="info-row">
-          <strong>アカウント状態：</strong>
-          <span id="accountStatus">確認中</span>
+  <main class="app-main">
+    <div class="page-container">
+      <div class="page-heading">
+        <div>
+          <h1 class="page-title">講師プロフィール</h1>
+          <p class="page-description">講師として登録されているプロフィール情報を管理します。</p>
         </div>
       </div>
 
-      <form id="profileForm">
-        <div class="field">
-          <label for="displayName">氏名・表示名</label>
-          <input id="displayName" maxlength="50" required>
+      <div id="message" class="hidden mb-2" role="alert"></div>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">プロフィール編集</h2>
         </div>
 
-        <div class="field">
-          <label for="phone">電話番号</label>
-          <input id="phone" type="tel" maxlength="30"
-            placeholder="電話番号（任意）">
+        <div id="loading" class="loading">
+          <span class="spinner"></span>読み込み中...
         </div>
 
-        <div class="field">
-          <label for="introduction">自己紹介・担当教科など</label>
-          <textarea id="introduction" maxlength="2000"
-            placeholder="自己紹介や指導可能な教科など"></textarea>
+        <form id="profile-form" class="hidden">
+          <div class="form-group">
+            <label class="form-label" for="display-name">表示名 *</label>
+            <input id="display-name" class="form-control"
+              type="text" maxlength="50" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">メールアドレス</label>
+            <input id="email" class="form-control" type="email" disabled>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="phone">電話番号</label>
+            <input id="phone" class="form-control"
+              type="tel" maxlength="30">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="introduction">講師紹介</label>
+            <textarea id="introduction" class="form-control"
+              rows="5" maxlength="2000"
+              placeholder="指導方針、得意科目、経歴など"></textarea>
+          </div>
+
+          <div class="flex" style="justify-content:flex-end">
+            <button id="save-button" type="submit" class="btn btn-primary">
+              変更を保存
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card mt-3">
+        <div class="card-header">
+          <h2 class="card-title">アカウント情報</h2>
         </div>
+        <div class="grid grid-2">
+          <div>
+            <div class="text-muted">アカウント種別</div>
+            <strong>講師</strong>
+          </div>
+          <div>
+            <div class="text-muted">アカウント状態</div>
+            <strong id="account-status">確認中</strong>
+          </div>
+          <div>
+            <div class="text-muted">ユーザーID</div>
+            <code id="user-id">読み込み中</code>
+          </div>
+        </div>
+      </section>
 
-        <button class="btn" id="saveButton" type="submit">
-          変更を保存する
-        </button>
-
-        <div id="message" class="message" role="status"></div>
-      </form>
-    </section>
+      <footer id="app-footer"></footer>
+    </div>
   </main>
 </div>
 
-<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
-© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
-</footer>
-
 <script type="module">
-import {auth,db} from "/assets/js/firebase.js";
-import {
-  onAuthStateChanged,signOut
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
-import {
-  doc,getDoc,updateDoc,serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+  import { db } from "/assets/js/firebase.js";
+  import { requireRole } from "/assets/js/auth.js";
+  import {
+    initializeSidebar, initializeLogout, renderFooter, showMessage
+  } from "/assets/js/common.js";
+  import {
+    doc, getDoc, updateDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-const form=document.getElementById("profileForm");
-const saveButton=document.getElementById("saveButton");
-const message=document.getElementById("message");
+  initializeSidebar();
+  initializeLogout();
+  renderFooter();
 
-let currentUser=null;
-let originalProfile={};
+  const $ = id => document.getElementById(id);
+  let currentUser;
 
-document.getElementById("logout").onclick=async()=>{
-  await signOut(auth);
-  location.replace("/login.html");
-};
-
-function showMessage(text,success=false){
-  message.textContent=text;
-  message.style.color=success?"#15803d":"#dc2626";
-}
-
-async function loadProfile(user){
-  const snap=await getDoc(doc(db,"users",user.uid));
-
-  if(!snap.exists())throw new Error("講師情報が登録されていません。");
-
-  const data=snap.data();
-
-  if(data.role!=="teacher"||data.status!=="active"){
-    await signOut(auth);
-    location.replace("/login.html");
-    return;
+  function notify(message, type = "danger") {
+    showMessage(message, type);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  originalProfile=data;
+  async function loadProfile() {
+    const snap = await getDoc(doc(db, "users", currentUser.uid));
 
-  document.getElementById("teacherName").textContent=
-    data.displayName||data.name||"講師";
-
-  document.getElementById("email").textContent=user.email||"未登録";
-  document.getElementById("accountStatus").textContent="有効";
-
-  document.getElementById("displayName").value=
-    data.displayName||data.name||"";
-
-  document.getElementById("phone").value=data.phone||"";
-  document.getElementById("introduction").value=data.introduction||"";
-}
-
-form.addEventListener("submit",async event=>{
-  event.preventDefault();
-
-  if(!currentUser||saveButton.disabled)return;
-
-  const displayName=document.getElementById("displayName").value.trim();
-  const phone=document.getElementById("phone").value.trim();
-  const introduction=document.getElementById("introduction").value.trim();
-
-  if(!displayName){
-    showMessage("氏名・表示名を入力してください。");
-    return;
-  }
-
-  saveButton.disabled=true;
-
-  try{
-    const ref=doc(db,"users",currentUser.uid);
-    const latest=await getDoc(ref);
-
-    if(!latest.exists())throw new Error("アカウント情報がありません。");
-
-    const latestData=latest.data();
-
-    if(latestData.role!=="teacher"||latestData.status!=="active"){
-      throw new Error("プロフィールを変更する権限がありません。");
+    if (!snap.exists()) {
+      throw new Error("講師アカウント情報が見つかりません。");
     }
 
-    await updateDoc(ref,{
-      displayName,
-      phone,
-      introduction,
-      updatedAt:serverTimestamp()
-    });
+    const profile = snap.data();
 
-    originalProfile={
-      ...originalProfile,
-      displayName,
-      phone,
-      introduction
-    };
+    if (profile.role !== "teacher" || profile.status !== "active") {
+      throw new Error("このアカウントでは利用できません。");
+    }
 
-    document.getElementById("teacherName").textContent=displayName;
-    showMessage("プロフィールを保存しました。",true);
+    $("display-name").value = profile.displayName || profile.name || "";
+    $("email").value = currentUser.email || profile.email || "";
+    $("phone").value = profile.phone || "";
+    $("introduction").value = profile.introduction || "";
+    $("header-name").textContent = profile.displayName || profile.name || "講師";
+    $("account-status").textContent = "有効";
+    $("user-id").textContent = currentUser.uid;
 
-  }catch(error){
-    showMessage(error.message||"保存に失敗しました。");
-  }finally{
-    saveButton.disabled=false;
-  }
-});
-
-onAuthStateChanged(auth,async user=>{
-  if(!user){
-    location.replace("/login.html");
-    return;
+    $("loading").classList.add("hidden");
+    $("profile-form").classList.remove("hidden");
   }
 
-  currentUser=user;
+  $("profile-form").addEventListener("submit", async event => {
+    event.preventDefault();
 
-  try{
-    await loadProfile(user);
-  }catch(error){
-    showMessage(error.message||"プロフィールを取得できませんでした。");
+    const button = $("save-button");
+    if (button.disabled) return;
+
+    const displayName = $("display-name").value.trim();
+    const phone = $("phone").value.trim();
+    const introduction = $("introduction").value.trim();
+
+    if (!displayName) {
+      notify("表示名を入力してください。");
+      return;
+    }
+
+    if (displayName.length > 50 ||
+        phone.length > 30 ||
+        introduction.length > 2000) {
+      notify("入力内容が文字数制限を超えています。");
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "保存しています...";
+
+    try {
+      const profileRef = doc(db, "users", currentUser.uid);
+      const latest = await getDoc(profileRef);
+
+      if (!latest.exists() ||
+          latest.data().role !== "teacher" ||
+          latest.data().status !== "active") {
+        throw new Error("アカウントの状態を確認できません。");
+      }
+
+      await updateDoc(profileRef, {
+        displayName,
+        phone,
+        introduction,
+        updatedAt: serverTimestamp()
+      });
+
+      $("header-name").textContent = displayName;
+      notify("プロフィールを更新しました。", "success");
+
+    } catch (error) {
+      console.error("[Teacher Profile]", error);
+      notify(error.message || "プロフィールを更新できませんでした。");
+    } finally {
+      button.disabled = false;
+      button.textContent = "変更を保存";
+    }
+  });
+
+  async function init() {
+    try {
+      const result = await requireRole("teacher");
+      if (!result) return;
+
+      currentUser = result.user;
+      await loadProfile();
+
+    } catch (error) {
+      console.error(error);
+      $("loading").classList.add("hidden");
+      notify(error.message || "プロフィールを読み込めませんでした。");
+    }
   }
-});
+
+  init();
 </script>
-<script type="module" src="/assets/js/common.js"></script>
 </body>
 </html>
