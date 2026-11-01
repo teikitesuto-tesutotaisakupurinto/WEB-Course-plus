@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>指導記録 | WEB Course-plus</title>
+<link rel="stylesheet" href="/assets/css/common.css">
+<style>
+.content-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:14px;font-weight:650;margin-bottom:7px}
+.field input,.field select,.field textarea{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+.field textarea{min-height:100px;resize:vertical}
+.record-item{padding:17px 0;border-bottom:1px solid #e2e8f0}
+.record-item:last-child{border-bottom:0}
+.record-title{font-weight:700}
+.record-meta{font-size:13px;color:#64748b;margin:6px 0 12px}
+.record-body{font-size:14px;line-height:1.8;white-space:pre-wrap}
+.empty{padding:25px;text-align:center;color:#64748b}
+.message{font-size:13px;margin-top:12px;white-space:pre-wrap}
+@media(max-width:800px){.content-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">WEB <span>Course-plus</span></div>
+  <div>
+    <span id="teacherName"></span>
+    <button class="btn btn-secondary" id="logout">ログアウト</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
+    <nav>
+      <a href="/teacher/dashboard.html">ホーム</a>
+      <a href="/teacher/students.html">担当生徒</a>
+      <a href="/teacher/lessons.html">授業設定</a>
+      <a href="/teacher/schedule.html">授業スケジュール</a>
+      <a href="/teacher/records.html" class="active">指導記録</a>
+      <a href="/teacher/profile.html">プロフィール</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <h1 class="page-title">指導記録</h1>
+    <p class="page-description">授業内容や生徒の理解度を記録します。</p>
+
+    <div class="content-grid">
+      <section class="card">
+        <h2>指導記録を登録</h2>
+
+        <form id="recordForm">
+          <div class="field">
+            <label for="lesson">対象授業</label>
+            <select id="lesson" required>
+              <option value="">授業を選択してください</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="understanding">理解度</label>
+            <select id="understanding" required>
+              <option value="">選択してください</option>
+              <option value="excellent">よく理解できている</option>
+              <option value="good">おおむね理解できている</option>
+              <option value="partial">一部理解できている</option>
+              <option value="needs_support">復習・追加指導が必要</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="content">今回の指導内容</label>
+            <textarea id="content" maxlength="5000" required
+              placeholder="学習した内容、解説した問題、取り組み状況など"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="homework">宿題・課題</label>
+            <textarea id="homework" maxlength="3000"
+              placeholder="次回までに取り組む課題"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="nextPlan">次回の指導方針</label>
+            <textarea id="nextPlan" maxlength="3000"
+              placeholder="次回の授業で取り組む内容"></textarea>
+          </div>
+
+          <button class="btn" id="submitButton" type="submit">記録を保存する</button>
+          <div id="formMessage" class="message" role="status"></div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>登録済みの指導記録</h2>
+        <div class="field">
+          <label for="filterStudent">生徒で絞り込む</label>
+          <select id="filterStudent">
+            <option value="all">すべての生徒</option>
+          </select>
+        </div>
+        <div id="recordList">
+          <div class="empty">記録を読み込んでいます。</div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
+© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+import {auth,db} from "/assets/js/firebase.js";
+import {
+  onAuthStateChanged,signOut
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+import {
+  doc,getDoc,collection,getDocs,query,where,addDoc,
+  Timestamp,orderBy
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const lessonSelect=document.getElementById("lesson");
+const recordList=document.getElementById("recordList");
+const form=document.getElementById("recordForm");
+const formMessage=document.getElementById("formMessage");
+const submitButton=document.getElementById("submitButton");
+
+let lessons=[];
+let records=[];
+let students={};
+let currentUser=null;
+
+document.getElementById("logout").onclick=async()=>{
+  await signOut(auth);
+  location.replace("/login.html");
+};
+
+function showMessage(text,success=false){
+  formMessage.textContent=text;
+  formMessage.style.color=success?"#15803d":"#dc2626";
+}
+
+function dateText(value){
+  const date=value?.toDate?value.toDate():new Date(value);
+  if(!Number.isFinite(date.getTime()))return "日時未設定";
+  return new Intl.DateTimeFormat("ja-JP",{
+    year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit"
+  }).format(date);
+}
+
+function understandingText(value){
+  return {
+    excellent:"よく理解できている",
+    good:"おおむね理解できている",
+    partial:"一部理解できている",
+    needs_support:"復習・追加指導が必要"
+  }[value]||"未設定";
+}
+
+function addField(parent,label,value){
+  const wrapper=document.createElement("div");
+  wrapper.style.marginTop="8px";
+  const heading=document.createElement("strong");
+  heading.textContent=label+"：";
+  const text=document.createElement("span");
+  text.textContent=value||"記載なし";
+  wrapper.append(heading,text);
+  parent.appendChild(wrapper);
+}
+
+async function loadLessons(){
+  const snapshot=await getDocs(query(
+    collection(db,"lessons"),
+    where("teacherId","==",currentUser.uid)
+  ));
+
+  lessons=snapshot.docs.map(item=>({id:item.id,...item.data()}));
+
+  lessonSelect.replaceChildren();
+  lessonSelect.add(new Option("授業を選択してください",""));
+
+  for(const lesson of lessons){
+    const student=await getStudent(lesson.studentId);
+    const label=[
+      dateText(lesson.startAt),
+      student,
+      lesson.subject||"教科未設定",
+      lesson.title||"個別指導"
+    ].join(" / ");
+
+    lessonSelect.add(new Option(label,lesson.id));
+  }
+}
+
+async function getStudent(studentId){
+  if(!studentId)return "生徒未設定";
+  if(students[studentId])return students[studentId];
+
+  const snap=await getDoc(doc(db,"users",studentId));
+  const name=snap.exists()
+    ?(snap.data().displayName||snap.data().name||"生徒")
+    :"生徒";
+
+  students[studentId]=name;
+  return name;
+}
+
+async function loadRecords(){
+  const snapshot=await getDocs(query(
+    collection(db,"lessonRecords"),
+    where("teacherId","==",currentUser.uid),
+    orderBy("createdAt","desc")
+  ));
+
+  records=snapshot.docs.map(item=>({id:item.id,...item.data()}));
+  renderRecords();
+}
+
+function renderRecords(){
+  const selected=document.getElementById("filterStudent").value;
+  recordList.replaceChildren();
+
+  const filtered=records.filter(record=>
+    selected==="all"||record.studentId===selected
+  );
+
+  if(!filtered.length){
+    const empty=document.createElement("div");
+    empty.className="empty";
+    empty.textContent="指導記録はまだありません。";
+    recordList.appendChild(empty);
+    return;
+  }
+
+  filtered.forEach(record=>{
+    const item=document.createElement("article");
+    item.className="record-item";
+
+    const title=document.createElement("div");
+    title.className="record-title";
+    title.textContent=record.lessonTitle||"授業記録";
+
+    const meta=document.createElement("div");
+    meta.className="record-meta";
+    meta.textContent=
+      `${record.studentName||"生徒"} / ${dateText(record.createdAt)}`;
+
+    const body=document.createElement("div");
+    body.className="record-body";
+
+    addField(body,"理解度",understandingText(record.understanding));
+    addField(body,"指導内容",record.content);
+    addField(body,"宿題",record.homework);
+    addField(body,"次回の方針",record.nextPlan);
+
+    item.append(title,meta,body);
+    recordList.appendChild(item);
+  });
+}
+
+document.getElementById("filterStudent").addEventListener("change",renderRecords);
+
+form.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(submitButton.disabled)return;
+
+  const lessonId=lessonSelect.value;
+  const lesson=lessons.find(item=>item.id===lessonId);
+
+  if(!lesson){
+    showMessage("対象授業を選択してください。");
+    return;
+  }
+
+  const content=document.getElementById("content").value.trim();
+  const understanding=document.getElementById("understanding").value;
+
+  if(!content||!understanding){
+    showMessage("必須項目を入力してください。");
+    return;
+  }
+
+  submitButton.disabled=true;
+
+  try{
+    // 授業の担当講師と対象生徒を再確認
+    const latest=await getDoc(doc(db,"lessons",lessonId));
+
+    if(!latest.exists())throw new Error("対象授業が見つかりません。");
+
+    const data=latest.data();
+
+    if(data.teacherId!==currentUser.uid){
+      throw new Error("この授業の指導記録を登録する権限がありません。");
+    }
+
+    const studentName=await getStudent(data.studentId);
+
+    await addDoc(collection(db,"lessonRecords"),{
+      lessonId,
+      teacherId:currentUser.uid,
+      studentId:data.studentId,
+      studentName,
+      lessonTitle:data.title||"個別指導",
+      subject:data.subject||"",
+      understanding,
+      content,
+      homework:document.getElementById("homework").value.trim(),
+      nextPlan:document.getElementById("nextPlan").value.trim(),
+      createdAt:Timestamp.now(),
+      updatedAt:Timestamp.now()
+    });
+
+    showMessage("指導記録を保存しました。",true);
+    form.reset();
+    await loadRecords();
+
+  }catch(error){
+    showMessage(error.message||"保存に失敗しました。");
+  }finally{
+    submitButton.disabled=false;
+  }
+});
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    location.replace("/login.html");
+    return;
+  }
+
+  currentUser=user;
+
+  try{
+    const profileSnap=await getDoc(doc(db,"users",user.uid));
+    if(!profileSnap.exists())throw new Error("アカウント情報がありません。");
+
+    const profile=profileSnap.data();
+
+    if(profile.role!=="teacher"||profile.status!=="active"){
+      await signOut(auth);
+      location.replace("/login.html");
+      return;
+    }
+
+    document.getElementById("teacherName").textContent=
+      profile.displayName||profile.name||"講師";
+
+    await loadLessons();
+    await loadRecords();
+
+    const filter=document.getElementById("filterStudent");
+    const ids=[...new Set(lessons.map(item=>item.studentId).filter(Boolean))];
+
+    for(const id of ids){
+      filter.add(new Option(await getStudent(id),id));
+    }
+
+  }catch(error){
+    recordList.textContent=error.message||"データを読み込めませんでした。";
+  }
+});
+</script>
+<script type="module" src="/assets/js/common.js"></script>
+</body>
+</html>
