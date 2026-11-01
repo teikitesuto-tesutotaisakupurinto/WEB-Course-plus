@@ -1,0 +1,217 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------
+    // 共通認証・権限確認
+    // ------------------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function hasUserProfile() {
+      return signedIn() && exists(userPath(request.auth.uid));
+    }
+
+    function myProfile() {
+      return get(userPath(request.auth.uid)).data;
+    }
+
+    function isActive() {
+      return hasUserProfile()
+        && myProfile().status == 'active';
+    }
+
+    function isAdmin() {
+      return isActive()
+        && myProfile().role == 'admin';
+    }
+
+    function isTeacher() {
+      return isActive()
+        && myProfile().role == 'teacher';
+    }
+
+    function isStudent() {
+      return isActive()
+        && myProfile().role == 'student';
+    }
+
+    function isValidStudent(studentId) {
+      return studentId is string
+        && exists(userPath(studentId))
+        && get(userPath(studentId)).data.role == 'student'
+        && get(userPath(studentId)).data.status == 'active';
+    }
+
+    // ------------------------------------
+    // users
+    // ------------------------------------
+
+    match /users/{uid} {
+
+      // 本人は自分の情報を閲覧できる
+      // 管理者は全ユーザーを閲覧できる
+      allow get: if signedIn()
+        && (
+          request.auth.uid == uid ||
+          isAdmin() ||
+          (
+            isTeacher() &&
+            resource.data.role == 'student'
+          )
+        );
+
+      // 講師は生徒一覧を取得できる
+      // 固定の担当講師条件は使用しない
+      allow list: if isAdmin()
+        || (
+          isTeacher() &&
+          resource.data.role == 'student'
+        );
+
+      // ユーザー作成は管理者側のサーバー処理で行う
+      allow create: if isAdmin();
+
+      // 本人はプロフィール項目のみ変更できる
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && isActive()
+        && request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'displayName',
+            'phone',
+            'introduction',
+            'updatedAt'
+          ]);
+
+      // 削除は管理者側の処理で行う
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------
+    // lessons
+    // ------------------------------------
+
+    match /lessons/{lessonId} {
+
+      // 管理者、登録講師、対象生徒だけ閲覧できる
+      allow get, list: if isAdmin()
+        || (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid
+        )
+        || (
+          isStudent() &&
+          resource.data.studentId == request.auth.uid
+        );
+
+      // 講師が任意の有効な生徒を指定して授業を作成
+      allow create: if isTeacher()
+        && request.resource.data.teacherId == request.auth.uid
+        && isValidStudent(request.resource.data.studentId)
+        && request.resource.data.title is string
+        && request.resource.data.subject is string
+        && request.resource.data.description is string
+        && request.resource.data.durationMinutes is int
+        && request.resource.data.durationMinutes > 0
+        && request.resource.data.startAt is timestamp
+        && request.resource.data.endAt is timestamp
+        && request.resource.data.endAt > request.resource.data.startAt
+        && request.resource.data.status == 'scheduled';
+
+      // 講師は自分の授業の状態のみ変更できる
+      allow update: if isAdmin()
+        || (
+          isTeacher()
+          && resource.data.teacherId == request.auth.uid
+          && request.resource.data.teacherId == resource.data.teacherId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly([
+              'status',
+              'updatedAt'
+            ])
+          && request.resource.data.status in [
+            'scheduled',
+            'in_progress',
+            'completed',
+            'cancelled'
+          ]
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------
+    // lessonRecords
+    // ------------------------------------
+
+    match /lessonRecords/{recordId} {
+
+      // 管理者、記録を作成した講師、対象生徒が閲覧できる
+      allow get, list: if isAdmin()
+        || (
+          isTeacher() &&
+          resource.data.teacherId == request.auth.uid
+        )
+        || (
+          isStudent() &&
+          resource.data.studentId == request.auth.uid
+        );
+
+      // 自分が担当する授業に対する記録だけ作成可能
+      allow create: if isTeacher()
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.lessonId is string
+        && exists(
+          /databases/$(database)/documents/lessons/$(request.resource.data.lessonId)
+        )
+        && get(
+          /databases/$(database)/documents/lessons/$(request.resource.data.lessonId)
+        ).data.teacherId == request.auth.uid
+        && get(
+          /databases/$(database)/documents/lessons/$(request.resource.data.lessonId)
+        ).data.studentId == request.resource.data.studentId
+        && request.resource.data.content is string
+        && request.resource.data.understanding is string;
+
+      // 記録の変更・削除は管理者のみ
+      allow update, delete: if isAdmin();
+    }
+
+    // ------------------------------------
+    // settings
+    // ------------------------------------
+
+    match /settings/{settingId} {
+
+      // ログイン済みユーザーはシステム設定を読める
+      allow get: if signedIn()
+        && settingId == 'system';
+
+      allow list: if isAdmin();
+
+      // 設定変更は管理者だけ
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ------------------------------------
+    // その他のコレクション
+    // ------------------------------------
+
+    // 明示的に許可したコレクション以外はアクセス不可
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
