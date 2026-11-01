@@ -9,7 +9,6 @@
 </head>
 <body>
 <div class="app">
-
   <header class="app-header">
     <div class="header-left">
       <button class="menu-toggle" data-sidebar-toggle aria-label="メニュー">☰</button>
@@ -27,7 +26,7 @@
     <div class="sidebar-section">講師メニュー</div>
     <a href="/teacher/dashboard.html" class="sidebar-link">ダッシュボード</a>
     <a href="/teacher/lessons.html" class="sidebar-link active">授業を設定する</a>
-    <a href="/teacher/students.html" class="sidebar-link">担当生徒</a>
+    <a href="/teacher/students.html" class="sidebar-link">生徒一覧</a>
     <a href="/teacher/schedule.html" class="sidebar-link">授業スケジュール</a>
     <a href="/teacher/records.html" class="sidebar-link">指導記録</a>
     <a href="/teacher/profile.html" class="sidebar-link">アカウント情報</a>
@@ -37,13 +36,10 @@
 
   <main class="app-main">
     <div class="page-container">
-
       <div class="page-heading">
         <div>
           <h1 class="page-title">授業を設定する</h1>
-          <p class="page-description">
-            担当生徒を選択し、オンライン授業の日時と内容を登録します。
-          </p>
+          <p class="page-description">生徒を選択して、個別授業を登録します。</p>
         </div>
       </div>
 
@@ -55,67 +51,52 @@
         </div>
 
         <form id="lesson-form">
-
           <div class="form-group">
-            <label class="form-label" for="student">授業を受ける生徒 <span class="text-danger">*</span></label>
+            <label class="form-label" for="student">授業を受ける生徒 *</label>
             <select id="student" class="form-control" required>
               <option value="">生徒を選択してください</option>
             </select>
-            <small class="text-muted">あなたに割り当てられている生徒のみ表示されます。</small>
+            <small class="text-muted">登録済みで利用可能な生徒が表示されます。</small>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="title">授業名 <span class="text-danger">*</span></label>
-            <input
-              id="title"
-              class="form-control"
-              type="text"
-              maxlength="100"
-              placeholder="例：数学 個別指導"
-              required
-            >
+            <label class="form-label" for="title">授業名 *</label>
+            <input id="title" class="form-control" maxlength="100"
+              placeholder="例：数学 個別指導" required>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="subject">教科 <span class="text-danger">*</span></label>
+            <label class="form-label" for="subject">教科 *</label>
             <select id="subject" class="form-control" required>
               <option value="">教科を選択してください</option>
-              <option value="国語">国語</option>
-              <option value="数学">数学</option>
-              <option value="英語">英語</option>
-              <option value="理科">理科</option>
-              <option value="社会">社会</option>
-              <option value="その他">その他</option>
+              <option>国語</option>
+              <option>数学</option>
+              <option>英語</option>
+              <option>理科</option>
+              <option>社会</option>
+              <option>その他</option>
             </select>
           </div>
 
           <div class="form-group">
             <label class="form-label" for="description">授業内容</label>
-            <textarea
-              id="description"
-              class="form-control"
-              rows="4"
-              maxlength="3000"
-              placeholder="今回の授業で扱う内容や目標を入力してください。"
-            ></textarea>
+            <textarea id="description" class="form-control" rows="4"
+              maxlength="3000" placeholder="授業内容や目標を入力してください。"></textarea>
           </div>
 
           <div class="grid grid-2">
-
             <div class="form-group">
-              <label class="form-label" for="start-date">授業日 <span class="text-danger">*</span></label>
+              <label class="form-label" for="start-date">授業日 *</label>
               <input id="start-date" class="form-control" type="date" required>
             </div>
-
             <div class="form-group">
-              <label class="form-label" for="start-time">開始時刻 <span class="text-danger">*</span></label>
+              <label class="form-label" for="start-time">開始時刻 *</label>
               <input id="start-time" class="form-control" type="time" required>
             </div>
-
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="duration">授業時間 <span class="text-danger">*</span></label>
+            <label class="form-label" for="duration">授業時間 *</label>
             <select id="duration" class="form-control" required>
               <option value="30">30分</option>
               <option value="45">45分</option>
@@ -129,26 +110,22 @@
 
           <div class="alert alert-info">
             登録した授業は、指定した生徒のダッシュボードに表示されます。
-            授業開始時刻の5分前から入室できる設定です。
           </div>
 
           <div class="flex gap-2" style="justify-content:flex-end;flex-wrap:wrap">
-            <button type="reset" class="btn btn-secondary" id="reset-button">
-              入力をリセット
-            </button>
-            <button type="submit" class="btn btn-primary" id="submit-button">
+            <button type="reset" class="btn btn-secondary">入力をリセット</button>
+            <button type="submit" id="submit-button" class="btn btn-primary">
               授業を登録する
             </button>
           </div>
-
         </form>
       </section>
 
       <section class="card mt-3">
         <div class="card-header">
           <div>
-            <h2 class="card-title">直近に登録した授業</h2>
-            <p class="card-description">あなたが登録した授業を確認できます。</p>
+            <h2 class="card-title">最近登録した授業</h2>
+            <p class="card-description">自分が登録した授業を確認できます。</p>
           </div>
         </div>
         <div id="recent-loading" class="loading">
@@ -166,29 +143,15 @@
 </div>
 
 <script type="module">
-  import { auth, db } from "/assets/js/firebase.js";
+  import { db } from "/assets/js/firebase.js";
   import { requireRole } from "/assets/js/auth.js";
-
   import {
-    initializeSidebar,
-    initializeLogout,
-    renderFooter,
-    showMessage,
-    escapeHTML,
-    formatDateTime,
-    toDate
+    initializeSidebar, initializeLogout, renderFooter,
+    showMessage, escapeHTML, toDate, formatDateTime
   } from "/assets/js/common.js";
-
   import {
-    collection,
-    query,
-    where,
-    getDocs,
-    addDoc,
-    doc,
-    getDoc,
-    Timestamp,
-    serverTimestamp
+    collection, query, where, getDocs, addDoc,
+    doc, getDoc, Timestamp, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
   initializeSidebar();
@@ -197,199 +160,58 @@
 
   const $ = id => document.getElementById(id);
   const form = $("lesson-form");
-
   let currentUser = null;
-  let assignedStudents = [];
+  let students = [];
 
-  function localDateTime(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  }
-
-  function showFormMessage(text, type = "danger") {
+  function notify(text, type = "danger") {
     showMessage(text, type);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // ----------------------------------------
-  // 担当生徒の取得
-  // ----------------------------------------
+  async function loadStudents() {
+    const select = $("student");
+    select.disabled = true;
 
-  async function loadStudents(uid) {
-    const studentSelect = $("student");
-
-    const studentsQuery = query(
+    // 固定の担当講師条件は使用しない
+    const snapshot = await getDocs(query(
       collection(db, "users"),
-      where("role", "==", "student"),
-      where("assignedTeacherIds", "array-contains", uid)
-    );
+      where("role", "==", "student")
+    ));
 
-    const snapshot = await getDocs(studentsQuery);
-
-    assignedStudents = snapshot.docs
-      .map(item => ({
-        uid: item.id,
-        ...item.data()
-      }))
-      .filter(student => student.status === "active")
+    students = snapshot.docs
+      .map(item => ({ uid: item.id, ...item.data() }))
+      .filter(item => item.status === "active")
       .sort((a, b) =>
         (a.displayName || a.name || "").localeCompare(
-          b.displayName || b.name || "",
-          "ja"
+          b.displayName || b.name || "", "ja"
         )
       );
 
-    for (const student of assignedStudents) {
+    for (const student of students) {
       const option = document.createElement("option");
       option.value = student.uid;
       option.textContent =
-        student.displayName ||
-        student.name ||
-        student.email ||
-        "氏名未設定";
-
-      studentSelect.appendChild(option);
+        student.displayName || student.name || student.email || "氏名未設定";
+      select.appendChild(option);
     }
 
-    if (assignedStudents.length === 0) {
-      studentSelect.disabled = true;
-      showFormMessage(
-        "担当生徒が登録されていません。管理者に生徒の割り当てを依頼してください。",
-        "warning"
-      );
+    select.disabled = false;
+
+    if (!students.length) {
+      notify("利用可能な生徒アカウントがありません。", "warning");
     }
   }
 
-  // ----------------------------------------
-  // 授業登録
-  // ----------------------------------------
-
-  form.addEventListener("submit", async event => {
-    event.preventDefault();
-
-    const button = $("submit-button");
-
-    if (!currentUser || button.disabled) return;
-
-    const studentId = $("student").value;
-    const title = $("title").value.trim();
-    const subject = $("subject").value;
-    const description = $("description").value.trim();
-    const date = $("start-date").value;
-    const time = $("start-time").value;
-    const duration = Number($("duration").value);
-
-    if (!studentId || !title || !subject || !date || !time) {
-      showFormMessage("必須項目をすべて入力してください。");
-      return;
-    }
-
-    const student = assignedStudents.find(s => s.uid === studentId);
-
-    if (!student) {
-      showFormMessage("選択された生徒を確認できません。ページを再読み込みしてください。");
-      return;
-    }
-
-    // 日本時間として日時を解釈
-    const startAt = new Date(`${date}T${time}:00+09:00`);
-
-    if (Number.isNaN(startAt.getTime())) {
-      showFormMessage("授業日時が正しくありません。");
-      return;
-    }
-
-    if (startAt.getTime() < Date.now() + 60 * 1000) {
-      showFormMessage("授業開始日時は、現在より1分以上先に設定してください。");
-      return;
-    }
-
-    const endAt = new Date(startAt.getTime() + duration * 60 * 1000);
-
-    button.disabled = true;
-    button.textContent = "登録しています...";
-
-    try {
-      // 登録直前にも生徒の担当関係を確認
-      const studentSnapshot = await getDoc(
-        doc(db, "users", studentId)
-      );
-
-      if (!studentSnapshot.exists()) {
-        throw new Error("生徒アカウントが見つかりません。");
-      }
-
-      const latestStudent = studentSnapshot.data();
-
-      if (
-        latestStudent.role !== "student" ||
-        latestStudent.status !== "active" ||
-        !Array.isArray(latestStudent.assignedTeacherIds) ||
-        !latestStudent.assignedTeacherIds.includes(currentUser.uid)
-      ) {
-        throw new Error("この生徒を担当する権限がありません。");
-      }
-
-      await addDoc(collection(db, "lessons"), {
-        studentId,
-        teacherId: currentUser.uid,
-
-        title,
-        subject,
-        description,
-
-        durationMinutes: duration,
-
-        startAt: Timestamp.fromDate(startAt),
-        endAt: Timestamp.fromDate(endAt),
-
-        status: "scheduled",
-
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-
-      showFormMessage("授業を登録しました。生徒のダッシュボードに反映されます。", "success");
-
-      form.reset();
-      $("duration").value = "50";
-
-      await loadRecentLessons(currentUser.uid);
-
-    } catch (error) {
-      console.error("[Create Lesson]", error);
-
-      showFormMessage(
-        error.message || "授業の登録に失敗しました。Firestoreのセキュリティルールを確認してください。"
-      );
-
-    } finally {
-      button.disabled = false;
-      button.textContent = "授業を登録する";
-    }
-  });
-
-  // ----------------------------------------
-  // 最近の授業
-  // ----------------------------------------
-
-  async function loadRecentLessons(uid) {
+  async function loadRecentLessons() {
     $("recent-loading").classList.remove("hidden");
     $("recent-empty").classList.add("hidden");
     $("recent-list").innerHTML = "";
 
     try {
-      const snapshot = await getDocs(
-        query(
-          collection(db, "lessons"),
-          where("teacherId", "==", uid)
-        )
-      );
+      const snapshot = await getDocs(query(
+        collection(db, "lessons"),
+        where("teacherId", "==", currentUser.uid)
+      ));
 
       const lessons = snapshot.docs
         .map(item => ({ id: item.id, ...item.data() }))
@@ -401,23 +223,19 @@
 
       $("recent-loading").classList.add("hidden");
 
-      if (lessons.length === 0) {
+      if (!lessons.length) {
         $("recent-empty").classList.remove("hidden");
         return;
       }
 
       for (const lesson of lessons) {
-        const student = assignedStudents.find(
-          item => item.uid === lesson.studentId
-        );
-
-        const name = student
+        const student = students.find(s => s.uid === lesson.studentId);
+        const studentName = student
           ? (student.displayName || student.name || "生徒")
           : "生徒";
 
-        const startAt = toDate(lesson.startAt);
-
-        const card = document.createElement("div");
+        const start = toDate(lesson.startAt);
+        const card = document.createElement("article");
         card.className = "card";
         card.style.padding = "15px";
 
@@ -427,26 +245,94 @@
             <span class="badge badge-primary">${escapeHTML(lesson.subject || "教科未設定")}</span>
           </div>
           <p class="text-muted" style="margin:8px 0 0">
-            生徒：${escapeHTML(name)}
+            生徒：${escapeHTML(studentName)}
           </p>
           <p class="text-muted" style="margin:4px 0 0">
-            ${startAt ? escapeHTML(formatDateTime(startAt)) : "日時未設定"}
+            ${start ? escapeHTML(formatDateTime(start)) : "日時未設定"}
           </p>
         `;
 
         $("recent-list").appendChild(card);
       }
-
     } catch (error) {
-      console.error("[Recent Lessons]", error);
+      console.error(error);
       $("recent-loading").classList.add("hidden");
-      showFormMessage("登録済み授業の取得に失敗しました。");
+      notify("最近の授業を読み込めませんでした。");
     }
   }
 
-  // ----------------------------------------
-  // 起動
-  // ----------------------------------------
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const button = $("submit-button");
+    if (!currentUser || button.disabled) return;
+
+    const studentId = $("student").value;
+    const title = $("title").value.trim();
+    const subject = $("subject").value;
+    const description = $("description").value.trim();
+    const date = $("start-date").value;
+    const time = $("start-time").value;
+    const duration = Number($("duration").value);
+
+    if (!studentId || !title || !subject || !date || !time) {
+      notify("必須項目を入力してください。");
+      return;
+    }
+
+    // 画面の選択肢だけに依存せず、登録直前にも生徒を再確認
+    try {
+      const studentSnap = await getDoc(doc(db, "users", studentId));
+
+      if (!studentSnap.exists()) {
+        throw new Error("選択した生徒アカウントが見つかりません。");
+      }
+
+      const studentData = studentSnap.data();
+
+      if (studentData.role !== "student" || studentData.status !== "active") {
+        throw new Error("この生徒アカウントは現在利用できません。");
+      }
+
+      const startAt = new Date(`${date}T${time}:00+09:00`);
+
+      if (Number.isNaN(startAt.getTime()) || startAt.getTime() <= Date.now()) {
+        throw new Error("授業日時は現在より後に設定してください。");
+      }
+
+      const endAt = new Date(startAt.getTime() + duration * 60000);
+
+      button.disabled = true;
+      button.textContent = "登録しています...";
+
+      await addDoc(collection(db, "lessons"), {
+        studentId,
+        teacherId: currentUser.uid,
+        title,
+        subject,
+        description,
+        durationMinutes: duration,
+        startAt: Timestamp.fromDate(startAt),
+        endAt: Timestamp.fromDate(endAt),
+        status: "scheduled",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      notify("授業を登録しました。生徒の画面に反映されます。", "success");
+      form.reset();
+      $("duration").value = "50";
+
+      await loadRecentLessons();
+
+    } catch (error) {
+      console.error("[Create Lesson]", error);
+      notify(error.message || "授業の登録に失敗しました。");
+    } finally {
+      button.disabled = false;
+      button.textContent = "授業を登録する";
+    }
+  });
 
   async function init() {
     try {
@@ -454,21 +340,18 @@
       if (!result) return;
 
       currentUser = result.user;
-
       const profile = result.profile;
 
       $("header-name").textContent =
-        profile.displayName ||
-        profile.name ||
-        "講師";
+        profile.displayName || profile.name || "講師";
 
-      await loadStudents(currentUser.uid);
-      await loadRecentLessons(currentUser.uid);
+      await loadStudents();
+      await loadRecentLessons();
 
     } catch (error) {
-      console.error("[Teacher Lessons]", error);
-      showFormMessage(error.message || "画面を初期化できませんでした。");
+      console.error(error);
       $("recent-loading").classList.add("hidden");
+      notify(error.message || "画面を初期化できませんでした。");
     }
   }
 
