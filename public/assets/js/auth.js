@@ -1,4 +1,5 @@
-import { auth, db } from "./firebase.js";
+
+import { auth, db, authPersistenceReady } from "./firebase.js";
 
 import {
   onAuthStateChanged,
@@ -10,74 +11,150 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-export const Auth = {
-  async getCurrentUser() {
-    const user = auth.currentUser;
+// ========================================
+// 認証状態の取得
+// ========================================
 
-    if (!user) {
-      throw new Error("ログインが必要です。");
+export async function getCurrentUser() {
+  await authPersistenceReady;
+
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      user => {
+        unsubscribe();
+        resolve(user);
+      },
+      error => {
+        unsubscribe();
+        reject(error);
+      }
+    );
+  });
+}
+
+// ========================================
+// ユーザープロフィール取得
+// ========================================
+
+export async function getProfile(uid) {
+  if (!uid) {
+    throw new Error("ユーザーIDが指定されていません。");
+  }
+
+  const profileRef = doc(db, "users", uid);
+  const snapshot = await getDoc(profileRef);
+
+  if (!snapshot.exists()) {
+    throw new Error("利用者情報が登録されていません。");
+  }
+
+  const profile = snapshot.data();
+
+  return {
+    uid,
+    ...profile
+  };
+}
+
+// ========================================
+// ログインユーザーとプロフィール
+// ========================================
+
+export async function getAuthenticatedProfile() {
+  await authPersistenceReady;
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const profile = await getProfile(user.uid);
+
+  if (profile.status !== "active") {
+    throw new Error("このアカウントは利用できません。");
+  }
+
+  return {
+    user,
+    profile
+  };
+}
+
+// ========================================
+// ロール別アクセス制御
+// ========================================
+
+export async function requireRole(expectedRole) {
+  try {
+    const result = await getAuthenticatedProfile();
+
+    if (!result) {
+      window.location.replace("/login.html");
+      return null;
     }
 
-    const token = await user.getIdToken();
+    const { user, profile } = result;
+
+    const allowedRoles = Array.isArray(expectedRole)
+      ? expectedRole
+      : [expectedRole];
+
+    if (!allowedRoles.includes(profile.role)) {
+      if (profile.role === "admin") {
+        window.location.replace("/admin/dashboard.html");
+      } else if (profile.role === "teacher") {
+        window.location.replace("/teacher/dashboard.html");
+      } else if (profile.role === "student") {
+        window.location.replace("/student/dashboard.html");
+      } else {
+        await signOut(auth);
+        window.location.replace("/login.html");
+      }
+
+      return null;
+    }
 
     return {
-      uid: user.uid,
-      email: user.email,
-      token
+      user,
+      profile
     };
-  },
 
-  async getProfile(uid) {
-    const snapshot = await getDoc(doc(db, "users", uid));
+  } catch (error) {
+    console.error("[Auth] Access check failed:", error);
 
-    if (!snapshot.exists()) {
-      throw new Error("アカウント情報がありません。");
+    if (auth.currentUser) {
+      await signOut(auth).catch(() => {});
     }
 
-    const profile = snapshot.data();
-
-    if (profile.status !== "active") {
-      throw new Error("このアカウントは利用できません。");
-    }
-
-    return profile;
-  },
-
-  async requireRole(expectedRole) {
-    return new Promise((resolve, reject) => {
-      const unsubscribe = onAuthStateChanged(auth, async user => {
-        unsubscribe();
-
-        if (!user) {
-          location.replace(`/${expectedRole}/login.html`);
-          return reject(new Error("ログインが必要です。"));
-        }
-
-        try {
-          const profile = await this.getProfile(user.uid);
-
-          if (profile.role !== expectedRole && profile.role !== "admin") {
-            location.replace("/");
-            return reject(new Error("アクセス権限がありません。"));
-          }
-
-          resolve({ user, profile });
-        } catch (error) {
-          await signOut(auth);
-          location.replace(`/${expectedRole}/login.html`);
-          reject(error);
-        }
-      });
-    });
-  },
-
-  async logout() {
-    await signOut(auth);
-    location.replace("/");
+    window.location.replace("/login.html");
+    return null;
   }
-};
+}
+
+// ========================================
+// ログアウト
+// ========================================
+
+export async function logout() {
+  try {
+    await signOut(auth);
+    window.location.replace("/login.html");
+
+  } catch (error) {
+    console.error("[Auth] Logout failed:", error);
+    throw new Error("ログアウトに失敗しました。");
+  }
+}
+
+// ========================================
+// Firebase ID Token取得
+// ========================================
 
 export async function getAccessToken() {
+  await authPersistenceReady;
+
   const user = auth.currentUser;
 
   if (!user) {
@@ -86,3 +163,42 @@ export async function getAccessToken() {
 
   return user.getIdToken();
 }
+
+// ========================================
+// ロール別ホームページ
+// ========================================
+
+export function getDashboardUrl(role) {
+  const routes = {
+    student: "/student/dashboard.html",
+    teacher: "/teacher/dashboard.html",
+    admin: "/admin/dashboard.html"
+  };
+
+  return routes[role] || "/login.html";
+}
+
+// ========================================
+// ログイン状態の監視
+// ========================================
+
+export function observeAuthState(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+
+// ========================================
+// 互換用 Auth オブジェクト
+// ========================================
+
+export const Auth = {
+  getCurrentUser,
+  getProfile,
+  getAuthenticatedProfile,
+  requireRole,
+  logout,
+  getAccessToken,
+  getDashboardUrl,
+  observeAuthState
+};
+
+export default Auth;
