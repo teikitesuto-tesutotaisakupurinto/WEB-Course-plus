@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>担当生徒 | WEB Course-plus</title>
+<link rel="stylesheet" href="/assets/css/common.css">
+<style>
+.toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.toolbar input{max-width:360px}
+.student-card{padding:18px 0;border-bottom:1px solid var(--border)}
+.student-card:last-child{border-bottom:0}
+.student-name{font-weight:700;font-size:16px}
+.student-info{color:var(--muted);font-size:13px;margin-top:5px}
+.status{display:inline-block;padding:4px 9px;border-radius:20px;background:#dcfce7;color:#166534;font-size:12px}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">WEB <span>Course-plus</span></div>
+  <div>
+    <span id="teacherName"></span>
+    <button class="btn btn-secondary" id="logout">ログアウト</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
+    <nav>
+      <a href="/teacher/dashboard.html">ホーム</a>
+      <a href="/teacher/students.html" class="active">担当生徒</a>
+      <a href="/teacher/lessons.html">授業設定</a>
+      <a href="/teacher/schedule.html">授業スケジュール</a>
+      <a href="/teacher/records.html">指導記録</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <h1 class="page-title">担当生徒</h1>
+    <p class="page-description">あなたが担当する生徒を確認できます。</p>
+
+    <section class="card">
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="生徒名・メールアドレスで検索">
+        <button class="btn btn-secondary" id="reload">再読み込み</button>
+      </div>
+
+      <div id="studentCount" class="stat-label">読み込み中</div>
+      <div id="studentList" aria-live="polite">
+        <div class="empty">生徒情報を読み込んでいます。</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
+© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+import {auth,db} from "/assets/js/firebase.js";
+import {onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+import {doc,getDoc,collection,getDocs,query,where} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const list=document.getElementById("studentList");
+const search=document.getElementById("search");
+let students=[];
+
+document.getElementById("logout").onclick=async()=>{
+  await signOut(auth);
+  location.replace("/login.html");
+};
+
+function render(){
+  const word=search.value.trim().toLowerCase();
+  const filtered=students.filter(s=>
+    (s.name+" "+s.email).toLowerCase().includes(word)
+  );
+
+  list.replaceChildren();
+  document.getElementById("studentCount").textContent=
+    `担当生徒：${filtered.length}名`;
+
+  if(!filtered.length){
+    const empty=document.createElement("div");
+    empty.className="empty";
+    empty.textContent="該当する生徒はいません。";
+    list.appendChild(empty);
+    return;
+  }
+
+  filtered.forEach(s=>{
+    const card=document.createElement("div");
+    card.className="student-card";
+
+    const name=document.createElement("div");
+    name.className="student-name";
+    name.textContent=s.name;
+
+    const email=document.createElement("div");
+    email.className="student-info";
+    email.textContent=s.email;
+
+    const status=document.createElement("span");
+    status.className="status";
+    status.textContent="有効";
+
+    const actions=document.createElement("div");
+    actions.style.marginTop="12px";
+
+    const link=document.createElement("a");
+    link.className="btn btn-secondary";
+    link.href="/teacher/lessons.html";
+    link.textContent="この生徒に授業を設定";
+    actions.appendChild(link);
+
+    card.append(name,email,status,actions);
+    list.appendChild(card);
+  });
+}
+
+search.addEventListener("input",render);
+document.getElementById("reload").onclick=()=>loadStudents();
+
+async function loadStudents(){
+  list.textContent="読み込み中...";
+  const user=auth.currentUser;
+  if(!user)return;
+
+  const q=query(
+    collection(db,"users"),
+    where("assignedTeacherIds","array-contains",user.uid)
+  );
+
+  const snapshot=await getDocs(q);
+  students=snapshot.docs.map(item=>{
+    const d=item.data();
+    return {
+      id:item.id,
+      name:d.displayName||d.name||"氏名未登録",
+      email:d.email||"メールアドレス未登録",
+      role:d.role,
+      status:d.status
+    };
+  }).filter(s=>s.role==="student"&&s.status==="active");
+
+  render();
+}
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    location.replace("/login.html");
+    return;
+  }
+
+  try{
+    const snap=await getDoc(doc(db,"users",user.uid));
+    if(!snap.exists())throw new Error("アカウント情報がありません。");
+    const profile=snap.data();
+
+    if(profile.role!=="teacher"||profile.status!=="active"){
+      await signOut(auth);
+      location.replace("/login.html");
+      return;
+    }
+
+    document.getElementById("teacherName").textContent=
+      profile.displayName||profile.name||"講師";
+
+    await loadStudents();
+  }catch(error){
+    list.textContent=error.message||"読み込みに失敗しました。";
+  }
+});
+</script>
+<script type="module" src="/assets/js/common.js"></script>
+</body>
+</html>
