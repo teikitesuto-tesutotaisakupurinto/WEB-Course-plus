@@ -58,13 +58,11 @@
           <div class="stat-value" id="today-count">-</div>
           <div class="stat-note">本日予定されている授業</div>
         </div>
-
         <div class="stat-card">
           <div class="stat-label">今後の授業</div>
           <div class="stat-value" id="upcoming-count">-</div>
           <div class="stat-note">終了していない授業</div>
         </div>
-
         <div class="stat-card">
           <div class="stat-label">登録生徒数</div>
           <div class="stat-value" id="student-count">-</div>
@@ -102,17 +100,10 @@
             <p class="card-description">よく使う機能に移動できます。</p>
           </div>
         </div>
-
         <div class="grid grid-3">
-          <a href="/teacher/lessons.html" class="btn btn-primary">
-            授業を設定する
-          </a>
-          <a href="/teacher/students.html" class="btn btn-secondary">
-            生徒一覧
-          </a>
-          <a href="/teacher/records.html" class="btn btn-secondary">
-            指導記録
-          </a>
+          <a href="/teacher/lessons.html" class="btn btn-primary">授業を設定する</a>
+          <a href="/teacher/students.html" class="btn btn-secondary">生徒一覧</a>
+          <a href="/teacher/records.html" class="btn btn-secondary">指導記録</a>
         </div>
       </section>
 
@@ -124,7 +115,6 @@
 <script type="module">
   import { db } from "/assets/js/firebase.js";
   import { requireRole } from "/assets/js/auth.js";
-
   import {
     initializeSidebar,
     initializeLogout,
@@ -150,6 +140,7 @@
 
   const $ = id => document.getElementById(id);
   const studentCache = new Map();
+  let refreshTimer = null;
 
   function isToday(date) {
     const now = new Date();
@@ -160,29 +151,103 @@
 
   async function getStudentName(uid) {
     if (!uid) return "生徒";
-
-    if (studentCache.has(uid)) {
-      return studentCache.get(uid);
-    }
+    if (studentCache.has(uid)) return studentCache.get(uid);
 
     try {
       const snapshot = await getDoc(doc(db, "users", uid));
-
       const name = snapshot.exists()
-        ? (
-            snapshot.data().displayName ||
-            snapshot.data().name ||
-            "生徒"
-          )
+        ? snapshot.data().displayName || snapshot.data().name || "生徒"
         : "生徒";
 
       studentCache.set(uid, name);
       return name;
-
     } catch (error) {
       console.error("[Student Name]", error);
       return "生徒";
     }
+  }
+
+  function getJoinState(lesson) {
+    const now = Date.now();
+    const start = toDate(lesson.startAt)?.getTime();
+    const end = toDate(lesson.endAt)?.getTime();
+
+    if (!start || !end || end <= start) {
+      return { canJoin: false, label: "日時未設定", type: "secondary" };
+    }
+
+    if (lesson.status === "cancelled") {
+      return { canJoin: false, label: "キャンセル済み", type: "secondary" };
+    }
+
+    if (lesson.status === "completed") {
+      return { canJoin: false, label: "終了済み", type: "secondary" };
+    }
+
+    if (now < start - 5 * 60 * 1000) {
+      return { canJoin: false, label: "開始前", type: "secondary" };
+    }
+
+    if (now <= end + 30 * 60 * 1000) {
+      return { canJoin: true, label: "授業に参加", type: "primary" };
+    }
+
+    return { canJoin: false, label: "終了", type: "secondary" };
+  }
+
+  function createLessonCard(lesson, name) {
+    const start = toDate(lesson.startAt);
+    const end = toDate(lesson.endAt);
+    const state = getJoinState(lesson);
+
+    const card = document.createElement("article");
+    card.className = "card";
+    card.style.padding = "16px";
+
+    const timeText = start
+      ? escapeHTML(formatDateTime(start)) +
+        (end ? " ～ " + escapeHTML(end.toLocaleTimeString("ja-JP", {
+          hour: "2-digit",
+          minute: "2-digit"
+        })) : "")
+      : "日時未設定";
+
+    const joinButton = state.canJoin
+      ? `<a href="/lesson/room.html?lessonId=${encodeURIComponent(lesson.id)}"
+            class="btn btn-primary"
+            style="width:100%;text-align:center">
+            授業に参加
+         </a>`
+      : `<button class="btn btn-secondary" disabled style="width:100%">
+           ${escapeHTML(state.label)}
+         </button>`;
+
+    card.innerHTML = `
+      <div class="flex items-center justify-between gap-2">
+        <span class="badge badge-primary">
+          ${escapeHTML(lesson.subject || "教科未設定")}
+        </span>
+        <span class="badge ${state.canJoin ? "badge-success" : "badge-gray"}">
+          ${escapeHTML(state.label)}
+        </span>
+      </div>
+
+      <h3 style="margin:12px 0 8px">
+        ${escapeHTML(lesson.title || "個別指導")}
+      </h3>
+
+      <p class="text-muted" style="margin:0 0 8px">
+        生徒：${escapeHTML(name)}
+      </p>
+
+      <p class="text-muted" style="margin:0 0 14px">
+        ${timeText}
+      </p>
+
+      ${joinButton}
+    `;
+
+    return card;
   }
 
   async function loadDashboard(uid) {
@@ -209,15 +274,16 @@
       (toDate(b.startAt)?.getTime() || 0)
     );
 
-    const upcoming = lessons.filter(lesson =>
-      ["scheduled", "in_progress"].includes(lesson.status) &&
-      toDate(lesson.endAt) &&
-      toDate(lesson.endAt) >= now
-    );
+    const upcoming = lessons.filter(lesson => {
+      const end = toDate(lesson.endAt);
+      return end && end.getTime() >= now.getTime() - 30 * 60 * 1000
+        && !["cancelled", "completed"].includes(lesson.status);
+    });
 
-    const today = upcoming.filter(lesson => {
+    const today = lessons.filter(lesson => {
       const date = toDate(lesson.startAt);
-      return date && isToday(date);
+      return date && isToday(date) &&
+        !["cancelled", "completed"].includes(lesson.status);
     });
 
     const activeStudents = studentSnapshot.docs.filter(item =>
@@ -228,6 +294,7 @@
     $("upcoming-count").textContent = upcoming.length;
     $("student-count").textContent = activeStudents.length;
 
+    $("lesson-list").replaceChildren();
     $("loading").classList.add("hidden");
 
     if (!upcoming.length) {
@@ -235,51 +302,11 @@
       return;
     }
 
-    for (const lesson of upcoming.slice(0, 6)) {
+    $("empty").classList.add("hidden");
+
+    for (const lesson of upcoming.slice(0, 10)) {
       const name = await getStudentName(lesson.studentId);
-      const start = toDate(lesson.startAt);
-      const end = toDate(lesson.endAt);
-
-      const card = document.createElement("article");
-      card.className = "card";
-      card.style.padding = "16px";
-
-      const statusLabel =
-        lesson.status === "in_progress" ? "授業中" : "予定";
-
-      card.innerHTML = `
-        <div class="flex items-center justify-between gap-2">
-          <span class="badge badge-primary">
-            ${escapeHTML(lesson.subject || "教科未設定")}
-          </span>
-          <span class="badge ${lesson.status === "in_progress" ? "badge-success" : "badge-gray"}">
-            ${statusLabel}
-          </span>
-        </div>
-
-        <h3 style="margin:12px 0 8px">
-          ${escapeHTML(lesson.title || "個別指導")}
-        </h3>
-
-        <p class="text-muted" style="margin:0 0 8px">
-          生徒：${escapeHTML(name)}
-        </p>
-
-        <p class="text-muted" style="margin:0 0 14px">
-          ${start ? escapeHTML(formatDateTime(start)) : "日時未設定"}
-          ${end ? " ～ " + escapeHTML(end.toLocaleTimeString("ja-JP", {
-            hour: "2-digit",
-            minute: "2-digit"
-          })) : ""}
-        </p>
-
-        <a href="/teacher/schedule.html"
-           class="btn btn-secondary btn-sm">
-          スケジュールを確認
-        </a>
-      `;
-
-      $("lesson-list").appendChild(card);
+      $("lesson-list").appendChild(createLessonCard(lesson, name));
     }
   }
 
@@ -297,6 +324,13 @@
 
       await loadDashboard(user.uid);
 
+      // 入室可能時刻になったらボタン表示を更新
+      refreshTimer = setInterval(() => {
+        loadDashboard(user.uid).catch(error =>
+          console.error("[Dashboard Refresh]", error)
+        );
+      }, 60 * 1000);
+
     } catch (error) {
       console.error("[Teacher Dashboard]", error);
       $("loading").classList.add("hidden");
@@ -307,6 +341,10 @@
       );
     }
   }
+
+  window.addEventListener("beforeunload", () => {
+    if (refreshTimer) clearInterval(refreshTimer);
+  });
 
   init();
 </script>
