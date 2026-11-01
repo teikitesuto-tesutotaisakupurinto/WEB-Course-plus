@@ -1,0 +1,299 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学習履歴 | WEB Course-plus</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <div class="header-left">
+      <button class="menu-toggle" data-sidebar-toggle aria-label="メニュー">☰</button>
+      <a href="/student/dashboard.html" class="brand">
+        <span class="brand-mark">W</span> WEB Course-plus
+      </a>
+    </div>
+    <div class="header-right">
+      <span id="header-name" class="user-name">生徒</span>
+      <button class="btn btn-secondary btn-sm" data-logout>ログアウト</button>
+    </div>
+  </header>
+
+  <aside class="app-sidebar">
+    <div class="sidebar-section">生徒メニュー</div>
+    <a href="/student/dashboard.html" class="sidebar-link">ダッシュボード</a>
+    <a href="/student/history.html" class="sidebar-link active">学習履歴</a>
+    <a href="/student/profile.html" class="sidebar-link">アカウント情報</a>
+    <div class="sidebar-section">アカウント</div>
+    <button class="sidebar-link" data-logout
+      style="width:100%;border:0;background:transparent;text-align:left">
+      ログアウト
+    </button>
+  </aside>
+
+  <main class="app-main">
+    <div class="page-container">
+      <div class="page-heading">
+        <div>
+          <h1 class="page-title">学習履歴</h1>
+          <p class="page-description">これまでの授業と講師からの指導記録を確認できます。</p>
+        </div>
+      </div>
+
+      <div id="message" class="hidden mb-2" role="alert"></div>
+
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">授業履歴</h2>
+            <p class="card-description">自分が受講する授業の一覧です。</p>
+          </div>
+        </div>
+
+        <div id="lesson-loading" class="loading">
+          <span class="spinner"></span>読み込み中...
+        </div>
+        <div id="lesson-list" class="grid" style="gap:12px"></div>
+        <div id="lesson-empty" class="empty-state hidden">
+          <div class="empty-state-title">授業履歴はありません</div>
+        </div>
+      </section>
+
+      <section class="card mt-3">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">講師からの指導記録</h2>
+            <p class="card-description">授業後に登録された理解度・学習内容・宿題などです。</p>
+          </div>
+        </div>
+
+        <div id="record-loading" class="loading">
+          <span class="spinner"></span>読み込み中...
+        </div>
+        <div id="record-list" class="grid" style="gap:12px"></div>
+        <div id="record-empty" class="empty-state hidden">
+          <div class="empty-state-title">指導記録はまだありません</div>
+        </div>
+      </section>
+
+      <footer id="app-footer"></footer>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { db } from "/assets/js/firebase.js";
+  import { requireRole } from "/assets/js/auth.js";
+  import {
+    initializeSidebar, initializeLogout, renderFooter,
+    showMessage, escapeHTML, toDate, formatDateTime
+  } from "/assets/js/common.js";
+  import {
+    collection, query, where, getDocs, doc, getDoc
+  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+  initializeSidebar();
+  initializeLogout();
+  renderFooter();
+
+  const $ = id => document.getElementById(id);
+  let currentUser;
+
+  function notify(message) {
+    showMessage(message, "danger");
+  }
+
+  const statusLabels = {
+    scheduled: "予定",
+    in_progress: "実施中",
+    completed: "完了",
+    cancelled: "キャンセル"
+  };
+
+  const understandingLabels = {
+    excellent: "よく理解できた",
+    good: "おおむね理解できた",
+    partial: "一部理解できた",
+    needs_support: "復習・追加指導が必要"
+  };
+
+  async function getTeacherName(teacherId) {
+    if (!teacherId) return "講師";
+    try {
+      const snap = await getDoc(doc(db, "users", teacherId));
+      if (!snap.exists()) return "講師";
+      const data = snap.data();
+      return data.displayName || data.name || "講師";
+    } catch {
+      return "講師";
+    }
+  }
+
+  async function loadLessons() {
+    $("lesson-loading").classList.remove("hidden");
+    $("lesson-empty").classList.add("hidden");
+    $("lesson-list").innerHTML = "";
+
+    try {
+      const snapshot = await getDocs(query(
+        collection(db, "lessons"),
+        where("studentId", "==", currentUser.uid)
+      ));
+
+      const lessons = snapshot.docs.map(item => ({
+        id: item.id,
+        ...item.data()
+      }));
+
+      lessons.sort((a, b) =>
+        (toDate(b.startAt)?.getTime() || 0) -
+        (toDate(a.startAt)?.getTime() || 0)
+      );
+
+      $("lesson-loading").classList.add("hidden");
+
+      if (!lessons.length) {
+        $("lesson-empty").classList.remove("hidden");
+        return;
+      }
+
+      for (const lesson of lessons) {
+        const teacherName = await getTeacherName(lesson.teacherId);
+        const start = toDate(lesson.startAt);
+        const end = toDate(lesson.endAt);
+        const card = document.createElement("article");
+        card.className = "card";
+        card.style.padding = "16px";
+
+        const status = statusLabels[lesson.status] || "不明";
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <strong>${escapeHTML(lesson.title || "個別指導")}</strong>
+            <span class="badge">${escapeHTML(status)}</span>
+          </div>
+          <p style="margin:10px 0 4px">
+            <strong>教科：</strong>${escapeHTML(lesson.subject || "未設定")}
+          </p>
+          <p style="margin:4px 0">
+            <strong>講師：</strong>${escapeHTML(teacherName)}
+          </p>
+          <p style="margin:4px 0">
+            <strong>日時：</strong>${start ? escapeHTML(formatDateTime(start)) : "未設定"}
+          </p>
+          <p style="margin:4px 0">
+            <strong>終了：</strong>${end ? escapeHTML(formatDateTime(end)) : "未設定"}
+          </p>
+          <p style="margin:8px 0 0;white-space:pre-wrap">
+            ${escapeHTML(lesson.description || "")}
+          </p>
+        `;
+
+        $("lesson-list").appendChild(card);
+      }
+    } catch (error) {
+      console.error("[Student Lessons]", error);
+      $("lesson-loading").classList.add("hidden");
+      notify("授業履歴を読み込めませんでした。");
+    }
+  }
+
+  async function loadRecords() {
+    $("record-loading").classList.remove("hidden");
+    $("record-empty").classList.add("hidden");
+    $("record-list").innerHTML = "";
+
+    try {
+      const snapshot = await getDocs(query(
+        collection(db, "lessonRecords"),
+        where("studentId", "==", currentUser.uid)
+      ));
+
+      const records = snapshot.docs.map(item => ({
+        id: item.id,
+        ...item.data()
+      }));
+
+      records.sort((a, b) =>
+        (toDate(b.createdAt)?.getTime() || 0) -
+        (toDate(a.createdAt)?.getTime() || 0)
+      );
+
+      $("record-loading").classList.add("hidden");
+
+      if (!records.length) {
+        $("record-empty").classList.remove("hidden");
+        return;
+      }
+
+      for (const record of records) {
+        const created = toDate(record.createdAt);
+        const card = document.createElement("article");
+        card.className = "card";
+        card.style.padding = "16px";
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <strong>${escapeHTML(record.lessonTitle || "授業記録")}</strong>
+            <span class="badge badge-primary">
+              ${escapeHTML(record.subject || "教科未設定")}
+            </span>
+          </div>
+          <p style="margin:10px 0">
+            <strong>理解度：</strong>
+            ${escapeHTML(understandingLabels[record.understanding] || "未設定")}
+          </p>
+          <p style="white-space:pre-wrap;margin:8px 0">
+            <strong>指導内容：</strong><br>
+            ${escapeHTML(record.content || "記録なし")}
+          </p>
+          <p style="white-space:pre-wrap;margin:8px 0">
+            <strong>宿題・課題：</strong><br>
+            ${escapeHTML(record.homework || "なし")}
+          </p>
+          <p style="white-space:pre-wrap;margin:8px 0">
+            <strong>次回の指導予定：</strong><br>
+            ${escapeHTML(record.nextPlan || "未設定")}
+          </p>
+          <p class="text-muted" style="font-size:12px;margin-top:12px">
+            登録日時：${created ? escapeHTML(formatDateTime(created)) : "不明"}
+          </p>
+        `;
+
+        $("record-list").appendChild(card);
+      }
+    } catch (error) {
+      console.error("[Student Records]", error);
+      $("record-loading").classList.add("hidden");
+      notify("指導記録を読み込めませんでした。");
+    }
+  }
+
+  async function init() {
+    try {
+      const result = await requireRole("student");
+      if (!result) return;
+
+      currentUser = result.user;
+      $("header-name").textContent =
+        result.profile.displayName || result.profile.name || "生徒";
+
+      await Promise.all([
+        loadLessons(),
+        loadRecords()
+      ]);
+    } catch (error) {
+      console.error(error);
+      $("lesson-loading").classList.add("hidden");
+      $("record-loading").classList.add("hidden");
+      notify(error.message || "画面を初期化できませんでした。");
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
