@@ -1,1254 +1,1872 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>オンライン授業 | WEB Course-plus</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>授業ルーム | WEB Course-plus</title>
 
-<style>
-:root {
-  --blue:#356fc4;
-  --blue-dark:#285da9;
-  --ink:#263445;
-  --muted:#718096;
-  --line:#e1e7ef;
-  --surface:#ffffff;
-  --background:#f3f6fa;
-  --green:#198754;
-  --red:#d94848;
-}
-* { box-sizing:border-box; }
-html,body { margin:0; width:100%; height:100%; overflow:hidden; }
-body {
-  font-family:Inter,"Noto Sans JP",Arial,sans-serif;
-  color:var(--ink);
-  background:var(--background);
-}
-button,input { font:inherit; }
-button { cursor:pointer; }
-.app {
-  height:100dvh;
-  display:flex;
-  flex-direction:column;
-  min-height:0;
-}
-.topbar {
-  height:58px;
-  flex:0 0 58px;
-  background:white;
-  border-bottom:1px solid var(--line);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 20px;
-  gap:14px;
-}
-.brand { font-size:17px; font-weight:750; letter-spacing:-.3px; }
-.brand span { color:var(--blue); }
-.lesson-heading {
-  display:flex;
-  align-items:center;
-  gap:12px;
-  min-width:0;
-}
-.lesson-title {
-  font-size:14px;
-  font-weight:650;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.subject-tag {
-  background:#edf3fc;
-  color:#315f9e;
-  padding:5px 10px;
-  border-radius:6px;
-  font-size:11px;
-  white-space:nowrap;
-}
-.status {
-  display:flex;
-  align-items:center;
-  gap:7px;
-  font-size:12px;
-  color:var(--muted);
-  white-space:nowrap;
-}
-.status-dot {
-  width:8px;height:8px;border-radius:50%;
-  background:#a0aab7;
-}
-.status.connected { color:var(--green); }
-.status.connected .status-dot { background:var(--green); }
-.status.connecting .status-dot { background:#d69a26; }
-.status.error { color:var(--red); }
-.status.error .status-dot { background:var(--red); }
+  <style>
+    :root {
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --bg: #f3f5f9;
+      --panel: #ffffff;
+      --border: #e2e8f0;
+      --text: #172033;
+      --muted: #64748b;
+      --green: #16a34a;
+      --red: #dc2626;
+    }
 
-.workspace {
-  flex:1;
-  min-height:0;
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 300px;
-  gap:12px;
-  padding:12px;
-}
-.main-area {
-  min-width:0;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.share-panel {
-  flex:1;
-  min-height:0;
-  position:relative;
-  overflow:hidden;
-  border-radius:12px;
-  background:#e9edf2;
-  border:1px solid #dce3eb;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-#shareVideo {
-  display:none;
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  background:#e9edf2;
-}
-#annotationCanvas {
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  touch-action:none;
-  pointer-events:none;
-}
-.share-placeholder {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:10px;
-  color:#65758a;
-  text-align:center;
-  padding:20px;
-}
-.share-placeholder svg { width:42px;height:42px; }
-.share-placeholder strong { font-size:15px; }
-.share-placeholder small { font-size:12px; }
-.share-label {
-  position:absolute;
-  top:12px;left:12px;
-  padding:6px 10px;
-  border-radius:6px;
-  background:rgba(255,255,255,.94);
-  color:#34465b;
-  font-size:11px;
-  z-index:3;
-  display:none;
-}
-.annotation-tools {
-  position:absolute;
-  top:10px;
-  right:10px;
-  z-index:4;
-  display:none;
-  align-items:center;
-  gap:5px;
-  background:rgba(255,255,255,.97);
-  border:1px solid var(--line);
-  padding:6px;
-  border-radius:9px;
-  box-shadow:0 2px 10px #24364b18;
-}
-.tool-button {
-  border:1px solid transparent;
-  background:white;
-  color:#43546a;
-  border-radius:6px;
-  padding:7px 9px;
-  font-size:12px;
-}
-.tool-button.active {
-  background:#eaf1fc;
-  border-color:#b8cdec;
-  color:var(--blue-dark);
-}
-.tool-button:hover { background:#f0f4f9; }
-.tool-color {
-  width:25px;height:25px;padding:0;
-  border:2px solid white;
-  outline:1px solid #cbd3dd;
-  border-radius:50%;
-}
-.tool-color.active { outline:2px solid var(--blue); }
-#penWidth { width:65px; }
+    * {
+      box-sizing: border-box;
+    }
 
-.camera-strip {
-  height:112px;
-  flex:0 0 112px;
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px;
-}
-.camera-tile {
-  min-width:0;
-  position:relative;
-  background:#e4eaf1;
-  border:1px solid #d9e1eb;
-  border-radius:10px;
-  overflow:hidden;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.camera-tile video {
-  width:100%;height:100%;
-  object-fit:cover;
-  display:none;
-}
-.camera-placeholder {
-  color:#64748b;
-  font-size:12px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.camera-name {
-  position:absolute;
-  bottom:7px;left:8px;
-  background:#ffffffed;
-  color:#34465b;
-  border-radius:5px;
-  padding:4px 7px;
-  font-size:10px;
-}
-.side-panel {
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.panel-card {
-  background:white;
-  border:1px solid var(--line);
-  border-radius:11px;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-  min-height:0;
-}
-.participants-card { flex:0 0 auto; }
-.chat-card { flex:1; }
-.panel-heading {
-  padding:12px 14px;
-  border-bottom:1px solid var(--line);
-  font-size:13px;
-  font-weight:700;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.count {
-  background:#edf2f8;
-  color:#52657d;
-  padding:3px 7px;
-  border-radius:20px;
-  font-size:10px;
-}
-.participant-list {
-  padding:8px 12px;
-  display:flex;
-  flex-direction:column;
-  gap:7px;
-  max-height:125px;
-  overflow:auto;
-}
-.participant {
-  display:flex;
-  align-items:center;
-  gap:9px;
-  font-size:12px;
-}
-.avatar {
-  width:28px;height:28px;
-  border-radius:50%;
-  background:#eaf0f8;
-  color:#42648f;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  font-weight:700;
-  flex:0 0 28px;
-}
-.participant small { color:var(--muted); margin-left:auto; }
-.chat-messages {
-  flex:1;
-  min-height:0;
-  overflow:auto;
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.chat-message { font-size:12px; line-height:1.55; }
-.chat-message .sender {
-  font-size:10px;
-  color:var(--muted);
-  margin-bottom:3px;
-}
-.chat-message .bubble {
-  background:#f0f4f9;
-  padding:8px 10px;
-  border-radius:8px;
-  overflow-wrap:anywhere;
-  white-space:pre-wrap;
-}
-.chat-message.mine .bubble {
-  background:#eaf2ff;
-}
-.chat-compose {
-  border-top:1px solid var(--line);
-  padding:9px;
-  display:flex;
-  gap:6px;
-}
-.chat-compose input {
-  min-width:0;flex:1;
-  border:1px solid #dce3eb;
-  border-radius:7px;
-  padding:9px;
-  outline:none;
-  font-size:12px;
-}
-.chat-compose input:focus { border-color:var(--blue); }
-.chat-compose button {
-  border:0;
-  border-radius:7px;
-  padding:0 12px;
-  color:white;
-  background:var(--blue);
-  font-size:12px;
-}
-.toolbar {
-  min-height:68px;
-  flex:0 0 68px;
-  background:white;
-  border-top:1px solid var(--line);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:9px;
-  padding:8px 14px;
-}
-.control {
-  min-width:75px;
-  height:48px;
-  border:1px solid #dce3eb;
-  background:white;
-  color:#34465b;
-  border-radius:9px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  gap:3px;
-  font-size:10px;
-}
-.control svg { width:17px;height:17px; }
-.control:hover { background:#f4f7fb; }
-.control.off {
-  background:#fff0f0;
-  color:#c23e3e;
-  border-color:#f0caca;
-}
-.control.primary {
-  background:#edf3fc;
-  color:var(--blue-dark);
-  border-color:#cbdaf0;
-}
-.control.leave {
-  background:#c83e45;
-  color:white;
-  border-color:#c83e45;
-  min-width:85px;
-}
-.control:disabled { opacity:.45; cursor:not-allowed; }
-.footer {
-  height:21px;
-  flex:0 0 21px;
-  text-align:center;
-  color:#8793a2;
-  font-size:9px;
-  background:white;
-}
-.toast {
-  position:fixed;
-  left:50%;bottom:90px;
-  transform:translateX(-50%);
-  background:#27384d;
-  color:white;
-  border-radius:8px;
-  padding:10px 16px;
-  font-size:12px;
-  z-index:30;
-  display:none;
-  max-width:90vw;
-}
-.error-screen {
-  height:100dvh;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-}
-.error-card {
-  width:min(430px,100%);
-  background:white;
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:28px;
-  text-align:center;
-}
-.error-card h2 { font-size:19px; }
-.error-card p { font-size:13px;color:var(--muted);line-height:1.8; }
-.error-card button {
-  border:0;background:var(--blue);color:white;
-  padding:11px 20px;border-radius:8px;
-}
-@media(max-width:850px) {
-  .workspace { grid-template-columns:minmax(0,1fr) 245px; gap:8px;padding:8px; }
-  .toolbar { gap:5px; }
-  .control { min-width:60px; }
-}
-@media(max-width:650px) {
-  .topbar { padding:0 10px;height:52px;flex-basis:52px; }
-  .brand { font-size:14px; }
-  .lesson-heading { gap:6px; }
-  .subject-tag { display:none; }
-  .status { font-size:10px; }
-  .workspace {
-    display:flex;
-    flex-direction:column;
-    gap:7px;
-    padding:7px;
-  }
-  .main-area { flex:1; }
-  .side-panel { display:none; }
-  .camera-strip { height:82px;flex-basis:82px; }
-  .toolbar {
-    flex:0 0 62px;min-height:62px;
-    gap:4px;padding:5px;
-  }
-  .control { min-width:0;flex:1;height:46px;font-size:9px; }
-  .control.leave { min-width:57px; }
-  .annotation-tools { max-width:95%;flex-wrap:wrap; }
-  .tool-button { padding:5px 7px; }
-}
-@media(max-height:600px) {
-  .topbar { height:46px;flex-basis:46px; }
-  .toolbar { min-height:58px;flex-basis:58px; }
-  .camera-strip { height:76px;flex-basis:76px; }
-  .workspace { padding:7px;gap:7px; }
-}
-</style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: Inter, "Noto Sans JP", system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      width: 100%;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ヘッダー */
+
+    .header {
+      height: 58px;
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      z-index: 5;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--blue);
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .brand-name {
+      font-weight: 750;
+      font-size: 16px;
+      white-space: nowrap;
+    }
+
+    .lesson-info {
+      min-width: 0;
+      margin-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .lesson-title {
+      font-size: 13px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lesson-subtitle {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .connection.connected {
+      color: var(--green);
+    }
+
+    .connection.connected .connection-dot {
+      background: var(--green);
+    }
+
+    /* メインレイアウト */
+
+    .room-main {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 12px;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    .classroom {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    /* 大型ビデオ画面 */
+
+    .share-stage {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111827;
+      border-radius: 12px;
+      border: 1px solid #263244;
+    }
+
+    #shareVideo {
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #111827;
+    }
+
+    .share-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #e2e8f0;
+      gap: 12px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .placeholder-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      background: #263449;
+      font-size: 28px;
+    }
+
+    .placeholder-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .placeholder-description {
+      font-size: 12px;
+      color: #aab6c7;
+    }
+
+    /* 書き込みキャンバス */
+
+    #annotationCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      touch-action: none;
+      z-index: 3;
+    }
+
+    #annotationCanvas.drawing {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+
+    .share-label {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 4;
+      color: #fff;
+      background: rgba(15, 23, 42, .75);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      pointer-events: none;
+    }
+
+    /* カメラ映像 */
+
+    .camera-strip {
+      height: 112px;
+      min-height: 112px;
+      display: flex;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .camera-tile {
+      position: relative;
+      width: 160px;
+      min-width: 160px;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+    }
+
+    .camera-tile video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .camera-name {
+      position: absolute;
+      left: 8px;
+      bottom: 7px;
+      color: #fff;
+      font-size: 11px;
+      background: rgba(15, 23, 42, .75);
+      padding: 4px 7px;
+      border-radius: 5px;
+      z-index: 2;
+    }
+
+    .camera-off {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #cbd5e1;
+      font-size: 12px;
+    }
+
+    /* 右サイドパネル */
+
+    .side-panel {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .side-tabs {
+      height: 48px;
+      min-height: 48px;
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .side-tab {
+      flex: 1;
+      border: 0;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      border-bottom: 2px solid transparent;
+    }
+
+    .side-tab.active {
+      color: var(--blue);
+      border-bottom-color: var(--blue);
+    }
+
+    .side-content {
+      flex: 1;
+      min-height: 0;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .side-content.active {
+      display: flex;
+    }
+
+    .panel-heading {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* 参加者 */
+
+    .participant-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .participant {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .participant-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #dbeafe;
+      color: #1d4ed8;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 750;
+      flex-shrink: 0;
+    }
+
+    .participant-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .participant-name {
+      font-size: 12px;
+      font-weight: 650;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .participant-status {
+      color: var(--green);
+      font-size: 10px;
+      margin-top: 3px;
+    }
+
+    /* チャット */
+
+    .chat-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-message {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 95%;
+      align-self: flex-start;
+    }
+
+    .chat-message.mine {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .chat-sender {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .chat-bubble {
+      padding: 9px 11px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .chat-message.mine .chat-bubble {
+      color: #fff;
+      background: var(--blue);
+    }
+
+    .chat-time {
+      font-size: 9px;
+      color: #94a3b8;
+    }
+
+    .chat-form {
+      display: flex;
+      gap: 7px;
+      padding: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .chat-input {
+      min-width: 0;
+      flex: 1;
+      height: 38px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      outline: none;
+      font-size: 12px;
+    }
+
+    .chat-input:focus {
+      border-color: var(--blue);
+    }
+
+    .send-button {
+      width: 42px;
+      border: 0;
+      border-radius: 7px;
+      color: #fff;
+      background: var(--blue);
+      font-weight: 700;
+    }
+
+    /* 下部操作バー */
+
+    .control-bar {
+      height: 68px;
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 0 12px;
+      background: #fff;
+      border-top: 1px solid var(--border);
+    }
+
+    .control-button {
+      height: 42px;
+      min-width: 82px;
+      padding: 0 13px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: #334155;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .control-button:hover {
+      background: #f8fafc;
+    }
+
+    .control-button.active {
+      color: var(--blue);
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+
+    .control-button.danger {
+      color: #fff;
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .control-button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    /* ペンツール */
+
+    .drawing-tools {
+      position: absolute;
+      z-index: 5;
+      top: 12px;
+      right: 12px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 7px;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 3px 15px rgba(0,0,0,.18);
+    }
+
+    .drawing-tools.visible {
+      display: flex;
+    }
+
+    .tool-button {
+      height: 32px;
+      min-width: 34px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      color: #334155;
+      font-size: 11px;
+    }
+
+    .tool-button.active {
+      color: var(--blue);
+      background: #eff6ff;
+      border-color: #93c5fd;
+    }
+
+    .tool-color {
+      width: 25px;
+      height: 25px;
+      border: 2px solid #fff;
+      outline: 1px solid #cbd5e1;
+      border-radius: 50%;
+      padding: 0;
+    }
+
+    .tool-color.selected {
+      outline: 2px solid var(--blue);
+    }
+
+    /* エラー画面 */
+
+    .error-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #f3f5f9;
+    }
+
+    .error-card {
+      width: min(460px, 100%);
+      padding: 28px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(15,23,42,.07);
+    }
+
+    .error-card h2 {
+      margin: 0 0 12px;
+      font-size: 19px;
+    }
+
+    .error-card p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.8;
+      overflow-wrap: anywhere;
+    }
+
+    .back-button {
+      margin-top: 12px;
+      height: 40px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 7px;
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 85px;
+      transform: translateX(-50%);
+      z-index: 200;
+      padding: 10px 16px;
+      color: #fff;
+      background: #1e293b;
+      border-radius: 8px;
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .footer {
+      height: 20px;
+      min-height: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      color: #94a3b8;
+      font-size: 9px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    /* タブレット・スマートフォン */
+
+    @media (max-width: 900px) {
+      .room-main {
+        grid-template-columns: minmax(0, 1fr) 260px;
+      }
+
+      .control-button {
+        min-width: 65px;
+        padding: 0 8px;
+      }
+    }
+
+    @media (max-width: 650px) {
+      .header {
+        height: 50px;
+        min-height: 50px;
+        padding: 0 10px;
+      }
+
+      .brand-name {
+        font-size: 13px;
+      }
+
+      .lesson-info {
+        margin-left: 8px;
+      }
+
+      .lesson-subtitle {
+        display: none;
+      }
+
+      .room-main {
+        display: flex;
+        flex-direction: column;
+        padding: 6px;
+        gap: 6px;
+      }
+
+      .classroom {
+        flex: 1;
+      }
+
+      .share-stage {
+        min-height: 0;
+      }
+
+      .camera-strip {
+        height: 75px;
+        min-height: 75px;
+      }
+
+      .camera-tile {
+        width: 110px;
+        min-width: 110px;
+      }
+
+      .side-panel {
+        height: 180px;
+        min-height: 180px;
+      }
+
+      .side-panel.mobile-hidden {
+        display: none;
+      }
+
+      .control-bar {
+        height: 58px;
+        min-height: 58px;
+        gap: 5px;
+        padding: 0 4px;
+      }
+
+      .control-button {
+        min-width: 0;
+        flex: 1;
+        height: 40px;
+        padding: 0 4px;
+        font-size: 9px;
+      }
+
+      .footer {
+        display: none;
+      }
+
+      .drawing-tools {
+        top: 6px;
+        right: 6px;
+      }
+    }
+  </style>
 </head>
 
 <body>
-<div class="app" id="app" style="display:none">
-  <header class="topbar">
-    <div class="brand">WEB <span>Course-plus</span></div>
-    <div class="lesson-heading">
-      <div class="lesson-title" id="lessonTitle">オンライン授業</div>
-      <div class="subject-tag" id="subjectTag">授業準備中</div>
+<div class="app">
+
+  <header class="header">
+    <div class="brand">
+      <div class="brand-mark">W</div>
+      <div class="brand-name">WEB Course-plus</div>
+      <div class="lesson-info">
+        <div class="lesson-title" id="lessonTitle">授業ルーム</div>
+        <div class="lesson-subtitle" id="lessonSubject">授業情報を読み込み中</div>
+      </div>
     </div>
-    <div class="status connecting" id="connectionStatus">
-      <span class="status-dot"></span>
-      <span id="connectionText">接続準備中</span>
+
+    <div class="header-right">
+      <div class="connection" id="connectionStatus">
+        <span class="connection-dot"></span>
+        <span id="connectionText">接続準備中</span>
+      </div>
     </div>
   </header>
 
-  <main class="workspace">
-    <section class="main-area">
-      <div class="share-panel" id="sharePanel">
-        <div class="share-label" id="shareLabel">画面共有</div>
-        <video id="shareVideo" autoplay playsinline muted></video>
-        <canvas id="annotationCanvas"></canvas>
+  <main class="room-main">
 
-        <div class="annotation-tools" id="annotationTools">
-          <button class="tool-button active" id="penTool" type="button">ペン</button>
-          <button class="tool-button" id="eraserTool" type="button">消しゴム</button>
-          <button class="tool-color active" data-color="#e53935" style="background:#e53935" title="赤"></button>
-          <button class="tool-color" data-color="#2463c5" style="background:#2463c5" title="青"></button>
-          <button class="tool-color" data-color="#16834a" style="background:#16834a" title="緑"></button>
-          <button class="tool-color" data-color="#222222" style="background:#222222" title="黒"></button>
-          <input id="penWidth" type="range" min="2" max="12" value="4" title="ペンの太さ">
-          <button class="tool-button" id="clearBoard" type="button">全消去</button>
-        </div>
+    <section class="classroom">
+
+      <div class="share-stage" id="shareStage">
+
+        <video id="shareVideo" autoplay playsinline></video>
 
         <div class="share-placeholder" id="sharePlaceholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="3" y="4" width="18" height="13" rx="2"/>
-            <path d="M8 21h8M12 17v4M8 9h8M8 12h5"/>
-          </svg>
-          <strong>先生の画面共有を待っています</strong>
-          <small>先生が画面共有を開始すると、ここに表示されます。</small>
+          <div class="placeholder-icon">▣</div>
+          <div class="placeholder-title">画面共有を待っています</div>
+          <div class="placeholder-description">
+            先生が画面共有を開始すると、ここに大きく表示されます。
+          </div>
         </div>
+
+        <canvas id="annotationCanvas"></canvas>
+
+        <div class="share-label" id="shareLabel">
+          授業画面
+        </div>
+
+        <div class="drawing-tools" id="drawingTools">
+          <button class="tool-button active" id="penTool">ペン</button>
+          <button class="tool-button" id="eraserTool">消しゴム</button>
+          <button class="tool-button" id="clearTool">全消去</button>
+
+          <button class="tool-color selected"
+            data-color="#ef4444"
+            style="background:#ef4444"
+            aria-label="赤"></button>
+
+          <button class="tool-color"
+            data-color="#2563eb"
+            style="background:#2563eb"
+            aria-label="青"></button>
+
+          <button class="tool-color"
+            data-color="#16a34a"
+            style="background:#16a34a"
+            aria-label="緑"></button>
+
+          <button class="tool-color"
+            data-color="#facc15"
+            style="background:#facc15"
+            aria-label="黄"></button>
+        </div>
+
       </div>
 
-      <div class="camera-strip" id="cameraStrip">
-        <div class="camera-tile" id="localCameraTile">
+      <div class="camera-strip">
+
+        <div class="camera-tile">
+          <div class="camera-off" id="localCameraOff">カメラ未接続</div>
           <video id="localCamera" autoplay playsinline muted></video>
-          <div class="camera-placeholder" id="localCameraPlaceholder">自分のカメラ</div>
-          <div class="camera-name" id="localCameraName">自分</div>
+          <div class="camera-name" id="localName">あなた</div>
         </div>
-        <div class="camera-tile" id="remoteCameraTile">
+
+        <div class="camera-tile">
+          <div class="camera-off" id="remoteCameraOff">相手のカメラを待っています</div>
           <video id="remoteCamera" autoplay playsinline></video>
-          <div class="camera-placeholder" id="remoteCameraPlaceholder">相手のカメラを待っています</div>
-          <div class="camera-name" id="remoteCameraName">相手</div>
+          <div class="camera-name" id="remoteName">相手</div>
         </div>
+
       </div>
     </section>
 
-    <aside class="side-panel">
-      <section class="panel-card participants-card">
-        <div class="panel-heading">
-          <span>参加者</span>
-          <span class="count" id="participantCount">0人</span>
-        </div>
+    <aside class="side-panel" id="sidePanel">
+
+      <div class="side-tabs">
+        <button class="side-tab active" data-tab="participants">参加者</button>
+        <button class="side-tab" data-tab="chat">チャット</button>
+      </div>
+
+      <section class="side-content active" id="participantsPanel">
+        <div class="panel-heading">授業参加者</div>
         <div class="participant-list" id="participantList">
-          <div style="font-size:12px;color:#718096">接続を確認しています。</div>
+          <div class="participant">
+            <div class="participant-avatar">?</div>
+            <div class="participant-info">
+              <div class="participant-name">接続を待っています</div>
+              <div class="participant-status">未接続</div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="panel-card chat-card">
+      <section class="side-content" id="chatPanel">
         <div class="panel-heading">授業チャット</div>
-        <div class="chat-messages" id="chatMessages">
-          <div style="font-size:12px;color:#718096">メッセージはまだありません。</div>
-        </div>
-        <form class="chat-compose" id="chatForm">
-          <input id="chatInput" maxlength="500" placeholder="メッセージを入力">
-          <button type="submit">送信</button>
+        <div class="chat-list" id="chatList"></div>
+
+        <form class="chat-form" id="chatForm">
+          <input
+            class="chat-input"
+            id="chatInput"
+            type="text"
+            maxlength="500"
+            placeholder="メッセージを入力..."
+            autocomplete="off"
+          >
+          <button class="send-button" type="submit">送信</button>
         </form>
       </section>
+
     </aside>
   </main>
 
-  <footer class="footer">
-    © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+  <footer class="control-bar">
+
+    <button class="control-button" id="micButton" disabled>
+      マイク ON
+    </button>
+
+    <button class="control-button" id="cameraButton" disabled>
+      カメラ ON
+    </button>
+
+    <button class="control-button" id="shareButton" disabled>
+      画面共有
+    </button>
+
+    <button class="control-button" id="drawButton" disabled>
+      ペン書き
+    </button>
+
+    <button class="control-button" id="chatButton">
+      チャット
+    </button>
+
+    <button class="control-button danger" id="leaveButton">
+      退出
+    </button>
+
   </footer>
 
-  <div class="toolbar">
-    <button class="control" id="micButton" type="button">
-      <span>マイク</span><span id="micState">オン</span>
-    </button>
-    <button class="control" id="cameraButton" type="button">
-      <span>カメラ</span><span id="cameraState">オン</span>
-    </button>
-    <button class="control primary" id="shareButton" type="button">
-      <span>画面共有</span><span id="shareState">開始</span>
-    </button>
-    <button class="control primary" id="drawButton" type="button">
-      <span>書き込み</span><span id="drawState">オン</span>
-    </button>
-    <button class="control" id="chatToggle" type="button">
-      <span>チャット</span><span>表示</span>
-    </button>
-    <button class="control leave" id="leaveButton" type="button">
-      <span>退出</span>
-    </button>
+  <div class="footer">
+    © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
   </div>
+
 </div>
 
 <div class="error-screen" id="errorScreen">
   <div class="error-card">
-    <h2 id="errorTitle">授業に入室できません</h2>
-    <p id="errorMessage">授業情報を確認できませんでした。</p>
-    <button type="button" onclick="location.href='/login.html'">ログイン画面へ</button>
+    <h2>授業に入室できません</h2>
+    <p id="errorMessage">エラーが発生しました。</p>
+    <button class="back-button" onclick="location.href='../login.html'">
+      ログイン画面へ戻る
+    </button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script type="module">
-import { auth, db, authPersistenceReady } from "/assets/js/firebase.js";
-import {
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
-import {
-  doc, getDoc, collection, addDoc, updateDoc, deleteDoc,
-  getDocs, onSnapshot, query, orderBy, limit, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
-import { Room, RoomEvent, Track } from
-  "https://cdn.jsdelivr.net/npm/livekit-client@2.15.6/+esm";
+  import { auth, db, authPersistenceReady }
+    from "../assets/js/firebase.js";
 
-const $ = id => document.getElementById(id);
-const params = new URLSearchParams(location.search);
-const lessonId = params.get("lessonId");
+  import {
+    doc,
+    getDoc,
+    collection,
+    addDoc,
+    setDoc,
+    updateDoc,
+    deleteDoc,
+    getDocs,
+    onSnapshot,
+    query,
+    orderBy,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-let currentUser = null;
-let profile = null;
-let lesson = null;
-let room = null;
-let connected = false;
-let micEnabled = true;
-let cameraEnabled = true;
-let sharing = false;
-let drawingEnabled = true;
-let toolMode = "pen";
-let penColor = "#e53935";
-let penWidth = 4;
-let activeStroke = null;
-let strokeRef = null;
-let strokes = [];
-let remoteParticipants = new Map();
-let unsubscribers = [];
-let localParticipantName = "自分";
-let closing = false;
+  import {
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
-const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({
-  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-}[c]));
+  import {
+    Room,
+    RoomEvent,
+    Track
+  } from "https://cdn.jsdelivr.net/npm/livekit-client@2.15.6/+esm";
 
-function toast(message) {
-  $("toast").textContent = message;
-  $("toast").style.display = "block";
-  clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => $("toast").style.display = "none", 2600);
-}
+  const $ = id => document.getElementById(id);
 
-function setConnection(state, message) {
-  const el = $("connectionStatus");
-  el.className = "status " + state;
-  $("connectionText").textContent = message;
-}
+  const params = new URLSearchParams(location.search);
+  const lessonId = params.get("lessonId") || params.get("id");
 
-function showError(title, message) {
-  $("app").style.display = "none";
-  $("errorScreen").style.display = "flex";
-  $("errorTitle").textContent = title;
-  $("errorMessage").textContent = message;
-}
+  let currentUser = null;
+  let userProfile = null;
+  let lessonData = null;
+  let liveRoom = null;
 
-function getParticipantName(participant) {
-  if (participant === room?.localParticipant) {
-    return profile?.displayName || currentUser?.displayName || "自分";
+  let isConnected = false;
+  let micEnabled = false;
+  let cameraEnabled = false;
+  let screenEnabled = false;
+  let drawingEnabled = false;
+  let drawingMode = "pen";
+  let drawingColor = "#ef4444";
+
+  let unsubscribeBoard = null;
+  let unsubscribeChat = null;
+  let unsubscribeMessages = null;
+
+  let activeStroke = null;
+  let activeStrokeId = null;
+  let strokeWriteQueue = Promise.resolve();
+
+  const canvas = $("annotationCanvas");
+  const ctx = canvas.getContext("2d");
+
+  const strokes = new Map();
+
+  function toast(message) {
+    const element = $("toast");
+    element.textContent = message;
+    element.classList.add("show");
+
+    setTimeout(() => {
+      element.classList.remove("show");
+    }, 2200);
   }
-  return participant.name || participant.identity || "参加者";
-}
 
-function updateParticipants() {
-  const list = $("participantList");
-  const people = [];
+  function showError(error) {
+    console.error(error);
 
-  if (connected && room?.localParticipant) {
-    people.push({
-      name: getParticipantName(room.localParticipant),
-      role: profile?.role === "teacher" ? "先生（あなた）" : "生徒（あなた）",
-      local: true
+    $("errorMessage").textContent =
+      error?.message || "予期しないエラーが発生しました。";
+
+    $("errorScreen").style.display = "flex";
+    $("connectionText").textContent = "接続エラー";
+  }
+
+  function setConnection(connected) {
+    isConnected = connected;
+
+    $("connectionStatus").classList.toggle(
+      "connected",
+      connected
+    );
+
+    $("connectionText").textContent =
+      connected ? "入室済み" : "接続中";
+
+    [
+      "micButton",
+      "cameraButton",
+      "shareButton",
+      "drawButton"
+    ].forEach(id => {
+      $(id).disabled = !connected;
     });
   }
 
-  for (const p of remoteParticipants.values()) {
-    people.push({
-      name: getParticipantName(p),
-      role: "参加中",
-      local: false
-    });
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+
+    canvas.width = Math.max(1, Math.round(rect.width * ratio));
+    canvas.height = Math.max(1, Math.round(rect.height * ratio));
+
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    renderBoard();
   }
 
-  $("participantCount").textContent = people.length + "人";
-  list.innerHTML = people.length ? people.map(p => `
-    <div class="participant">
-      <div class="avatar">${escapeHTML(p.name.slice(0,1))}</div>
-      <span>${escapeHTML(p.name)}</span>
-      <small>${escapeHTML(p.role)}</small>
-    </div>
-  `).join("") : `<div style="font-size:12px;color:#718096">参加者情報を取得中です。</div>`;
-}
+  function drawStroke(stroke) {
+    if (!stroke || !Array.isArray(stroke.points)) return;
+    if (stroke.points.length < 1) return;
 
-function setCameraTile(video, placeholder, track) {
-  video.srcObject = null;
-  if (!track) {
-    video.style.display = "none";
-    placeholder.style.display = "flex";
-    return;
-  }
-  track.attach(video);
-  video.style.display = "block";
-  placeholder.style.display = "none";
-  video.play().catch(() => {});
-}
+    const rect = canvas.getBoundingClientRect();
 
-function addRemoteAudio(track) {
-  const audio = track.attach();
-  audio.autoplay = true;
-  audio.style.display = "none";
-  document.body.appendChild(audio);
-}
+    ctx.save();
+    ctx.globalCompositeOperation =
+      stroke.mode === "erase" ? "destination-out" : "source-over";
 
-function showShare(track, isLocal, name) {
-  const video = $("shareVideo");
-  video.srcObject = null;
-  track.attach(video);
-  video.style.display = "block";
-  $("sharePlaceholder").style.display = "none";
-  $("shareLabel").style.display = "block";
-  $("shareLabel").textContent = name + "の画面共有";
-  $("annotationTools").style.display = "flex";
-  video.play().catch(() => {});
-  resizeCanvas();
-}
+    ctx.strokeStyle = stroke.color || "#ef4444";
+    ctx.fillStyle = stroke.color || "#ef4444";
+    ctx.lineWidth = Number(stroke.width) || 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
 
-function hideShare() {
-  const video = $("shareVideo");
-  video.srcObject = null;
-  video.style.display = "none";
-  $("sharePlaceholder").style.display = "flex";
-  $("shareLabel").style.display = "none";
-  $("annotationTools").style.display = "none";
-  clearCanvas();
-}
+    const points = stroke.points.map(point => ({
+      x: point.x * rect.width,
+      y: point.y * rect.height
+    }));
 
-function findSharePublication(participant) {
-  return participant?.getTrackPublication?.(Track.Source.ScreenShare);
-}
-
-function attachParticipantTracks(participant, isLocal = false) {
-  const cameraPub = participant.getTrackPublication?.(Track.Source.Camera);
-  if (cameraPub?.track) {
-    if (isLocal) {
-      setCameraTile($("localCamera"), $("localCameraPlaceholder"), cameraPub.track);
+    if (points.length === 1) {
+      ctx.beginPath();
+      ctx.arc(
+        points[0].x,
+        points[0].y,
+        Math.max(1, (Number(stroke.width) || 3) / 2),
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
     } else {
-      setCameraTile($("remoteCamera"), $("remoteCameraPlaceholder"), cameraPub.track);
-    }
-  }
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
 
-  const sharePub = findSharePublication(participant);
-  if (sharePub?.track) {
-    showShare(sharePub.track, isLocal, isLocal ? "自分" : getParticipantName(participant));
-  }
-}
-
-function handleTrackSubscribed(track, publication, participant) {
-  if (publication.source === Track.Source.ScreenShare) {
-    showShare(track, false, getParticipantName(participant));
-  } else if (publication.source === Track.Source.Camera) {
-    setCameraTile($("remoteCamera"), $("remoteCameraPlaceholder"), track);
-  } else if (publication.kind === Track.Kind.Audio) {
-    addRemoteAudio(track);
-  }
-}
-
-function handleTrackUnsubscribed(track, publication) {
-  track.detach().forEach(el => el.remove());
-  if (publication.source === Track.Source.ScreenShare) hideShare();
-  if (publication.source === Track.Source.Camera) {
-    setCameraTile($("remoteCamera"), $("remoteCameraPlaceholder"), null);
-  }
-}
-
-function updateCameraState() {
-  $("cameraButton").classList.toggle("off", !cameraEnabled);
-  $("cameraState").textContent = cameraEnabled ? "オン" : "オフ";
-}
-function updateMicState() {
-  $("micButton").classList.toggle("off", !micEnabled);
-  $("micState").textContent = micEnabled ? "オン" : "オフ";
-}
-function updateShareState() {
-  $("shareButton").classList.toggle("off", !sharing);
-  $("shareState").textContent = sharing ? "停止" : "開始";
-}
-
-async function toggleMic() {
-  try {
-    micEnabled = !micEnabled;
-    await room.localParticipant.setMicrophoneEnabled(micEnabled);
-    updateMicState();
-  } catch (e) {
-    micEnabled = !micEnabled;
-    toast("マイクを変更できませんでした。ブラウザの権限を確認してください。");
-  }
-}
-
-async function toggleCamera() {
-  try {
-    cameraEnabled = !cameraEnabled;
-    await room.localParticipant.setCameraEnabled(cameraEnabled);
-    updateCameraState();
-    if (!cameraEnabled) {
-      setCameraTile($("localCamera"), $("localCameraPlaceholder"), null);
-    }
-  } catch (e) {
-    cameraEnabled = !cameraEnabled;
-    toast("カメラを変更できませんでした。ブラウザの権限を確認してください。");
-  }
-}
-
-async function toggleShare() {
-  try {
-    if (!sharing) {
-      await room.localParticipant.setScreenShareEnabled(true);
-      const publication = findSharePublication(room.localParticipant);
-      if (publication?.track) {
-        showShare(publication.track, true, "自分");
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
       }
-      sharing = true;
-    } else {
-      await room.localParticipant.setScreenShareEnabled(false);
-      sharing = false;
-      hideShare();
+
+      ctx.stroke();
     }
-    updateShareState();
-  } catch (e) {
-    toast("画面共有を開始できませんでした。ブラウザの共有権限を確認してください。");
+
+    ctx.restore();
   }
-}
 
-function updateDrawButton() {
-  $("drawButton").classList.toggle("primary", drawingEnabled);
-  $("drawState").textContent = drawingEnabled ? "オン" : "オフ";
-  $("annotationCanvas").style.pointerEvents = drawingEnabled ? "auto" : "none";
-  $("annotationCanvas").style.cursor = drawingEnabled ? "crosshair" : "default";
-}
+  function renderBoard() {
+    const rect = canvas.getBoundingClientRect();
 
-function resizeCanvas() {
-  const canvas = $("annotationCanvas");
-  const rect = $("sharePanel").getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.round(rect.width * dpr));
-  canvas.height = Math.max(1, Math.round(rect.height * dpr));
-  canvas.getContext("2d").setTransform(dpr,0,0,dpr,0,0);
-  redrawCanvas();
-}
+    ctx.clearRect(0, 0, rect.width, rect.height);
 
-function clearCanvas() {
-  const canvas = $("annotationCanvas");
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-}
-
-function drawStroke(ctx, stroke, width, height) {
-  if (!stroke?.points?.length) return;
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = Number(stroke.width || 4);
-  ctx.strokeStyle = stroke.color || "#e53935";
-  ctx.globalCompositeOperation = stroke.mode === "erase" ? "destination-out" : "source-over";
-  ctx.beginPath();
-  const first = stroke.points[0];
-  ctx.moveTo(first.x * width, first.y * height);
-  for (let i=1;i<stroke.points.length;i++) {
-    const p = stroke.points[i];
-    ctx.lineTo(p.x * width, p.y * height);
-  }
-  if (stroke.points.length === 1) {
-    ctx.lineTo(first.x * width + .1, first.y * height + .1);
-  }
-  ctx.stroke();
-  ctx.restore();
-}
-
-function redrawCanvas() {
-  const canvas = $("annotationCanvas");
-  const ctx = canvas.getContext("2d");
-  const rect = $("sharePanel").getBoundingClientRect();
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  for (const stroke of strokes) drawStroke(ctx, stroke, rect.width, rect.height);
-  if (activeStroke) drawStroke(ctx, activeStroke, rect.width, rect.height);
-}
-
-function pointerPoint(event) {
-  const rect = $("annotationCanvas").getBoundingClientRect();
-  return {
-    x: Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),
-    y: Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height))
-  };
-}
-
-const strokesCollection = () => collection(db,"lessonBoards",lessonId,"strokes");
-
-$("annotationCanvas").addEventListener("pointerdown", async event => {
-  if (!drawingEnabled || !$("shareVideo").srcObject || !connected) return;
-  event.preventDefault();
-  $("annotationCanvas").setPointerCapture(event.pointerId);
-  activeStroke = {
-    color: penColor,
-    width: penWidth,
-    mode: toolMode,
-    points: [pointerPoint(event)],
-    createdBy: currentUser.uid
-  };
-  try {
-    strokeRef = await addDoc(strokesCollection(), {
-      ...activeStroke,
-      createdAt: serverTimestamp()
-    });
-  } catch (e) {
-    toast("書き込みを共有できませんでした。");
-    activeStroke = null;
-    redrawCanvas();
-  }
-  redrawCanvas();
-});
-
-$("annotationCanvas").addEventListener("pointermove", async event => {
-  if (!activeStroke || !strokeRef) return;
-  event.preventDefault();
-  activeStroke.points.push(pointerPoint(event));
-  redrawCanvas();
-  try {
-    await updateDoc(strokeRef, { points: activeStroke.points });
-  } catch (e) {
-    console.error("Stroke sync error",e);
-  }
-});
-
-async function finishStroke() {
-  if (!activeStroke) return;
-  activeStroke = null;
-  strokeRef = null;
-  redrawCanvas();
-}
-$("annotationCanvas").addEventListener("pointerup",finishStroke);
-$("annotationCanvas").addEventListener("pointercancel",finishStroke);
-
-function subscribeBoard() {
-  const q = query(strokesCollection(),orderBy("createdAt","asc"),limit(500));
-  const unsub = onSnapshot(q,snapshot => {
-    strokes = snapshot.docs.map(d => ({id:d.id,...d.data()}));
-    redrawCanvas();
-  },err => {
-    console.error("Board listener error",err);
-    toast("書き込みの同期に問題が発生しています。");
-  });
-  unsubscribers.push(unsub);
-}
-
-async function clearBoard() {
-  if (!confirm("この授業の画面への書き込みをすべて消去しますか？")) return;
-  try {
-    const snap = await getDocs(strokesCollection());
-    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
-    toast("書き込みを消去しました。");
-  } catch (e) {
-    toast("書き込みを消去できませんでした。");
-  }
-}
-
-function setTool(mode) {
-  toolMode = mode;
-  $("penTool").classList.toggle("active",mode==="pen");
-  $("eraserTool").classList.toggle("active",mode==="erase");
-}
-$("penTool").addEventListener("click",()=>setTool("pen"));
-$("eraserTool").addEventListener("click",()=>setTool("erase"));
-document.querySelectorAll(".tool-color").forEach(button => {
-  button.addEventListener("click",() => {
-    penColor = button.dataset.color;
-    setTool("pen");
-    document.querySelectorAll(".tool-color").forEach(b=>b.classList.remove("active"));
-    button.classList.add("active");
-  });
-});
-$("penWidth").addEventListener("input",e=>penWidth=Number(e.target.value));
-$("clearBoard").addEventListener("click",clearBoard);
-
-const messagesCollection = () => collection(db,"lessonMessages",lessonId,"messages");
-
-function subscribeChat() {
-  const q = query(messagesCollection(),orderBy("createdAt","asc"),limit(100));
-  const unsub = onSnapshot(q,snapshot => {
-    const box = $("chatMessages");
-    if (snapshot.empty) {
-      box.innerHTML = `<div style="font-size:12px;color:#718096">メッセージはまだありません。</div>`;
-      return;
+    for (const stroke of strokes.values()) {
+      drawStroke(stroke);
     }
-    box.innerHTML = snapshot.docs.map(d => {
-      const m = d.data();
-      const mine = m.senderId === currentUser.uid;
-      return `<div class="chat-message ${mine?"mine":""}">
-        <div class="sender">${escapeHTML(m.senderName || "参加者")}</div>
-        <div class="bubble">${escapeHTML(m.text || "")}</div>
-      </div>`;
-    }).join("");
-    box.scrollTop = box.scrollHeight;
-  },err => {
-    console.error("Chat listener error",err);
-  });
-  unsubscribers.push(unsub);
-}
-
-$("chatForm").addEventListener("submit",async event=>{
-  event.preventDefault();
-  const input = $("chatInput");
-  const text = input.value.trim();
-  if (!text || !connected) return;
-  input.disabled = true;
-  try {
-    await addDoc(messagesCollection(),{
-      senderId:currentUser.uid,
-      senderName:profile.displayName || currentUser.displayName || "参加者",
-      text,
-      createdAt:serverTimestamp()
-    });
-    input.value = "";
-  } catch(e) {
-    toast("メッセージを送信できませんでした。");
-  } finally {
-    input.disabled = false;
-    input.focus();
-  }
-});
-
-function setupRoomEvents() {
-  room.on(RoomEvent.Connected,()=>{
-    connected = true;
-    setConnection("connected","入室済み");
-    updateParticipants();
-  });
-
-  room.on(RoomEvent.Disconnected,()=>{
-    connected = false;
-    setConnection("error","接続が切断されました");
-    updateParticipants();
-  });
-
-  room.on(RoomEvent.ParticipantConnected,participant=>{
-    remoteParticipants.set(participant.sid,participant);
-    updateParticipants();
-    attachParticipantTracks(participant,false);
-    toast(getParticipantName(participant)+"が入室しました。");
-  });
-
-  room.on(RoomEvent.ParticipantDisconnected,participant=>{
-    remoteParticipants.delete(participant.sid);
-    updateParticipants();
-    toast(getParticipantName(participant)+"が退出しました。");
-    setCameraTile($("remoteCamera"),$("remoteCameraPlaceholder"),null);
-    if (remoteParticipants.size === 0) hideShare();
-  });
-
-  room.on(RoomEvent.TrackSubscribed,handleTrackSubscribed);
-  room.on(RoomEvent.TrackUnsubscribed,handleTrackUnsubscribed);
-
-  room.on(RoomEvent.LocalTrackPublished,(publication)=>{
-    if (publication.source===Track.Source.ScreenShare && publication.track) {
-      sharing = true;
-      showShare(publication.track,true,"自分");
-      updateShareState();
-    }
-    if (publication.source===Track.Source.Camera && publication.track) {
-      setCameraTile($("localCamera"),$("localCameraPlaceholder"),publication.track);
-    }
-  });
-
-  room.on(RoomEvent.LocalTrackUnpublished,(publication)=>{
-    if (publication.source===Track.Source.ScreenShare) {
-      sharing = false;
-      hideShare();
-      updateShareState();
-    }
-    if (publication.source===Track.Source.Camera) {
-      setCameraTile($("localCamera"),$("localCameraPlaceholder"),null);
-    }
-  });
-
-  room.on(RoomEvent.ConnectionStateChanged,state=>{
-    if (state==="reconnecting") setConnection("connecting","再接続中");
-    if (state==="connected") {
-      connected = true;
-      setConnection("connected","入室済み");
-      updateParticipants();
-    }
-    if (state==="disconnected" && !closing) {
-      connected = false;
-      setConnection("error","接続が切断されました");
-      updateParticipants();
-    }
-  });
-}
-
-async function getLessonAndProfile() {
-  if (!lessonId) throw new Error("授業情報が指定されていません。");
-
-  const [profileSnap,lessonSnap] = await Promise.all([
-    getDoc(doc(db,"users",currentUser.uid)),
-    getDoc(doc(db,"lessons",lessonId))
-  ]);
-
-  if (!profileSnap.exists()) throw new Error("アカウント情報を確認できません。");
-  if (!lessonSnap.exists()) throw new Error("授業が見つかりません。");
-
-  profile = profileSnap.data();
-  lesson = lessonSnap.data();
-
-  if (!["teacher","student","admin"].includes(profile.role)) {
-    throw new Error("このアカウントでは授業に入室できません。");
   }
 
-  const allowed =
-    profile.role==="admin" ||
-    (profile.role==="teacher" && lesson.teacherId===currentUser.uid) ||
-    (profile.role==="student" && lesson.studentId===currentUser.uid);
+  function getCanvasPoint(event) {
+    const rect = canvas.getBoundingClientRect();
 
-  if (!allowed) throw new Error("この授業に入室する権限がありません。");
-
-  if (lesson.status==="cancelled" || lesson.status==="completed") {
-    throw new Error("この授業は終了またはキャンセルされています。");
+    return {
+      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+    };
   }
 
-  const start = lesson.startAt?.toDate?.();
-  const end = lesson.endAt?.toDate?.();
-  const now = new Date();
+  function subscribeBoard() {
+    if (unsubscribeBoard) unsubscribeBoard();
 
-  if (start && now < new Date(start.getTime()-5*60*1000)) {
-    throw new Error("授業開始5分前から入室できます。");
+    const boardQuery = query(
+      collection(db, "lessonBoards", lessonId, "strokes"),
+      orderBy("createdAt", "asc")
+    );
+
+    unsubscribeBoard = onSnapshot(
+      boardQuery,
+      snapshot => {
+        strokes.clear();
+
+        snapshot.forEach(item => {
+          strokes.set(item.id, item.data());
+        });
+
+        renderBoard();
+      },
+      error => {
+        console.error("ホワイトボード取得エラー:", error);
+        toast("ホワイトボードの同期に失敗しました。");
+      }
+    );
   }
-  if (end && now > new Date(end.getTime()+30*60*1000)) {
-    throw new Error("入室可能時間を過ぎています。");
-  }
 
-  $("lessonTitle").textContent = lesson.title || "個別指導";
-  $("subjectTag").textContent = lesson.subject || "授業";
-  localParticipantName = profile.displayName || currentUser.displayName || "参加者";
-  $("localCameraName").textContent = localParticipantName;
-  $("remoteCameraName").textContent = "相手";
-}
+  function saveStroke() {
+    if (!activeStrokeId || !activeStroke) return;
 
-async function connectLiveKit() {
-  setConnection("connecting","接続中");
-  const idToken = await currentUser.getIdToken();
-
-  const response = await fetch("/api/livekit/token",{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization":"Bearer "+idToken
-    },
-    body:JSON.stringify({
+    const strokeRef = doc(
+      db,
+      "lessonBoards",
       lessonId,
-      participantName:localParticipantName
-    })
+      "strokes",
+      activeStrokeId
+    );
+
+    const strokeData = {
+      ...activeStroke,
+      updatedAt: serverTimestamp()
+    };
+
+    strokeWriteQueue = strokeWriteQueue
+      .then(() => setDoc(strokeRef, strokeData, { merge: true }))
+      .catch(error => {
+        console.error("書き込みエラー:", error);
+      });
+  }
+
+  canvas.addEventListener("pointerdown", async event => {
+    if (!drawingEnabled || !isConnected) return;
+
+    event.preventDefault();
+
+    const point = getCanvasPoint(event);
+
+    activeStrokeId = crypto.randomUUID();
+
+    activeStroke = {
+      createdBy: currentUser.uid,
+      color: drawingColor,
+      width: drawingMode === "erase" ? 20 : 3,
+      mode: drawingMode,
+      points: [point],
+      createdAt: serverTimestamp()
+    };
+
+    strokes.set(activeStrokeId, activeStroke);
+    renderBoard();
+
+    try {
+      await setDoc(
+        doc(db, "lessonBoards", lessonId, "strokes", activeStrokeId),
+        activeStroke
+      );
+
+      canvas.setPointerCapture(event.pointerId);
+    } catch (error) {
+      console.error(error);
+      activeStroke = null;
+      activeStrokeId = null;
+      toast("書き込み権限を確認してください。");
+    }
   });
 
-  const data = await response.json().catch(()=>({}));
-  if (!response.ok || !data.token || !(data.url || data.serverUrl)) {
-    throw new Error(data.message || "授業サーバーに接続できませんでした。");
-  }
+  canvas.addEventListener("pointermove", event => {
+    if (!drawingEnabled || !activeStroke || !activeStrokeId) return;
 
-  room = new Room({
-    adaptiveStream:true,
-    dynacast:true
-  });
+    if (!(event.buttons & 1)) return;
 
-  setupRoomEvents();
-  await room.connect(data.url || data.serverUrl,data.token);
+    const point = getCanvasPoint(event);
+    activeStroke.points.push(point);
 
-  connected = true;
-  setConnection("connected","入室済み");
-  updateParticipants();
-  attachParticipantTracks(room.localParticipant,true);
-
-  for (const participant of room.remoteParticipants.values()) {
-    remoteParticipants.set(participant.sid,participant);
-    attachParticipantTracks(participant,false);
-  }
-  updateParticipants();
-
-  // 入室後にマイク・カメラを有効化。権限拒否時も授業には入室できる。
-  try {
-    await room.localParticipant.setMicrophoneEnabled(true);
-    micEnabled = true;
-  } catch(e) {
-    micEnabled = false;
-    toast("マイクが使用できません。ブラウザの権限を確認してください。");
-  }
-  try {
-    await room.localParticipant.setCameraEnabled(true);
-    cameraEnabled = true;
-  } catch(e) {
-    cameraEnabled = false;
-    toast("カメラが使用できません。ブラウザの権限を確認してください。");
-  }
-  updateMicState();
-  updateCameraState();
-
-  // 画面表示と接続状態を確認した後に、授業データの同期を開始
-  subscribeBoard();
-  subscribeChat();
-}
-
-async function leaveRoom() {
-  if (closing) return;
-  closing = true;
-  $("leaveButton").disabled = true;
-  $("leaveButton").querySelector("span").textContent = "退出中";
-  try {
-    if (room) await room.disconnect();
-  } catch(e) {
-    console.error(e);
-  }
-  unsubscribers.forEach(unsub=>unsub());
-  location.href = profile?.role==="student"
-    ? "/student/dashboard.html"
-    : profile?.role==="teacher"
-      ? "/teacher/dashboard.html"
-      : "/admin/dashboard.html";
-}
-
-$("micButton").addEventListener("click",toggleMic);
-$("cameraButton").addEventListener("click",toggleCamera);
-$("shareButton").addEventListener("click",toggleShare);
-$("drawButton").addEventListener("click",()=>{
-  drawingEnabled=!drawingEnabled;
-  updateDrawButton();
-});
-$("chatToggle").addEventListener("click",()=>{
-  if (window.innerWidth<=650) {
-    toast("スマートフォンではチャットを別表示する設定が必要です。");
-  } else {
-    $("chatInput").focus();
-  }
-});
-$("leaveButton").addEventListener("click",leaveRoom);
-
-window.addEventListener("beforeunload",()=>{
-  try { room?.disconnect(); } catch(e) {}
-});
-new ResizeObserver(resizeCanvas).observe($("sharePanel"));
-window.addEventListener("resize",resizeCanvas);
-
-async function start() {
-  try {
-    await authPersistenceReady;
-    const user = await new Promise((resolve,reject)=>{
-      const unsub=onAuthStateChanged(auth,u=>{
-        unsub();
-        resolve(u);
-      },reject);
+    strokes.set(activeStrokeId, {
+      ...activeStroke,
+      points: [...activeStroke.points]
     });
-    if (!user) {
-      location.href="/login.html";
+
+    renderBoard();
+    saveStroke();
+  });
+
+  function finishStroke() {
+    if (!activeStrokeId || !activeStroke) return;
+
+    saveStroke();
+
+    activeStroke = null;
+    activeStrokeId = null;
+  }
+
+  canvas.addEventListener("pointerup", finishStroke);
+  canvas.addEventListener("pointercancel", finishStroke);
+  canvas.addEventListener("lostpointercapture", finishStroke);
+
+  async function clearBoard() {
+    if (!confirm("ホワイトボードをすべて消去しますか？")) return;
+
+    try {
+      const snapshot = await getDocs(
+        collection(db, "lessonBoards", lessonId, "strokes")
+      );
+
+      await Promise.all(
+        snapshot.docs.map(item => deleteDoc(item.ref))
+      );
+
+      toast("ホワイトボードを消去しました。");
+    } catch (error) {
+      console.error(error);
+      toast("消去できませんでした。");
+    }
+  }
+
+  function setDrawing(enabled) {
+    drawingEnabled = enabled;
+
+    canvas.classList.toggle("drawing", enabled);
+    $("drawingTools").classList.toggle("visible", enabled);
+    $("drawButton").classList.toggle("active", enabled);
+
+    $("drawButton").textContent =
+      enabled ? "ペン書き ON" : "ペン書き";
+
+    if (!enabled) {
+      activeStroke = null;
+      activeStrokeId = null;
+    }
+  }
+
+  $("drawButton").addEventListener("click", () => {
+    setDrawing(!drawingEnabled);
+
+    if (drawingEnabled) {
+      toast("画面への書き込みが有効になりました。");
+    }
+  });
+
+  $("penTool").addEventListener("click", () => {
+    drawingMode = "pen";
+    $("penTool").classList.add("active");
+    $("eraserTool").classList.remove("active");
+  });
+
+  $("eraserTool").addEventListener("click", () => {
+    drawingMode = "erase";
+    $("eraserTool").classList.add("active");
+    $("penTool").classList.remove("active");
+  });
+
+  $("clearTool").addEventListener("click", clearBoard);
+
+  document.querySelectorAll(".tool-color").forEach(button => {
+    button.addEventListener("click", () => {
+      drawingColor = button.dataset.color;
+
+      document.querySelectorAll(".tool-color").forEach(item => {
+        item.classList.remove("selected");
+      });
+
+      button.classList.add("selected");
+      drawingMode = "pen";
+      $("penTool").classList.add("active");
+      $("eraserTool").classList.remove("active");
+    });
+  });
+
+  /* チャット */
+
+  function subscribeChat() {
+    if (unsubscribeChat) unsubscribeChat();
+
+    const chatQuery = query(
+      collection(db, "lessonMessages", lessonId, "messages"),
+      orderBy("createdAt", "asc")
+    );
+
+    unsubscribeChat = onSnapshot(
+      chatQuery,
+      snapshot => {
+        const list = $("chatList");
+        list.innerHTML = "";
+
+        snapshot.forEach(item => {
+          const message = item.data();
+          const mine = message.senderId === currentUser.uid;
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "chat-message" + (mine ? " mine" : "");
+
+          const sender = document.createElement("div");
+          sender.className = "chat-sender";
+          sender.textContent = message.senderName || "参加者";
+
+          const bubble = document.createElement("div");
+          bubble.className = "chat-bubble";
+          bubble.textContent = message.text || "";
+
+          const time = document.createElement("div");
+          time.className = "chat-time";
+
+          if (message.createdAt?.toDate) {
+            time.textContent = message.createdAt.toDate()
+              .toLocaleTimeString("ja-JP", {
+                hour: "2-digit",
+                minute: "2-digit"
+              });
+          }
+
+          wrapper.append(sender, bubble, time);
+          list.appendChild(wrapper);
+        });
+
+        list.scrollTop = list.scrollHeight;
+      },
+      error => {
+        console.error("チャット取得エラー:", error);
+        toast("チャットの同期に失敗しました。");
+      }
+    );
+  }
+
+  $("chatForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const input = $("chatInput");
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    if (!isConnected) {
+      toast("授業に接続してから送信してください。");
       return;
     }
-    currentUser=user;
-    await getLessonAndProfile();
-    $("app").style.display="flex";
-    resizeCanvas();
-    await connectLiveKit();
-    updateDrawButton();
-  } catch(e) {
-    console.error("Lesson room error:",e);
-    showError("授業に入室できません",e.message || "接続に失敗しました。ログイン状態と通信環境を確認してください。");
-  }
-}
 
-start();
+    input.disabled = true;
+
+    try {
+      await addDoc(
+        collection(db, "lessonMessages", lessonId, "messages"),
+        {
+          senderId: currentUser.uid,
+          senderName: userProfile.displayName || currentUser.email || "参加者",
+          text,
+          createdAt: serverTimestamp()
+        }
+      );
+
+      input.value = "";
+    } catch (error) {
+      console.error(error);
+      toast("メッセージを送信できませんでした。");
+    } finally {
+      input.disabled = false;
+      input.focus();
+    }
+  });
+
+  /* 参加者表示 */
+
+  function renderParticipants() {
+    const list = $("participantList");
+    list.innerHTML = "";
+
+    if (!liveRoom) return;
+
+    const participants = [
+      {
+        identity: currentUser.uid,
+        name: userProfile.displayName || "あなた",
+        local: true
+      },
+      ...Array.from(liveRoom.remoteParticipants.values()).map(participant => ({
+        identity: participant.identity,
+        name: participant.name || participant.identity,
+        local: false
+      }))
+    ];
+
+    participants.forEach(participant => {
+      const item = document.createElement("div");
+      item.className = "participant";
+
+      const avatar = document.createElement("div");
+      avatar.className = "participant-avatar";
+      avatar.textContent = (participant.name || "?").slice(0, 1);
+
+      const info = document.createElement("div");
+      info.className = "participant-info";
+
+      const name = document.createElement("div");
+      name.className = "participant-name";
+      name.textContent = participant.name +
+        (participant.local ? "（あなた）" : "");
+
+      const status = document.createElement("div");
+      status.className = "participant-status";
+      status.textContent = "入室済み";
+
+      info.append(name, status);
+      item.append(avatar, info);
+      list.appendChild(item);
+    });
+  }
+
+  /* ビデオ表示 */
+
+  function showScreenTrack(track) {
+    const video = $("shareVideo");
+
+    if (!track) return;
+
+    video.srcObject = null;
+    track.attach(video);
+
+    video.style.display = "block";
+    $("sharePlaceholder").style.display = "none";
+    $("shareLabel").textContent = "画面共有";
+  }
+
+  function hideScreenTrack(track) {
+    const video = $("shareVideo");
+
+    if (track) {
+      track.detach(video);
+    }
+
+    video.srcObject = null;
+    video.style.display = "none";
+
+    $("sharePlaceholder").style.display = "flex";
+    $("shareLabel").textContent = "授業画面";
+  }
+
+  function showCameraTrack(track, local = false) {
+    const video = local ? $("localCamera") : $("remoteCamera");
+    const off = local ? $("localCameraOff") : $("remoteCameraOff");
+
+    if (!track) return;
+
+    track.attach(video);
+    off.style.display = "none";
+  }
+
+  function hideCameraTrack(track, local = false) {
+    const video = local ? $("localCamera") : $("remoteCamera");
+    const off = local ? $("localCameraOff") : $("remoteCameraOff");
+
+    if (track) track.detach(video);
+
+    off.style.display = "grid";
+  }
+
+  function attachExistingTracks() {
+    if (!liveRoom) return;
+
+    const localPublications =
+      liveRoom.localParticipant.trackPublications;
+
+    localPublications.forEach(publication => {
+      if (!publication.track) return;
+
+      if (publication.source === Track.Source.Camera) {
+        showCameraTrack(publication.track, true);
+      }
+
+      if (publication.source === Track.Source.ScreenShare) {
+        showScreenTrack(publication.track);
+      }
+    });
+
+    liveRoom.remoteParticipants.forEach(participant => {
+      participant.trackPublications.forEach(publication => {
+        if (!publication.track) return;
+
+        if (publication.source === Track.Source.Camera) {
+          showCameraTrack(publication.track, false);
+          $("remoteName").textContent =
+            participant.name || "先生・生徒";
+        }
+
+        if (publication.source === Track.Source.ScreenShare) {
+          showScreenTrack(publication.track);
+        }
+      });
+    });
+  }
+
+  /* LiveKit接続 */
+
+  async function connectLiveKit() {
+    const idToken = await currentUser.getIdToken();
+
+    const response = await fetch("/api/livekit/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${idToken}`
+      },
+      body: JSON.stringify({
+        lessonId
+      })
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(
+        "LiveKitトークンを取得できませんでした: " + detail
+      );
+    }
+
+    const data = await response.json();
+
+    const serverUrl = data.url || data.serverUrl;
+    const token = data.token;
+
+    if (!serverUrl || !token) {
+      throw new Error("LiveKitの接続情報が不足しています。");
+    }
+
+    liveRoom = new Room({
+      adaptiveStream: true,
+      dynacast: true
+    });
+
+    liveRoom.on(RoomEvent.TrackSubscribed,
+      (track, publication, participant) => {
+
+        if (track.source === Track.Source.ScreenShare) {
+          showScreenTrack(track);
+        }
+
+        if (track.source === Track.Source.Camera) {
+          showCameraTrack(track, false);
+          $("remoteName").textContent =
+            participant.name || "先生・生徒";
+        }
+
+        renderParticipants();
+      }
+    );
+
+    liveRoom.on(RoomEvent.TrackUnsubscribed,
+      (track, publication, participant) => {
+
+        if (track.source === Track.Source.ScreenShare) {
+          hideScreenTrack(track);
+        }
+
+        if (track.source === Track.Source.Camera) {
+          hideCameraTrack(track, false);
+        }
+
+        renderParticipants();
+      }
+    );
+
+    liveRoom.on(RoomEvent.ParticipantConnected, () => {
+      renderParticipants();
+    });
+
+    liveRoom.on(RoomEvent.ParticipantDisconnected, () => {
+      renderParticipants();
+    });
+
+    liveRoom.on(RoomEvent.LocalTrackPublished,
+      publication => {
+        if (
+          publication.source === Track.Source.ScreenShare &&
+          publication.track
+        ) {
+          showScreenTrack(publication.track);
+        }
+
+        if (
+          publication.source === Track.Source.Camera &&
+          publication.track
+        ) {
+          showCameraTrack(publication.track, true);
+        }
+      }
+    );
+
+    liveRoom.on(RoomEvent.LocalTrackUnpublished,
+      publication => {
+        if (publication.source === Track.Source.ScreenShare) {
+          hideScreenTrack(publication.track);
+        }
+
+        if (publication.source === Track.Source.Camera) {
+          hideCameraTrack(publication.track, true);
+        }
+      }
+    );
+
+    liveRoom.on(RoomEvent.Disconnected, () => {
+      setConnection(false);
+      toast("授業から切断されました。");
+    });
+
+    await liveRoom.connect(serverUrl, token);
+
+    setConnection(true);
+
+    $("localName").textContent =
+      userProfile.displayName || "あなた";
+
+    renderParticipants();
+    attachExistingTracks();
+
+    subscribeBoard();
+    subscribeChat();
+
+    resizeCanvas();
+  }
+
+  /* マイク */
+
+  $("micButton").addEventListener("click", async () => {
+    if (!liveRoom) return;
+
+    try {
+      micEnabled = !micEnabled;
+
+      await liveRoom.localParticipant.setMicrophoneEnabled(
+        micEnabled
+      );
+
+      $("micButton").textContent =
+        micEnabled ? "マイク ON" : "マイク OFF";
+
+      $("micButton").classList.toggle("active", micEnabled);
+    } catch (error) {
+      console.error(error);
+      micEnabled = !micEnabled;
+      toast("マイクを変更できませんでした。");
+    }
+  });
+
+  /* カメラ */
+
+  $("cameraButton").addEventListener("click", async () => {
+    if (!liveRoom) return;
+
+    try {
+      cameraEnabled = !cameraEnabled;
+
+      await liveRoom.localParticipant.setCameraEnabled(
+        cameraEnabled
+      );
+
+      $("cameraButton").textContent =
+        cameraEnabled ? "カメラ ON" : "カメラ OFF";
+
+      $("cameraButton").classList.toggle(
+        "active",
+        cameraEnabled
+      );
+    } catch (error) {
+      console.error(error);
+      cameraEnabled = !cameraEnabled;
+      toast("カメラを変更できませんでした。");
+    }
+  });
+
+  /* 画面共有 */
+
+  $("shareButton").addEventListener("click", async () => {
+    if (!liveRoom) return;
+
+    try {
+      screenEnabled = !screenEnabled;
+
+      await liveRoom.localParticipant.setScreenShareEnabled(
+        screenEnabled
+      );
+
+      $("shareButton").textContent =
+        screenEnabled ? "共有を停止" : "画面共有";
+
+      $("shareButton").classList.toggle(
+        "active",
+        screenEnabled
+      );
+
+    } catch (error) {
+      console.error(error);
+      screenEnabled = false;
+      $("shareButton").textContent = "画面共有";
+      toast("画面共有を開始できませんでした。");
+    }
+  });
+
+  /* サイドパネル切り替え */
+
+  document.querySelectorAll(".side-tab").forEach(button => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.tab;
+
+      document.querySelectorAll(".side-tab").forEach(item => {
+        item.classList.toggle("active", item === button);
+      });
+
+      $("participantsPanel").classList.toggle(
+        "active",
+        tab === "participants"
+      );
+
+      $("chatPanel").classList.toggle(
+        "active",
+        tab === "chat"
+      );
+    });
+  });
+
+  $("chatButton").addEventListener("click", () => {
+    document.querySelector('[data-tab="chat"]').click();
+
+    if (window.innerWidth <= 650) {
+      $("sidePanel").classList.remove("mobile-hidden");
+    }
+  });
+
+  /* 退出 */
+
+  async function leaveRoom() {
+    if (!confirm("授業ルームから退出しますか？")) return;
+
+    setConnection(false);
+
+    if (unsubscribeBoard) unsubscribeBoard();
+    if (unsubscribeChat) unsubscribeChat();
+
+    if (liveRoom) {
+      try {
+        await liveRoom.disconnect();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    location.href = "../login.html";
+  }
+
+  $("leaveButton").addEventListener("click", leaveRoom);
+
+  /* 授業情報 */
+
+  async function getLessonAndProfile() {
+    if (!lessonId) {
+      throw new Error("URLに授業IDが指定されていません。");
+    }
+
+    const profileSnapshot = await getDoc(
+      doc(db, "users", currentUser.uid)
+    );
+
+    if (!profileSnapshot.exists()) {
+      throw new Error("ユーザープロフィールが登録されていません。");
+    }
+
+    userProfile = profileSnapshot.data();
+
+    if (userProfile.status && userProfile.status !== "active") {
+      throw new Error("このアカウントは現在利用できません。");
+    }
+
+    if (
+      !["student", "teacher", "admin"].includes(userProfile.role)
+    ) {
+      throw new Error("アカウントの権限が正しく設定されていません。");
+    }
+
+    const lessonSnapshot = await getDoc(
+      doc(db, "lessons", lessonId)
+    );
+
+    if (!lessonSnapshot.exists()) {
+      throw new Error("指定された授業が見つかりません。");
+    }
+
+    lessonData = lessonSnapshot.data();
+
+    const role = userProfile.role;
+
+    if (
+      role === "teacher" &&
+      lessonData.teacherId !== currentUser.uid
+    ) {
+      throw new Error("この授業の担当者ではありません。");
+    }
+
+    if (
+      role === "student" &&
+      lessonData.studentId !== currentUser.uid
+    ) {
+      throw new Error("この授業に参加する権限がありません。");
+    }
+
+    if (
+      lessonData.status === "cancelled" ||
+      lessonData.status === "completed"
+    ) {
+      throw new Error("この授業は終了またはキャンセルされています。");
+    }
+
+    $("lessonTitle").textContent =
+      lessonData.title || "個別指導";
+
+    $("lessonSubject").textContent =
+      lessonData.subject || "授業";
+
+    $("localName").textContent =
+      userProfile.displayName || "あなた";
+  }
+
+  /* 起動 */
+
+  async function start() {
+    try {
+      await authPersistenceReady;
+
+      await new Promise((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(
+          auth,
+          user => {
+            unsubscribe();
+            if (user) resolve(user);
+            else reject(new Error("ログインしてください。"));
+          },
+          reject
+        );
+      }).then(user => {
+        currentUser = user;
+      });
+
+      await getLessonAndProfile();
+      await connectLiveKit();
+
+      resizeCanvas();
+
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  window.addEventListener("resize", resizeCanvas);
+
+  start();
 </script>
+
 </body>
 </html>
