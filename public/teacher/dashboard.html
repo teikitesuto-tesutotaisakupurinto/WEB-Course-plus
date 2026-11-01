@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>講師ホーム | WEB Course-plus</title>
+<link rel="stylesheet" href="/assets/css/common.css">
+<style>
+.welcome{margin-bottom:25px}
+.lesson-row{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:17px 0;border-bottom:1px solid var(--border)}
+.lesson-row:last-child{border-bottom:0}
+.lesson-title{font-weight:700}
+.lesson-sub{font-size:13px;color:var(--muted);margin-top:5px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+@media(max-width:600px){.lesson-row{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">WEB <span>Course-plus</span></div>
+  <div>
+    <span id="teacherName"></span>
+    <button class="btn btn-secondary" id="logout">ログアウト</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <button id="sidebarToggle" class="btn btn-secondary">メニュー</button>
+    <nav>
+      <a href="/teacher/dashboard.html" class="active">ホーム</a>
+      <a href="/teacher/students.html">担当生徒</a>
+      <a href="/teacher/lessons.html">授業設定</a>
+      <a href="/teacher/schedule.html">授業スケジュール</a>
+      <a href="/teacher/records.html">指導記録</a>
+      <a href="/teacher/profile.html">プロフィール</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <section class="welcome">
+      <h1 class="page-title">講師ホーム</h1>
+      <p class="page-description"><span id="welcomeName">読み込み中</span>さん、お疲れさまです。</p>
+    </section>
+
+    <div class="card-grid">
+      <section class="card">
+        <div class="stat-label">今日の授業</div>
+        <div class="stat-value" id="todayCount">--</div>
+      </section>
+      <section class="card">
+        <div class="stat-label">今後の授業</div>
+        <div class="stat-value" id="upcomingCount">--</div>
+      </section>
+      <section class="card">
+        <div class="stat-label">担当生徒</div>
+        <div class="stat-value" id="studentCount">--</div>
+      </section>
+    </div>
+
+    <div class="actions">
+      <a href="/teacher/lessons.html" class="btn">新しい授業を設定</a>
+      <a href="/teacher/students.html" class="btn btn-secondary">担当生徒を確認</a>
+    </div>
+
+    <section class="card" style="margin-top:25px">
+      <h2>授業予定</h2>
+      <div id="lessonList" class="loading">授業情報を読み込んでいます。</div>
+    </section>
+  </main>
+</div>
+
+<footer style="text-align:center;padding:25px;color:#94a3b8;font-size:12px">
+© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+import { auth, db } from "/assets/js/firebase.js";
+
+import {
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const lessonList = document.getElementById("lessonList");
+
+document.getElementById("logout").addEventListener("click", async () => {
+  await signOut(auth);
+  location.replace("/login.html");
+});
+
+function toDate(value) {
+  if (value && typeof value.toDate === "function") return value.toDate();
+  if (value) return new Date(value);
+  return null;
+}
+
+function formatDate(value) {
+  const date = toDate(value);
+  if (!date || Number.isNaN(date.getTime())) return "日時未設定";
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function addText(parent, tag, text, className = "") {
+  const el = document.createElement(tag);
+  el.textContent = text;
+  if (className) el.className = className;
+  parent.appendChild(el);
+  return el;
+}
+
+function renderLessons(lessons) {
+  lessonList.replaceChildren();
+
+  if (!lessons.length) {
+    addText(lessonList, "p", "授業予定はありません。");
+    return;
+  }
+
+  lessons.forEach(lesson => {
+    const row = document.createElement("div");
+    row.className = "lesson-row";
+
+    const details = document.createElement("div");
+    addText(details, "div", lesson.title || "個別指導", "lesson-title");
+    addText(details, "div",
+      `${formatDate(lesson.startAt)} ／ ${lesson.subject || "教科未設定"}`,
+      "lesson-sub"
+    );
+    addText(details, "div",
+      `授業状態：${lesson.status || "未設定"}`,
+      "lesson-sub"
+    );
+
+    row.appendChild(details);
+
+    if (["scheduled", "in_progress"].includes(lesson.status)) {
+      const link = document.createElement("a");
+      link.className = "btn";
+      link.href = "/lesson/room.html?lessonId=" + encodeURIComponent(lesson.id);
+      link.textContent = "授業画面へ";
+      row.appendChild(link);
+    }
+
+    lessonList.appendChild(row);
+  });
+}
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    location.replace("/login.html");
+    return;
+  }
+
+  try {
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+
+    if (!profileSnap.exists()) throw new Error("講師アカウント情報がありません。");
+
+    const profile = profileSnap.data();
+
+    if (profile.role !== "teacher" || profile.status !== "active") {
+      await signOut(auth);
+      location.replace("/login.html");
+      return;
+    }
+
+    const name = profile.displayName || profile.name || "講師";
+    document.getElementById("teacherName").textContent = name;
+    document.getElementById("welcomeName").textContent = name;
+
+    const lessonsQuery = query(
+      collection(db, "lessons"),
+      where("teacherId", "==", user.uid)
+    );
+
+    const [lessonSnapshot, studentSnapshot] = await Promise.all([
+      getDocs(lessonsQuery),
+      getDocs(query(
+        collection(db, "users"),
+        where("assignedTeacherIds", "array-contains", user.uid)
+      ))
+    ]);
+
+    const now = new Date();
+
+    const lessons = lessonSnapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    })).filter(item => {
+      const start = toDate(item.startAt);
+      return start &&
+        start >= new Date(now.getTime() - 24 * 60 * 60 * 1000) &&
+        !["cancelled", "completed"].includes(item.status);
+    }).sort((a, b) => toDate(a.startAt) - toDate(b.startAt));
+
+    const students = studentSnapshot.docs.filter(item => {
+      const data = item.data();
+      return data.role === "student" && data.status === "active";
+    });
+
+    document.getElementById("todayCount").textContent =
+      lessons.filter(item => toDate(item.startAt).toDateString() === now.toDateString()).length;
+
+    document.getElementById("upcomingCount").textContent = lessons.length;
+    document.getElementById("studentCount").textContent = students.length;
+
+    renderLessons(lessons);
+  } catch (error) {
+    lessonList.replaceChildren();
+    addText(lessonList, "p",
+      error.message || "授業情報を読み込めませんでした。",
+      "error-message"
+    );
+  }
+});
+</script>
+<script type="module" src="/assets/js/common.js"></script>
+</body>
+</html>
