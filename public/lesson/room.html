@@ -1,6 +1,523 @@
-**後半（2/4）**
 
-```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f8fc">
+  <title>オンライン授業 | WEB Course-plus</title>
+
+  <style>
+    :root {
+      font-family: Inter, "Noto Sans JP", system-ui, sans-serif;
+      color: #17263c;
+      background: #f4f7fb;
+      --blue: #2563eb;
+      --border: #e1e7ef;
+      --muted: #68778c;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .topbar {
+      height: 58px;
+      flex: 0 0 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      z-index: 5;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 17px;
+      font-weight: 750;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--blue);
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .lesson-title {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f59e0b;
+    }
+
+    .connection.connected .connection-dot {
+      background: #16a34a;
+    }
+
+    .room-main {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    .video-area {
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      gap: 12px;
+    }
+
+    /* 画面共有がないとき：生徒左・先生右 */
+    .camera-strip {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      grid-template-rows: repeat(auto-fit, minmax(0, 1fr));
+      grid-auto-rows: minmax(0, 1fr);
+      align-content: stretch;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    .camera-tile {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      aspect-ratio: 16 / 9;
+      align-self: stretch;
+      overflow: hidden;
+      background: #18263b;
+      border: 1px solid #263449;
+      border-radius: 13px;
+    }
+
+    .camera-tile.is-hidden {
+      display: none !important;
+    }
+
+    .camera-tile video {
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      background: #18263b;
+    }
+
+    .camera-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      color: #d8e2f0;
+      background: linear-gradient(145deg, #263b58, #17263b);
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    .avatar {
+      width: 64px;
+      height: 64px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: #42638d;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .camera-name {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      z-index: 2;
+      padding: 6px 10px;
+      border-radius: 6px;
+      color: #fff;
+      background: rgba(15, 23, 42, .75);
+      font-size: 12px;
+    }
+
+    .camera-status {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 2;
+      padding: 5px 8px;
+      border-radius: 5px;
+      color: #fff;
+      background: rgba(15, 23, 42, .72);
+      font-size: 11px;
+    }
+
+    /* 画面共有中：左に共有画面、右にカメラ */
+    .share-stage {
+      display: none;
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: #111827;
+      border: 1px solid #263449;
+      border-radius: 13px;
+    }
+
+    .share-stage video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #111827;
+    }
+
+    .share-label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 3;
+      padding: 6px 10px;
+      border-radius: 6px;
+      color: #fff;
+      background: rgba(15, 23, 42, .75);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .room-main.has-share .video-area {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+    }
+
+    .room-main.has-share .share-stage {
+      display: block;
+    }
+
+    .room-main.has-share .camera-strip {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .room-main.has-share .camera-tile {
+      flex: 1 1 0;
+      min-height: 0;
+      height: auto;
+      width: 100%;
+    }
+
+    /* 共有画面への書き込み */
+    #boardCanvas {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      pointer-events: none;
+    }
+
+    .room-main.drawing #boardCanvas {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+
+    /* チャットは映像に重ねる */
+    .chat-panel {
+      position: absolute;
+      z-index: 10;
+      top: 12px;
+      right: 12px;
+      bottom: 12px;
+      width: 340px;
+      max-width: calc(100% - 24px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: rgba(255, 255, 255, .98);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, .2);
+      transform: translateX(calc(100% + 24px));
+      opacity: 0;
+      visibility: hidden;
+      transition: transform .22s ease, opacity .22s ease, visibility .22s;
+    }
+
+    .chat-panel.open {
+      transform: translateX(0);
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .chat-heading {
+      height: 54px;
+      flex: 0 0 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 15px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .chat-close {
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: #475569;
+      background: #fff;
+      font-size: 11px;
+    }
+
+    .chat-messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 15px;
+    }
+
+    .chat-empty {
+      margin: auto;
+      color: #94a3b8;
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .message {
+      max-width: 92%;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-self: flex-start;
+    }
+
+    .message.mine {
+      align-self: flex-end;
+    }
+
+    .message-meta {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      color: #8491a3;
+      font-size: 10px;
+    }
+
+    .message.mine .message-meta {
+      justify-content: flex-end;
+    }
+
+    .message-bubble {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f0f4f9;
+      color: #25364c;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .message.mine .message-bubble {
+      color: #fff;
+      background: var(--blue);
+    }
+
+    .chat-input-area {
+      flex: 0 0 auto;
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      min-width: 0;
+      height: 40px;
+      padding: 0 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      font-size: 13px;
+    }
+
+    .chat-input-area input:focus {
+      border-color: var(--blue);
+    }
+
+    .send-button {
+      width: 52px;
+      height: 40px;
+      border: 0;
+      border-radius: 8px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .send-button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    /* 操作バー */
+    .toolbar {
+      height: 76px;
+      flex: 0 0 76px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 8px 14px;
+      background: #fff;
+      border-top: 1px solid var(--border);
+    }
+
+    .tool-button {
+      min-width: 86px;
+      height: 46px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: #34445b;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .tool-button:hover {
+      background: #f3f6fb;
+    }
+
+    .tool-button.active {
+      color: var(--blue);
+      border-color: #a9c4ff;
+      background: #eff5ff;
+    }
+
+    .tool-button.danger {
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+
+    .tool-button.danger:hover {
+      background: #fff1f2;
+    }
+
+    .tool-button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .footer {
+      height: 24px;
+      flex: 0 0 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #8793a4;
+      background: #fff;
+      font-size: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 95px;
+      z-index: 30;
+      transform: translateX(-50%);
+      max-width: calc(100vw - 30px);
+      padding: 10px 16px;
+      border-radius: 8px;
+      color: #fff;
+      background: #26364b;
+      box-shadow: 0 5px 20px #0002;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+
+    .toast.show { opacity: 1; }
+
+    .loading-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f4f7fb;
+      color: #52637a;
+      font-size: 14px;
+    }
+
+    .loading-screen.hidden { display: none; }
+
+    .error-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
       align-items: center;
       justify-content: center;
       padding: 20px;
@@ -379,7 +896,10 @@
         return metadata.role || "";
       } catch (_) {
         return "";
-                function createExtraCameraTile(participant) {
+      }
+    }
+
+    function createExtraCameraTile(participant) {
       const tile = document.createElement("div");
       tile.className = "camera-tile";
       tile.dataset.identity = participant.identity;
@@ -780,7 +1300,8 @@
 
       renderBoard();
     }
-                function moveDrawing(event) {
+
+    function moveDrawing(event) {
       if (!activeStroke) return;
 
       event.preventDefault();
@@ -1485,5 +2006,3 @@
   </script>
 </body>
 </html>
-      }
-    }
