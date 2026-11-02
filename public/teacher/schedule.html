@@ -38,6 +38,9 @@
       min-width: 160px;
       margin-bottom: 0;
     }
+    .schedule-actions {
+      margin-top: 15px;
+    }
   </style>
 </head>
 <body>
@@ -75,7 +78,7 @@
         <div>
           <h1 class="page-title">授業スケジュール</h1>
           <p class="page-description">
-            自分が設定した授業の日時と生徒を確認できます。
+            自分が設定した授業の日時・生徒・実施状況を確認できます。
           </p>
         </div>
         <a href="/teacher/lessons.html" class="btn btn-primary">
@@ -89,14 +92,17 @@
         <div class="stat-card">
           <div class="stat-label">今後の授業</div>
           <div class="stat-value" id="upcoming-count">-</div>
+          <div class="stat-note">予定・授業中</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">本日の授業</div>
           <div class="stat-value" id="today-count">-</div>
+          <div class="stat-note">本日の予定・授業中</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">終了した授業</div>
+          <div class="stat-label">実施済みの授業</div>
           <div class="stat-value" id="completed-count">-</div>
+          <div class="stat-note">終了時刻を過ぎた授業</div>
         </div>
       </section>
 
@@ -128,12 +134,12 @@
               <option value="">すべて</option>
               <option value="scheduled">予定</option>
               <option value="in_progress">授業中</option>
-              <option value="completed">終了</option>
-              <option value="cancelled">キャンセル</option>
+              <option value="completed">実施済み</option>
+              <option value="cancelled">キャンセル済み</option>
             </select>
           </div>
 
-          <button id="clear-filter" class="btn btn-secondary">
+          <button id="clear-filter" class="btn btn-secondary" type="button">
             条件をクリア
           </button>
         </div>
@@ -185,6 +191,10 @@
   const $ = id => document.getElementById(id);
 
   let allLessons = [];
+  let refreshTimer = null;
+  let currentUid = null;
+  let isLoading = false;
+
   const studentCache = new Map();
 
   function isToday(date) {
@@ -195,55 +205,184 @@
       && date.getDate() === now.getDate();
   }
 
-  function statusInfo(status) {
-    const values = {
-      scheduled: ["予定", "badge-primary"],
-      in_progress: ["授業中", "badge-success"],
-      completed: ["終了", "badge-gray"],
-      cancelled: ["キャンセル", "badge-danger"]
-    };
+  function localDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
 
-    return values[status] || ["不明", "badge-gray"];
+    return `${year}-${month}-${day}`;
   }
 
-  async function getStudentName(uid) {
-    if (!uid) return "生徒";
+  // 開始時刻・終了時刻から授業状態を自動判定
+  function getLessonState(lesson) {
+    if (lesson.status === "cancelled") {
+      return {
+        category: "cancelled",
+        label: "キャンセル済み",
+        badge: "badge-danger",
+        canJoin: false
+      };
+    }
+
+    const startDate = toDate(lesson.startAt);
+    const endDate = toDate(lesson.endAt);
+
+    if (
+      !startDate ||
+      !endDate ||
+      !Number.isFinite(startDate.getTime()) ||
+      !Number.isFinite(endDate.getTime()) ||
+      endDate <= startDate
+    ) {
+      return {
+        category: "invalid",
+        label: "日時未設定",
+        badge: "badge-gray",
+        canJoin: false
+      };
+    }
+
+    const now = Date.now();
+    const start = startDate.getTime();
+    const end = endDate.getTime();
+
+    // 終了時刻になったら実施済み
+    if (now >= end) {
+      return {
+        category: "completed",
+        label: "実施済み",
+        badge: "badge-gray",
+        canJoin: false
+      };
+    }
+
+    // 開始時刻以降は授業中
+    if (now >= start) {
+      return {
+        category: "in_progress",
+        label: "授業中",
+        badge: "badge-success",
+        canJoin: true
+      };
+    }
+
+    // 開始前は予定
+    return {
+      category: "scheduled",
+      label: "予定",
+      badge: "badge-primary",
+      canJoin: now >= start - 5 * 60 * 1000
+    };
+  }
+
+  function getStudentName(uid) {
+    if (!uid) return Promise.resolve("生徒");
 
     if (studentCache.has(uid)) {
       return studentCache.get(uid);
     }
 
-    try {
-      const snapshot = await getDoc(doc(db, "users", uid));
+    const promise = getDoc(doc(db, "users", uid))
+      .then(snapshot => {
+        if (!snapshot.exists()) return "生徒";
 
-      const name = snapshot.exists()
-        ? (
-            snapshot.data().displayName ||
-            snapshot.data().name ||
-            "生徒"
-          )
-        : "生徒";
+        const data = snapshot.data();
 
-      studentCache.set(uid, name);
-      return name;
+        return data.displayName ||
+          data.name ||
+          "生徒";
+      })
+      .catch(error => {
+        console.error("[Student]", error);
+        return "生徒";
+      });
 
-    } catch (error) {
-      console.error("[Student]", error);
-      return "生徒";
-    }
+    studentCache.set(uid, promise);
+    return promise;
+  }
+
+  function createLessonCard(lesson) {
+    const start = toDate(lesson.startAt);
+    const end = toDate(lesson.endAt);
+    const state = getLessonState(lesson);
+
+    const card = document.createElement("article");
+    card.className = "schedule-item";
+
+    const timeText = start && end
+      ? escapeHTML(
+          start.toLocaleTimeString("ja-JP", {
+            hour: "2-digit",
+            minute: "2-digit"
+          }) + " ～ " +
+          end.toLocaleTimeString("ja-JP", {
+            hour: "2-digit",
+            minute: "2-digit"
+          })
+        )
+      : "時間未設定";
+
+    const joinButton = state.canJoin
+      ? `
+        <div class="schedule-actions">
+          <a href="/lesson/room.html?lessonId=${encodeURIComponent(lesson.id)}"
+             class="btn btn-primary"
+             style="display:block;text-align:center">
+            授業に参加
+          </a>
+        </div>
+      `
+      : "";
+
+    card.innerHTML = `
+      <div class="flex items-center justify-between gap-2"
+           style="flex-wrap:wrap">
+        <span class="badge badge-primary">
+          ${escapeHTML(lesson.subject || "教科未設定")}
+        </span>
+        <span class="badge ${state.badge}">
+          ${escapeHTML(state.label)}
+        </span>
+      </div>
+
+      <div class="schedule-date" style="margin-top:12px">
+        ${start ? escapeHTML(formatDateTime(start)) : "日時未設定"}
+      </div>
+
+      <div class="schedule-time">
+        ${timeText}
+      </div>
+
+      <h3 class="schedule-title">
+        ${escapeHTML(lesson.title || "個別指導")}
+      </h3>
+
+      <p class="text-muted" style="margin:0 0 8px">
+        生徒：${escapeHTML(lesson.studentName)}
+      </p>
+
+      <p class="text-muted" style="margin:0">
+        ${escapeHTML(lesson.description || "授業内容の説明はありません。")}
+      </p>
+
+      ${joinButton}
+    `;
+
+    return card;
   }
 
   async function renderLessons() {
     const list = $("schedule-list");
-    list.innerHTML = "";
+    list.replaceChildren();
 
     const dateFilter = $("date-filter").value;
     const studentFilter = $("student-filter").value
       .trim()
       .toLocaleLowerCase("ja");
+
     const statusFilter = $("status-filter").value;
 
-    let filtered = [];
+    const filtered = [];
 
     for (const lesson of allLessons) {
       const start = toDate(lesson.startAt);
@@ -260,12 +399,35 @@
         continue;
       }
 
-      if (statusFilter && lesson.status !== statusFilter) {
+      const state = getLessonState(lesson);
+
+      if (statusFilter && state.category !== statusFilter) {
         continue;
       }
 
-      filtered.push({ ...lesson, studentName: name });
+      filtered.push({
+        ...lesson,
+        studentName: name
+      });
     }
+
+    // 予定・授業中を先に、実施済みを後に表示
+    filtered.sort((a, b) => {
+      const stateA = getLessonState(a);
+      const stateB = getLessonState(b);
+
+      const activeA = ["scheduled", "in_progress"].includes(stateA.category);
+      const activeB = ["scheduled", "in_progress"].includes(stateB.category);
+
+      if (activeA !== activeB) {
+        return activeA ? -1 : 1;
+      }
+
+      const timeA = toDate(a.startAt)?.getTime() || 0;
+      const timeB = toDate(b.startAt)?.getTime() || 0;
+
+      return activeA ? timeA - timeB : timeB - timeA;
+    });
 
     if (!filtered.length) {
       $("empty").classList.remove("hidden");
@@ -275,102 +437,65 @@
     $("empty").classList.add("hidden");
 
     for (const lesson of filtered) {
-      const start = toDate(lesson.startAt);
-      const end = toDate(lesson.endAt);
-      const status = statusInfo(lesson.status);
-
-      const card = document.createElement("article");
-      card.className = "schedule-item";
-
-      card.innerHTML = `
-        <div class="flex items-center justify-between gap-2"
-             style="flex-wrap:wrap">
-          <span class="badge badge-primary">
-            ${escapeHTML(lesson.subject || "教科未設定")}
-          </span>
-          <span class="badge ${status[1]}">${status[0]}</span>
-        </div>
-
-        <div class="schedule-date">
-          ${start ? escapeHTML(formatDateTime(start)) : "日時未設定"}
-        </div>
-
-        <div class="schedule-time">
-          ${start && end
-            ? escapeHTML(
-                start.toLocaleTimeString("ja-JP", {
-                  hour: "2-digit",
-                  minute: "2-digit"
-                }) + " ～ " +
-                end.toLocaleTimeString("ja-JP", {
-                  hour: "2-digit",
-                  minute: "2-digit"
-                })
-              )
-            : ""}
-        </div>
-
-        <h3 class="schedule-title">
-          ${escapeHTML(lesson.title || "個別指導")}
-        </h3>
-
-        <p class="text-muted" style="margin:0 0 8px">
-          生徒：${escapeHTML(lesson.studentName)}
-        </p>
-
-        <p class="text-muted" style="margin:0">
-          ${escapeHTML(lesson.description || "授業内容の説明はありません。")}
-        </p>
-      `;
-
-      list.appendChild(card);
+      list.appendChild(createLessonCard(lesson));
     }
   }
 
-  function localDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
+  function updateCounts() {
+    const states = allLessons.map(lesson => ({
+      lesson,
+      state: getLessonState(lesson)
+    }));
 
-  async function loadLessons(uid) {
-    const snapshot = await getDocs(query(
-      collection(db, "lessons"),
-      where("teacherId", "==", uid)
-    ));
-
-    allLessons = snapshot.docs
-      .map(item => ({ id: item.id, ...item.data() }))
-      .sort((a, b) =>
-        (toDate(a.startAt)?.getTime() || 0) -
-        (toDate(b.startAt)?.getTime() || 0)
-      );
-
-    const now = new Date();
-
-    const upcoming = allLessons.filter(lesson =>
-      ["scheduled", "in_progress"].includes(lesson.status) &&
-      toDate(lesson.endAt) &&
-      toDate(lesson.endAt) >= now
+    const upcoming = states.filter(item =>
+      ["scheduled", "in_progress"].includes(item.state.category)
     );
 
-    const today = upcoming.filter(lesson => {
-      const date = toDate(lesson.startAt);
+    const today = upcoming.filter(item => {
+      const date = toDate(item.lesson.startAt);
       return date && isToday(date);
     });
 
-    const completed = allLessons.filter(
-      lesson => lesson.status === "completed"
+    const completed = states.filter(item =>
+      item.state.category === "completed"
     );
 
     $("upcoming-count").textContent = upcoming.length;
     $("today-count").textContent = today.length;
     $("completed-count").textContent = completed.length;
+  }
 
-    $("loading").classList.add("hidden");
+  async function loadLessons() {
+    if (isLoading || !currentUid) return;
 
-    await renderLessons();
+    isLoading = true;
+
+    try {
+      const snapshot = await getDocs(query(
+        collection(db, "lessons"),
+        where("teacherId", "==", currentUid)
+      ));
+
+      allLessons = snapshot.docs.map(item => ({
+        id: item.id,
+        ...item.data()
+      }));
+
+      updateCounts();
+      await renderLessons();
+
+    } catch (error) {
+      console.error("[Schedule]", error);
+
+      showMessage(
+        error.message || "授業スケジュールを取得できませんでした。",
+        "danger"
+      );
+
+    } finally {
+      $("loading").classList.add("hidden");
+      isLoading = false;
+    }
   }
 
   async function init() {
@@ -379,14 +504,21 @@
       if (!result) return;
 
       const profile = result.profile;
+      currentUid = result.user.uid;
 
       $("header-name").textContent =
         profile.displayName || profile.name || "講師";
 
-      await loadLessons(result.user.uid);
+      await loadLessons();
+
+      // 60秒ごとに状態と授業一覧を更新
+      refreshTimer = setInterval(() => {
+        loadLessons();
+      }, 60 * 1000);
 
     } catch (error) {
-      console.error("[Schedule]", error);
+      console.error("[Schedule Init]", error);
+
       $("loading").classList.add("hidden");
 
       showMessage(
@@ -404,7 +536,14 @@
     $("date-filter").value = "";
     $("student-filter").value = "";
     $("status-filter").value = "";
+
     renderLessons();
+  });
+
+  window.addEventListener("beforeunload", () => {
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+    }
   });
 
   init();
