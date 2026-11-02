@@ -114,7 +114,8 @@
       min-width: 0;
       min-height: 0;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+      align-content: center;
       gap: 12px;
     }
 
@@ -126,6 +127,10 @@
       background: #18263b;
       border: 1px solid #263449;
       border-radius: 13px;
+    }
+
+    .camera-tile.is-hidden {
+      display: none !important;
     }
 
     .camera-tile video {
@@ -560,7 +565,10 @@
 
       .room-main { padding: 7px; }
 
-      .camera-strip { gap: 7px; }
+      .camera-strip {
+        grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+        gap: 7px;
+      }
 
       .room-main.has-share .video-area {
         grid-template-columns: minmax(0, 1fr) 115px;
@@ -607,8 +615,11 @@
         flex: 1;
         min-width: 0;
         height: 46px;
-        padding: 0 3px;
-        font-size: 9px;
+        padding: 0 2px;
+        font-size: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: clip;
       }
 
       .footer { font-size: 9px; }
@@ -654,7 +665,7 @@
       <div class="camera-strip">
 
         <!-- 生徒の映像は常に左側 -->
-        <div class="camera-tile" id="studentCameraTile">
+        <div class="camera-tile is-hidden" id="studentCameraTile">
           <video id="studentVideo" autoplay playsinline></video>
           <div class="camera-placeholder" id="studentPlaceholder">
             <div class="avatar" id="studentAvatar">生</div>
@@ -665,7 +676,7 @@
         </div>
 
         <!-- 先生の映像は常に右側 -->
-        <div class="camera-tile" id="teacherCameraTile">
+        <div class="camera-tile is-hidden" id="teacherCameraTile">
           <video id="teacherVideo" autoplay playsinline></video>
           <div class="camera-placeholder" id="teacherPlaceholder">
             <div class="avatar" id="teacherAvatar">先</div>
@@ -705,6 +716,7 @@
   </main>
 
   <nav class="toolbar">
+    <button class="tool-button" id="audioButton" type="button">音声を有効化</button>
     <button class="tool-button" id="micButton" type="button">マイク OFF</button>
     <button class="tool-button" id="cameraButton" type="button">カメラ OFF</button>
     <button class="tool-button" id="shareButton" type="button">画面共有</button>
@@ -720,6 +732,7 @@
   </footer>
 
   <div class="toast" id="toast"></div>
+  <div id="remoteAudioContainer" aria-hidden="true"></div>
 
   <script type="module">
     import {
@@ -772,6 +785,10 @@
     let remoteCameraTrack = null;
     let localScreenTrack = null;
     let remoteScreenTrack = null;
+    const remoteAudioElements = new Map();
+    const participantTileMap = new Map();
+    const cameraTrackTileMap = new Map();
+    let audioUnlocked = false;
 
     let unsubscribeBoard = null;
     let unsubscribeChat = null;
@@ -840,67 +857,236 @@
       return isStudent() ? "teacher" : "student";
     }
 
+    function tileElements(role) {
+      return {
+        tile: $(role + "CameraTile"),
+        video: $(role + "Video"),
+        placeholder: $(role + "Placeholder"),
+        status: $(role + "CameraStatus"),
+        placeholderText: $(role + "PlaceholderText")
+      };
+    }
+
+    function setTileCameraVisible(elements, enabled, message) {
+      if (!elements) return;
+      elements.video.style.display = enabled ? "block" : "none";
+      elements.placeholder.style.display = enabled ? "none" : "flex";
+      elements.status.textContent = enabled ? "カメラ ON" : "カメラ OFF";
+      if (message) elements.placeholderText.textContent = message;
+    }
+
     function setCameraVisible(role, enabled, message) {
-      const video = $(role + "Video");
-      const placeholder = $(role + "Placeholder");
-      const status = $(role + "CameraStatus");
-      const placeholderText = $(role + "PlaceholderText");
+      setTileCameraVisible(tileElements(role), enabled, message);
+    }
 
-      video.style.display = enabled ? "block" : "none";
-      placeholder.style.display = enabled ? "none" : "flex";
-      status.textContent = enabled ? "カメラ ON" : "カメラ OFF";
-
-      if (message) {
-        placeholderText.textContent = message;
+    function getParticipantRole(participant) {
+      try {
+        const metadata = JSON.parse(participant.metadata || "{}");
+        return metadata.role || "";
+      } catch (_) {
+        return "";
       }
     }
 
-    function attachCamera(track, isLocal) {
+    function createExtraCameraTile(participant) {
+      const tile = document.createElement("div");
+      tile.className = "camera-tile";
+      tile.dataset.identity = participant.identity;
+
+      const video = document.createElement("video");
+      video.autoplay = true;
+      video.playsInline = true;
+
+      const placeholder = document.createElement("div");
+      placeholder.className = "camera-placeholder";
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      const displayName = participant.name || participant.identity || "参加者";
+      avatar.textContent = displayName.slice(0, 1);
+      const placeholderText = document.createElement("span");
+      placeholderText.textContent = "カメラ OFF";
+      placeholder.append(avatar, placeholderText);
+
+      const name = document.createElement("div");
+      name.className = "camera-name";
+      name.textContent = displayName;
+
+      const status = document.createElement("div");
+      status.className = "camera-status";
+      status.textContent = "カメラ OFF";
+
+      tile.append(video, placeholder, name, status);
+      $("studentCameraTile").parentElement.appendChild(tile);
+
+      return { tile, video, placeholder, status, placeholderText };
+    }
+
+    function getParticipantTile(participant) {
+      if (!participant) return null;
+      const identity = participant.identity;
+      if (participantTileMap.has(identity)) return participantTileMap.get(identity);
+
+      const participantRole = getParticipantRole(participant);
+      const localRole = userProfile?.role;
+      let role = null;
+
+      // 参加者の役割に対応する既定タイルを優先する。
+      if (participantRole === "student" && localRole !== "student") role = "student";
+      if (participantRole === "teacher" && localRole !== "teacher") role = "teacher";
+
+      let elements = null;
+      if (role) {
+        const candidate = tileElements(role);
+        const alreadyUsed = [...participantTileMap.values()].some(item => item.tile === candidate.tile);
+        if (!alreadyUsed) {
+          elements = candidate;
+          candidate.tile.classList.remove("is-hidden");
+        }
+      }
+
+      // 同じ役割の教師が複数いる場合は参加者ごとのタイルを追加する。
+      if (!elements) elements = createExtraCameraTile(participant);
+
+      const displayName = participant.name || participant.identity || "参加者";
+      if (elements.tile.id) {
+        const baseRole = elements.tile.id.replace("CameraTile", "");
+        $(baseRole + "Name").textContent = displayName;
+        $(baseRole + "Avatar").textContent = displayName.slice(0, 1);
+        setTileCameraVisible(elements, false, "カメラ OFF");
+      }
+
+      participantTileMap.set(identity, elements);
+      return elements;
+    }
+
+    function removeParticipantTile(participant) {
+      if (!participant) return;
+      const elements = participantTileMap.get(participant.identity);
+      if (!elements) return;
+
+      if (elements.tile.id) {
+        elements.tile.classList.add("is-hidden");
+        setTileCameraVisible(elements, false, "相手のカメラは OFF です");
+      } else {
+        elements.video.srcObject = null;
+        elements.tile.remove();
+      }
+
+      participantTileMap.delete(participant.identity);
+    }
+
+    function attachCamera(track, isLocal, participant = null) {
       if (!track) return;
 
-      const role = isLocal ? localTile() : remoteTile();
-      const video = $(role + "Video");
+      const elements = isLocal
+        ? tileElements(localTile())
+        : getParticipantTile(participant);
+      if (!elements) return;
 
       try {
-        track.attach(video);
-        video.style.display = "block";
-        setCameraVisible(role, true);
+        track.attach(elements.video);
+        elements.video.style.display = "block";
+        setTileCameraVisible(elements, true);
+        cameraTrackTileMap.set(track, elements);
 
-        if (isLocal) {
-          localCameraTrack = track;
-        } else {
-          remoteCameraTrack = track;
-        }
+        if (isLocal) localCameraTrack = track;
+        else if (!remoteCameraTrack) remoteCameraTrack = track;
       } catch (error) {
         console.error("カメラ映像の表示に失敗:", error);
       }
     }
 
-    function detachCamera(track, isLocal) {
-      const role = isLocal ? localTile() : remoteTile();
-      const video = $(role + "Video");
+    function detachCamera(track, isLocal, participant = null) {
+      const elements = isLocal
+        ? tileElements(localTile())
+        : (cameraTrackTileMap.get(track) || getParticipantTile(participant));
+      if (!elements) return;
 
       if (track) {
-        try {
-          track.detach(video);
-        } catch (error) {
-          console.warn(error);
-        }
+        try { track.detach(elements.video); } catch (error) { console.warn(error); }
       }
-
-      video.srcObject = null;
-
-      if (isLocal) {
-        localCameraTrack = null;
-      } else {
-        remoteCameraTrack = null;
-      }
-
-      setCameraVisible(
-        role,
+      elements.video.srcObject = null;
+      setTileCameraVisible(
+        elements,
         false,
         isLocal ? "カメラ OFF" : "相手のカメラは OFF です"
       );
+      cameraTrackTileMap.delete(track);
+
+      if (isLocal) localCameraTrack = null;
+      else if (remoteCameraTrack === track) remoteCameraTrack = null;
+    }
+
+    async function unlockRemoteAudio() {
+      if (!liveRoom) return false;
+      try {
+        await liveRoom.startAudio();
+        for (const audioElement of remoteAudioElements.values()) {
+          try { await audioElement.play(); } catch (error) { console.warn(error); }
+        }
+        audioUnlocked = true;
+        $("audioButton").textContent = "音声 有効";
+        $("audioButton").classList.add("active");
+        showToast("相手の音声を再生できる状態にしました。");
+        return true;
+      } catch (error) {
+        console.error("音声の有効化に失敗:", error);
+        showToast("音声を有効化できません。端末の音量とブラウザ設定を確認してください。");
+        return false;
+      }
+    }
+
+    function attachRemoteAudio(track, participant) {
+      if (!track) return;
+      const key = track.sid || track.mediaStreamTrack?.id || `${participant?.identity || "remote"}-${Date.now()}`;
+      if (remoteAudioElements.has(key)) return;
+
+      try {
+        const audio = track.attach();
+        audio.autoplay = true;
+        audio.controls = false;
+        audio.muted = false;
+        audio.volume = 1;
+        audio.setAttribute("playsinline", "");
+        audio.style.position = "fixed";
+        audio.style.width = "1px";
+        audio.style.height = "1px";
+        audio.style.left = "-10px";
+        audio.style.top = "-10px";
+        audio.style.opacity = "0";
+        $("remoteAudioContainer").appendChild(audio);
+        remoteAudioElements.set(key, {
+          audio,
+          track,
+          participantId: participant?.identity || null
+        });
+        audio.play().catch(error => {
+          console.warn("音声の自動再生が制限されました:", error);
+          $("audioButton").textContent = "音声を有効化";
+          $("audioButton").classList.remove("active");
+          audioUnlocked = false;
+        });
+      } catch (error) {
+        console.error("相手の音声を接続できません:", error);
+        showToast("相手の音声を再生できませんでした。");
+      }
+    }
+
+    function detachRemoteAudio(track) {
+      if (!track) return;
+      try {
+        const detached = track.detach();
+        (Array.isArray(detached) ? detached : [detached]).forEach(element => element?.remove?.());
+      } catch (error) { console.warn("音声トラック切断:", error); }
+
+      for (const [key, item] of remoteAudioElements.entries()) {
+        if (item.track === track) {
+          item.audio.pause();
+          item.audio.srcObject = null;
+          item.audio.remove();
+          remoteAudioElements.delete(key);
+        }
+      }
     }
 
     function updateShareLayout() {
@@ -972,22 +1158,39 @@
 
     function resizeCanvas() {
       const stage = $("shareStage");
+      const video = $("shareVideo");
       if (!stage || !boardCanvas) return;
 
-      const rect = stage.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
+      const stageRect = stage.getBoundingClientRect();
+      if (!stageRect.width || !stageRect.height) return;
 
-      const ratio = window.devicePixelRatio || 1;
+      // object-fit: contain の余白を除いた「実際の共有映像」領域にキャンバスを合わせる。
+      const sourceWidth = video.videoWidth || stageRect.width;
+      const sourceHeight = video.videoHeight || stageRect.height;
+      const sourceRatio = sourceWidth / sourceHeight;
+      const stageRatio = stageRect.width / stageRect.height;
+      let contentWidth = stageRect.width;
+      let contentHeight = stageRect.height;
 
-      boardWidth = rect.width;
-      boardHeight = rect.height;
+      if (sourceRatio > stageRatio) contentHeight = contentWidth / sourceRatio;
+      else contentWidth = contentHeight * sourceRatio;
 
-      boardCanvas.width = Math.round(rect.width * ratio);
-      boardCanvas.height = Math.round(rect.height * ratio);
+      const left = (stageRect.width - contentWidth) / 2;
+      const top = (stageRect.height - contentHeight) / 2;
+      boardCanvas.style.left = `${left}px`;
+      boardCanvas.style.top = `${top}px`;
+      boardCanvas.style.right = "auto";
+      boardCanvas.style.bottom = "auto";
+      boardCanvas.style.width = `${contentWidth}px`;
+      boardCanvas.style.height = `${contentHeight}px`;
 
+      const ratio = Math.max(1, window.devicePixelRatio || 1);
+      boardWidth = contentWidth;
+      boardHeight = contentHeight;
+      boardCanvas.width = Math.round(contentWidth * ratio);
+      boardCanvas.height = Math.round(contentHeight * ratio);
       boardContext = boardCanvas.getContext("2d");
       boardContext.setTransform(ratio, 0, 0, ratio, 0, 0);
-
       renderBoard();
     }
 
@@ -1006,7 +1209,10 @@
       ctx.save();
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.lineWidth = stroke.width || 3;
+      const storedWidth = Number(stroke.width) || 3;
+      ctx.lineWidth = storedWidth <= 1
+        ? storedWidth * boardWidth
+        : (storedWidth / 1000) * boardWidth;
 
       if (stroke.mode === "eraser") {
         ctx.globalCompositeOperation = "destination-out";
@@ -1063,6 +1269,7 @@
     function getCanvasPoint(event) {
       const rect = boardCanvas.getBoundingClientRect();
 
+      if (!rect.width || !rect.height) return { x: 0, y: 0 };
       return {
         x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
         y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
@@ -1080,7 +1287,7 @@
         userId: currentUser.uid,
         mode: drawingMode,
         color: "#2563eb",
-        width: drawingMode === "eraser" ? 22 : 3,
+        width: drawingMode === "eraser" ? 0.022 : 0.003,
         points: [getCanvasPoint(event)]
       };
 
@@ -1293,7 +1500,6 @@
             chatMessages.appendChild(message);
           });
 
-          $("chatCount").textContent = snapshot.size + "件";
           chatMessages.scrollTop = chatMessages.scrollHeight;
         },
         (error) => {
@@ -1369,9 +1575,8 @@
       lessonData = lessonSnapshot.data();
 
       const isAdmin = userProfile.role === "admin";
-      const isTeacher =
-        userProfile.role === "teacher" &&
-        lessonData.teacherId === user.uid;
+      // 授業を作成した教師以外の教師も、同じ授業室に参加できる。
+      const isTeacher = userProfile.role === "teacher";
       const isStudent =
         userProfile.role === "student" &&
         lessonData.studentId === user.uid;
@@ -1398,6 +1603,10 @@
 
       $("studentAvatar").textContent = studentDisplayName.slice(0, 1);
       $("teacherAvatar").textContent = teacherDisplayName.slice(0, 1);
+
+      // 自分のタイルだけを最初から表示し、相手が未参加なら相手側の枠は出さない。
+      $(localTile() + "CameraTile").classList.remove("is-hidden");
+      $(remoteTile() + "CameraTile").classList.add("is-hidden");
 
       setCameraVisible(
         "student",
@@ -1455,39 +1664,47 @@
       });
 
       liveRoom.on(RoomEvent.ParticipantConnected, (participant) => {
-        const role = remoteTile();
-
-        $(role + "Name").textContent =
-          participant.name || participant.identity || role;
-
-        setCameraVisible(role, false, "カメラを待っています");
+        getParticipantTile(participant);
+        setConnection(true, "参加者と接続済み");
       });
 
-      liveRoom.on(RoomEvent.ParticipantDisconnected, () => {
-        if (remoteCameraTrack) {
-          detachCamera(remoteCameraTrack, false);
+      liveRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        for (const [key, item] of remoteAudioElements.entries()) {
+          if (item.participantId === participant.identity) {
+            item.audio.pause();
+            item.audio.srcObject = null;
+            item.audio.remove();
+            remoteAudioElements.delete(key);
+          }
         }
 
         if (remoteScreenTrack) {
           detachScreenTrack(remoteScreenTrack, false);
         }
 
+        const elements = participantTileMap.get(participant.identity);
+        if (elements) {
+          for (const [track, tile] of cameraTrackTileMap.entries()) {
+            if (tile === elements) detachCamera(track, false, participant);
+          }
+        }
+        removeParticipantTile(participant);
         setConnection(true, "接続済み");
       });
 
       liveRoom.on(
         RoomEvent.TrackSubscribed,
         (track, publication, participant) => {
+          if (track.kind === Track.Kind.Audio) {
+            attachRemoteAudio(track, participant);
+            return;
+          }
+
           if (track.kind === Track.Kind.Video) {
             if (publication.source === Track.Source.ScreenShare) {
               attachScreenTrack(track, false);
             } else if (publication.source === Track.Source.Camera) {
-              const role = remoteTile();
-
-              $(role + "Name").textContent =
-                participant.name || participant.identity || role;
-
-              attachCamera(track, false);
+              attachCamera(track, false, participant);
             }
           }
         }
@@ -1495,17 +1712,18 @@
 
       liveRoom.on(
         RoomEvent.TrackUnsubscribed,
-        (track, publication) => {
-          if (publication.source === Track.Source.ScreenShare) {
-            if (remoteScreenTrack === track) {
-              detachScreenTrack(track, false);
-            }
+        (track, publication, participant) => {
+          if (track.kind === Track.Kind.Audio) {
+            detachRemoteAudio(track);
+            return;
+          }
+
+          if (publication.source === Track.Source.ScreenShare && remoteScreenTrack === track) {
+            detachScreenTrack(track, false);
           }
 
           if (publication.source === Track.Source.Camera) {
-            if (remoteCameraTrack === track) {
-              detachCamera(track, false);
-            }
+            detachCamera(track, false, participant);
           }
         }
       );
@@ -1545,11 +1763,8 @@
         }
 
         if (publication.source === Track.Source.Camera) {
-          setCameraVisible(
-            remoteTile(),
-            false,
-            "相手のカメラは OFF です"
-          );
+          const elements = getParticipantTile(participant);
+          setTileCameraVisible(elements, false, "相手のカメラは OFF です");
         }
       });
 
@@ -1558,8 +1773,9 @@
           return;
         }
 
-        if (publication.source === Track.Source.Camera && remoteCameraTrack) {
-          setCameraVisible(remoteTile(), true);
+        if (publication.source === Track.Source.Camera) {
+          const elements = getParticipantTile(participant);
+          setTileCameraVisible(elements, true);
         }
       });
 
@@ -1567,16 +1783,17 @@
       setConnection(true, "接続済み");
 
       for (const participant of liveRoom.remoteParticipants.values()) {
-        const role = remoteTile();
+        getParticipantTile(participant);
 
-        $(role + "Name").textContent =
-          participant.name || participant.identity || role;
+        for (const publication of participant.audioTrackPublications.values()) {
+          if (publication.track) attachRemoteAudio(publication.track, participant);
+        }
 
         for (const publication of participant.videoTrackPublications.values()) {
           if (!publication.track) continue;
 
           if (publication.source === Track.Source.Camera) {
-            attachCamera(publication.track, false);
+            attachCamera(publication.track, false, participant);
           }
 
           if (publication.source === Track.Source.ScreenShare) {
@@ -1619,6 +1836,7 @@
 
         await liveRoom.localParticipant.setCameraEnabled(next);
         cameraEnabled = next;
+        $(localTile() + "CameraTile").classList.remove("is-hidden");
 
         $("cameraButton").classList.toggle("active", cameraEnabled);
         $("cameraButton").textContent =
@@ -1670,11 +1888,21 @@
       if (unsubscribeBoard) unsubscribeBoard();
       if (unsubscribeChat) unsubscribeChat();
       if (resizeObserver) resizeObserver.disconnect();
+      for (const item of remoteAudioElements.values()) {
+        item.audio.pause();
+        item.audio.srcObject = null;
+        item.audio.remove();
+      }
+      remoteAudioElements.clear();
 
       goDashboard();
     }
 
-    $("micButton").addEventListener("click", toggleMic);
+    $("audioButton").addEventListener("click", unlockRemoteAudio);
+    $("micButton").addEventListener("click", async () => {
+      if (!audioUnlocked) await unlockRemoteAudio();
+      await toggleMic();
+    });
     $("cameraButton").addEventListener("click", toggleCamera);
     $("shareButton").addEventListener("click", toggleScreenShare);
     $("leaveButton").addEventListener("click", leaveRoom);
@@ -1714,6 +1942,9 @@
 
         resizeObserver = new ResizeObserver(resizeCanvas);
         resizeObserver.observe($("shareStage"));
+        $("shareVideo").addEventListener("loadedmetadata", resizeCanvas);
+        $("shareVideo").addEventListener("resize", resizeCanvas);
+        window.addEventListener("resize", resizeCanvas);
 
         await connectLiveKit();
 
@@ -1738,6 +1969,12 @@
       if (liveRoom) {
         liveRoom.disconnect();
       }
+      for (const item of remoteAudioElements.values()) {
+        item.audio.pause();
+        item.audio.srcObject = null;
+        item.audio.remove();
+      }
+      remoteAudioElements.clear();
     });
 
     start();
