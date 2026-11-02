@@ -1,75 +1,224 @@
 
-<script type="module">
-import { auth, db, authPersistenceReady } from "./assets/js/firebase.js";
-import { doc, getDoc } from
-"https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>サービス稼働状況 | WEB Course-plus</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#172338;font-family:Arial,"Noto Sans JP",sans-serif}
+header{height:64px;padding:0 7%;background:#fff;border-bottom:1px solid #e5e9f0;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:19px;font-weight:800}
+.logo span{color:#2563eb}
+.header-label{color:#7b8798;font-size:12px}
+main{width:min(850px,92%);margin:45px auto}
+h1{font-size:27px;margin:0 0 9px}
+.subtitle{color:#718096;font-size:13px;margin-bottom:28px}
+.summary,.section{background:#fff;border:1px solid #e3e8ef;border-radius:12px}
+.summary{padding:25px;margin-bottom:22px}
+.summary-title{font-size:14px;font-weight:700;color:#68768a}
+.summary-message{font-size:21px;font-weight:800;margin-top:13px;line-height:1.6}
+.ok-text{color:#16834b}
+.error-text{color:#dc3545}
+.loading-text{color:#718096}
+.summary-time{color:#8a94a4;font-size:11px;margin-top:12px}
+.section{overflow:hidden;margin-bottom:18px}
+.section-heading{padding:17px 22px;font-size:14px;font-weight:800;border-bottom:1px solid #edf0f4}
+.service{min-height:62px;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:15px;border-bottom:1px solid #edf0f4}
+.service:last-child{border-bottom:0}
+.service-name{font-size:14px;font-weight:600}
+.status{font-size:24px;font-weight:800;min-width:30px;text-align:center}
+.status.ok{color:#16a05a}
+.status.error{color:#dc3545}
+.status.unknown{color:#a0a9b7}
+footer{text-align:center;color:#929baa;font-size:11px;padding:28px 15px}
+@media(max-width:600px){
+ header{padding:0 17px}
+ main{margin:30px auto}
+ h1{font-size:23px}
+ .summary-message{font-size:18px}
+ .service{padding:14px 16px}
+}
+</style>
+</head>
+<body>
 
+<header>
+  <div class="logo">WEB <span>Course-plus</span></div>
+  <div class="header-label">SYSTEM STATUS</div>
+</header>
+
+<main>
+  <h1>サービス稼働状況</h1>
+  <div class="subtitle">各サービスの現在の稼働状況をお知らせします。</div>
+
+  <section class="summary">
+    <div class="summary-title">現在のシステム状況</div>
+    <div class="summary-message loading-text" id="summary">
+      稼働状況を確認しています...
+    </div>
+    <div class="summary-time" id="updated">最終確認：確認中</div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading">サーバー</div>
+    <div class="service">
+      <span class="service-name">APIサーバー</span>
+      <span class="status unknown" id="api">－</span>
+    </div>
+    <div class="service">
+      <span class="service-name">Webサーバー</span>
+      <span class="status unknown" id="web">－</span>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading">認証・データベース</div>
+    <div class="service">
+      <span class="service-name">Firebase Authentication</span>
+      <span class="status unknown" id="auth">－</span>
+    </div>
+    <div class="service">
+      <span class="service-name">Cloud Firestore</span>
+      <span class="status unknown" id="firestore">－</span>
+    </div>
+  </section>
+</main>
+
+<footer>
+  © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
 const $ = id => document.getElementById(id);
 
-const services = [
-  { id: "api", name: "APIサーバー", check: checkApi },
-  { id: "web", name: "Webサーバー", check: checkWeb },
-  { id: "auth", name: "Firebase Authentication", check: checkAuth },
-  { id: "firestore", name: "Cloud Firestore", check: checkFirestore }
-];
+function setStatus(id, state) {
+  const element = $(id);
+  element.className = "status " + state;
+  element.textContent =
+    state === "ok" ? "✓" :
+    state === "error" ? "✕" : "－";
+}
 
-function setStatus(id, ok) {
-  const el = $(id);
-  el.className = "status " + (ok ? "ok" : "error");
-  el.textContent = ok ? "✓" : "✕";
+function setSummary(message, state) {
+  $("summary").textContent = message;
+  $("summary").className = "summary-message " + state;
 }
 
 async function checkApi() {
-  const response = await fetch("/health", { cache: "no-store" });
+  const response = await fetch("/health", {
+    cache: "no-store"
+  });
   if (!response.ok) throw new Error("API error");
 
   const data = await response.json();
-  if (data.ok !== true) throw new Error("API error");
+  if (data.ok !== true) throw new Error("API unhealthy");
 }
 
 async function checkWeb() {
-  const response = await fetch("/", { cache: "no-store" });
+  const response = await fetch("/", {
+    cache: "no-store"
+  });
   if (!response.ok) throw new Error("Web error");
 }
 
-async function checkAuth() {
-  await authPersistenceReady;
-  if (!auth) throw new Error("Auth unavailable");
-}
+async function checkFirebase() {
+  const firebase = await import("./assets/js/firebase.js");
 
-async function checkFirestore() {
-  await authPersistenceReady;
-
-  if (!auth.currentUser) {
-    throw new Error("未ログイン");
+  if (!firebase.auth || !firebase.db) {
+    throw new Error("Firebase initialization failed");
   }
 
-  const snapshot = await getDoc(doc(db, "settings", "system"));
-  if (!snapshot.exists()) throw new Error("Document unavailable");
+  if (firebase.authPersistenceReady) {
+    await firebase.authPersistenceReady;
+  }
+
+  return firebase;
 }
 
-async function runCheck(service) {
+async function checkFirestore(firebase) {
+  if (!firebase.auth.currentUser) {
+    return "unknown";
+  }
+
+  const { doc, getDoc } = await import(
+    "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"
+  );
+
+  const snapshot = await getDoc(
+    doc(firebase.db, "settings", "system")
+  );
+
+  if (!snapshot.exists()) {
+    throw new Error("System settings not found");
+  }
+
+  return "ok";
+}
+
+async function safeCheck(id, callback) {
   try {
-    await service.check();
-    setStatus(service.id, true);
+    await Promise.race([
+      callback(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 10000)
+      )
+    ]);
+    setStatus(id, "ok");
     return true;
   } catch (error) {
-    console.error(service.name, error);
-    setStatus(service.id, false);
+    console.error(id, error);
+    setStatus(id, "error");
     return false;
   }
 }
 
 async function updateStatus() {
-  const results = await Promise.all(services.map(runCheck));
-  const allOK = results.every(Boolean);
+  setSummary("稼働状況を確認しています...", "loading-text");
 
-  $("summary").textContent = allOK
-    ? "すべてのサービスが正常に稼働しています"
-    : "一部のサービスで問題を確認しました";
+  const apiResult = await safeCheck("api", checkApi);
+  const webResult = await safeCheck("web", checkWeb);
 
-  $("summary").className =
-    "summary-message " + (allOK ? "ok" : "error");
+  let firebase;
+  const authResult = await safeCheck("auth", async () => {
+    firebase = await checkFirebase();
+  });
+
+  let firestoreResult = false;
+
+  if (authResult) {
+    try {
+      const result = await checkFirestore(firebase);
+
+      if (result === "unknown") {
+        setStatus("firestore", "unknown");
+      } else {
+        setStatus("firestore", "ok");
+        firestoreResult = true;
+      }
+    } catch (error) {
+      console.error("Firestore:", error);
+      setStatus("firestore", "error");
+    }
+  } else {
+    setStatus("firestore", "unknown");
+  }
+
+  const allOK = apiResult && webResult && authResult &&
+    (firestoreResult || $("firestore").textContent === "－");
+
+  if (allOK) {
+    setSummary(
+      "すべてのサービスが正常に稼働しています",
+      "ok-text"
+    );
+  } else {
+    setSummary(
+      "一部のサービスで問題を確認しました",
+      "error-text"
+    );
+  }
 
   $("updated").textContent =
     "最終確認：" +
@@ -78,7 +227,24 @@ async function updateStatus() {
     }) + " JST";
 }
 
-await authPersistenceReady;
-updateStatus();
-setInterval(updateStatus, 30000);
+async function start() {
+  try {
+    await updateStatus();
+  } catch (error) {
+    console.error(error);
+    setSummary("稼働状況を取得できませんでした", "error-text");
+  }
+
+  setInterval(() => {
+    updateStatus().catch(error => {
+      console.error(error);
+      setSummary("稼働状況を取得できませんでした", "error-text");
+    });
+  }, 30000);
+}
+
+start();
 </script>
+
+</body>
+</html>
