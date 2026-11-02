@@ -1,0 +1,849 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サービス稼働状況 | WEB Course-plus</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  font-family: "Noto Sans JP", sans-serif;
+  color: #172338;
+  background: #f5f7fb;
+  --blue: #2563eb;
+  --border: #e3e8f0;
+  --muted: #718096;
+  --green: #16834b;
+  --red: #dc3545;
+  --orange: #c47b12;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+header {
+  height: 66px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6%;
+}
+
+.brand {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.4px;
+}
+
+.brand span { color: var(--blue); }
+
+.header-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+main {
+  max-width: 1050px;
+  margin: 42px auto;
+  padding: 0 20px;
+}
+
+.heading {
+  margin-bottom: 25px;
+}
+
+.heading h1 {
+  font-size: 27px;
+  margin: 0 0 8px;
+}
+
+.heading p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.overview {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 27px;
+  margin-bottom: 22px;
+}
+
+.overview-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.overview h2 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.status-main {
+  font-size: 23px;
+  font-weight: 800;
+  margin: 20px 0 8px;
+}
+
+.status-description {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.pill {
+  border-radius: 30px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pill.ok { background: #e8f6ee; color: var(--green); }
+.pill.warning { background: #fff4df; color: var(--orange); }
+.pill.error { background: #fdebed; color: var(--red); }
+.pill.unknown { background: #edf0f5; color: #667085; }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 23px;
+}
+
+.summary-card {
+  background: #f7f9fc;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.summary-card div:first-child {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.summary-number {
+  font-size: 25px;
+  font-weight: 800;
+  margin-top: 5px;
+}
+
+.section {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.section-title {
+  padding: 18px 22px;
+  font-size: 15px;
+  font-weight: 800;
+  border-bottom: 1px solid var(--border);
+}
+
+.service-row {
+  min-height: 72px;
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.service-row:last-child { border-bottom: none; }
+
+.service-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #aab2c0;
+}
+
+.service-indicator.ok { background: var(--green); }
+.service-indicator.warning { background: #e3a32c; }
+.service-indicator.error { background: var(--red); }
+
+.service-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.service-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.service-detail {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.service-time {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.service-status {
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 75px;
+  text-align: right;
+}
+
+.service-status.ok { color: var(--green); }
+.service-status.warning { color: var(--orange); }
+.service-status.error { color: var(--red); }
+.service-status.unknown { color: #667085; }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 22px 0;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 20px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--blue);
+  color: #fff;
+}
+
+.secondary {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: #344054;
+}
+
+button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 17px 20px;
+  border-radius: 10px;
+}
+
+footer {
+  text-align: center;
+  padding: 28px 15px;
+  color: #8993a3;
+  font-size: 11px;
+}
+
+@media(max-width:650px) {
+  header { padding: 0 18px; }
+  main { margin-top: 25px; padding: 0 13px; }
+  .heading h1 { font-size: 22px; }
+  .overview { padding: 20px; }
+  .status-main { font-size: 19px; }
+  .summary-grid { gap: 7px; }
+  .summary-card { padding: 10px; }
+  .summary-number { font-size: 21px; }
+  .service-row { padding: 13px; gap: 9px; }
+  .service-time { display: none; }
+  .service-status { min-width: 66px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="brand">WEB <span>Course-plus</span></div>
+  <div class="header-label">SYSTEM STATUS</div>
+</header>
+
+<main>
+
+  <div class="heading">
+    <h1>サービス稼働状況</h1>
+    <p>WEB Course-plusのシステム状態を自動的に診断しています。</p>
+  </div>
+
+  <section class="overview">
+    <div class="overview-top">
+      <h2>システム総合ステータス</h2>
+      <span class="pill unknown" id="overallBadge">診断待機中</span>
+    </div>
+
+    <div class="status-main" id="overallTitle">診断を開始しています...</div>
+    <div class="status-description" id="overallDescription">
+      各サービスの接続状態を確認しています。
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div>正常</div>
+        <div class="summary-number" id="okCount">0</div>
+      </div>
+      <div class="summary-card">
+        <div>警告</div>
+        <div class="summary-number" id="warningCount">0</div>
+      </div>
+      <div class="summary-card">
+        <div>障害・未確認</div>
+        <div class="summary-number" id="otherCount">0</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">基本システム</div>
+    <div id="basicServices"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">認証・データベース</div>
+    <div id="dataServices"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">授業・オンライン機能</div>
+    <div id="lessonServices"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-title">ブラウザ機能</div>
+    <div id="browserServices"></div>
+  </section>
+
+  <div class="actions">
+    <button class="secondary" id="autoButton">自動更新：ON</button>
+    <button class="primary" id="refreshButton">再診断する</button>
+  </div>
+
+  <div class="note">
+    <strong>診断について</strong><br>
+    本ページは、実際にアクセス可能なAPI・認証・データベースなどを検査します。
+    授業ルームへの参加が必要な機能や、利用者の許可が必要な機能は、
+    このページだけでは完全な動作確認ができない場合があります。
+    その場合は「未確認」と表示します。
+  </div>
+
+</main>
+
+<footer>
+  © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+import {
+  auth,
+  db,
+  authPersistenceReady
+} from "./assets/js/firebase.js";
+
+import {
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+import {
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+
+const groups = {
+  basic: $("basicServices"),
+  data: $("dataServices"),
+  lesson: $("lessonServices"),
+  browser: $("browserServices")
+};
+
+const results = new Map();
+let autoEnabled = true;
+let timer = null;
+let running = false;
+
+const serviceDefinitions = [
+  {
+    id: "api",
+    group: "basic",
+    name: "APIサーバー",
+    description: "Expressサーバーの稼働とHTTP応答",
+    check: checkApi
+  },
+  {
+    id: "website",
+    group: "basic",
+    name: "Webサイト",
+    description: "Webページの配信状態",
+    check: checkWebsite
+  },
+  {
+    id: "auth",
+    group: "data",
+    name: "Firebase Authentication",
+    description: "Firebase認証SDKと認証状態の確認",
+    check: checkAuth
+  },
+  {
+    id: "firestore",
+    group: "data",
+    name: "Cloud Firestore",
+    description: "settings/systemの読み取り確認",
+    check: checkFirestore
+  },
+  {
+    id: "profile",
+    group: "data",
+    name: "ユーザー情報",
+    description: "ログイン中のユーザープロフィール取得",
+    check: checkProfile
+  },
+  {
+    id: "system",
+    group: "basic",
+    name: "システム設定API",
+    description: "/api/system/status の応答確認",
+    check: checkSystem
+  },
+  {
+    id: "livekit",
+    group: "lesson",
+    name: "LiveKit接続環境",
+    description: "LiveKitの設定と接続情報の存在確認",
+    check: checkLiveKit
+  },
+  {
+    id: "token",
+    group: "lesson",
+    name: "授業参加トークン",
+    description: "授業参加時のトークン発行機能",
+    check: checkToken
+  },
+  {
+    id: "video",
+    group: "lesson",
+    name: "ビデオ通話",
+    description: "WebRTCの利用環境",
+    check: checkVideo
+  },
+  {
+    id: "chat",
+    group: "lesson",
+    name: "授業チャット",
+    description: "授業ルーム内での実際の送受信",
+    check: checkChat
+  },
+  {
+    id: "board",
+    group: "lesson",
+    name: "共有ホワイトボード",
+    description: "授業中の描画データ同期",
+    check: checkBoard
+  },
+  {
+    id: "camera",
+    group: "browser",
+    name: "カメラ・マイク",
+    description: "ブラウザのメディア取得API",
+    check: checkCamera
+  },
+  {
+    id: "screen",
+    group: "browser",
+    name: "画面共有",
+    description: "画面共有APIの利用可否",
+    check: checkScreen
+  }
+];
+
+function renderInitial() {
+  for (const item of serviceDefinitions) {
+    const row = document.createElement("div");
+    row.className = "service-row";
+    row.id = "row-" + item.id;
+
+    row.innerHTML = `
+      <span class="service-indicator" id="dot-${item.id}"></span>
+      <div class="service-info">
+        <div class="service-name">${item.name}</div>
+        <div class="service-detail" id="detail-${item.id}">${item.description}</div>
+      </div>
+      <div class="service-time" id="time-${item.id}">--</div>
+      <div class="service-status unknown" id="status-${item.id}">未確認</div>
+    `;
+
+    groups[item.group].appendChild(row);
+  }
+}
+
+function setResult(id, state, detail, elapsed = null) {
+  const item = serviceDefinitions.find(x => x.id === id);
+  if (!item) return;
+
+  results.set(id, { state, detail, elapsed });
+
+  const dot = $("dot-" + id);
+  const status = $("status-" + id);
+  const detailElement = $("detail-" + id);
+  const time = $("time-" + id);
+
+  dot.className = "service-indicator " + state;
+  status.className = "service-status " + state;
+
+  const labels = {
+    ok: "正常",
+    warning: "警告",
+    error: "障害",
+    unknown: "未確認"
+  };
+
+  status.textContent = labels[state];
+  detailElement.textContent = detail;
+  time.textContent = elapsed === null ? "--" : elapsed + " ms";
+
+  updateOverview();
+}
+
+function updateOverview() {
+  const values = [...results.values()];
+  const ok = values.filter(x => x.state === "ok").length;
+  const warning = values.filter(x => x.state === "warning").length;
+  const error = values.filter(x => x.state === "error").length;
+  const unknown = values.filter(x => x.state === "unknown").length;
+
+  $("okCount").textContent = ok;
+  $("warningCount").textContent = warning;
+  $("otherCount").textContent = error + unknown;
+
+  const badge = $("overallBadge");
+  const title = $("overallTitle");
+  const description = $("overallDescription");
+
+  if (error > 0) {
+    badge.className = "pill error";
+    badge.textContent = "障害を検出";
+    title.textContent = "一部のサービスに障害が発生しています";
+    description.textContent =
+      `障害 ${error}件、警告 ${warning}件、未確認 ${unknown}件です。詳細を確認してください。`;
+  } else if (warning > 0 || unknown > 0) {
+    badge.className = "pill warning";
+    badge.textContent = "一部未確認";
+    title.textContent = "一部のサービスを確認できていません";
+    description.textContent =
+      `正常 ${ok}件、警告 ${warning}件、未確認 ${unknown}件です。`;
+  } else if (ok === serviceDefinitions.length) {
+    badge.className = "pill ok";
+    badge.textContent = "正常稼働中";
+    title.textContent = "すべての診断対象が正常です";
+    description.textContent =
+      "確認可能なすべてのサービスが正常に応答しています。";
+  } else {
+    badge.className = "pill unknown";
+    badge.textContent = "診断中";
+    title.textContent = "サービスの状態を確認しています";
+    description.textContent = "診断が完了するまでお待ちください。";
+  }
+}
+
+async function timedCheck(id, callback) {
+  const start = performance.now();
+
+  try {
+    const result = await Promise.race([
+      callback(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("応答がタイムアウトしました")), 10000)
+      )
+    ]);
+
+    const elapsed = Math.round(performance.now() - start);
+
+    setResult(
+      id,
+      result.state || "ok",
+      result.detail || "確認に成功しました。",
+      elapsed
+    );
+  } catch (error) {
+    const elapsed = Math.round(performance.now() - start);
+    setResult(id, "error", error.message || "診断に失敗しました。", elapsed);
+  }
+}
+
+async function apiRequest(path) {
+  const token = auth.currentUser
+    ? await auth.currentUser.getIdToken()
+    : null;
+
+  const headers = {};
+  if (token) headers.Authorization = "Bearer " + token;
+
+  const response = await fetch(path, {
+    method: "GET",
+    headers,
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+  }
+
+  return response;
+}
+
+async function checkApi() {
+  const response = await apiRequest("/health");
+  const data = await response.json();
+
+  if (data.ok !== true) {
+    throw new Error("APIの正常応答を確認できません。");
+  }
+
+  return {
+    detail: "APIサーバーが正常に応答しています。"
+  };
+}
+
+async function checkWebsite() {
+  const response = await fetch("/", { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error("Webサイトの取得に失敗しました。");
+  }
+
+  return {
+    detail: "Webサイトのページ配信を確認しました。"
+  };
+}
+
+async function checkAuth() {
+  await authPersistenceReady;
+
+  if (!auth) {
+    throw new Error("Firebase Authenticationが初期化されていません。");
+  }
+
+  return {
+    detail: auth.currentUser
+      ? "Firebase Authentication初期化済み。ログイン中です。"
+      : "Firebase Authentication初期化済み。未ログイン状態です。"
+  };
+}
+
+async function checkFirestore() {
+  if (!auth.currentUser) {
+    return {
+      state: "unknown",
+      detail: "未ログインのため、Firestoreの認証付き読み取りを確認できません。"
+    };
+  }
+
+  const snapshot = await getDoc(doc(db, "settings", "system"));
+
+  if (!snapshot.exists()) {
+    return {
+      state: "warning",
+      detail: "Firestoreには接続できましたが、settings/systemが存在しません。"
+    };
+  }
+
+  return {
+    detail: "Firestoreへの接続とsettings/systemの読み取りに成功しました。"
+  };
+}
+
+async function checkProfile() {
+  if (!auth.currentUser) {
+    return {
+      state: "unknown",
+      detail: "未ログインのため、プロフィールを確認できません。"
+    };
+  }
+
+  const response = await apiRequest("/api/me");
+  const data = await response.json();
+
+  if (!data || !(data.user || data.uid || data.id)) {
+    throw new Error("ユーザー情報を取得できませんでした。");
+  }
+
+  return {
+    detail: "ログイン中のユーザー情報を取得できました。"
+  };
+}
+
+async function checkSystem() {
+  const response = await apiRequest("/api/system/status");
+  const data = await response.json();
+
+  return {
+    detail: "システム設定APIが応答しています。"
+  };
+}
+
+async function checkLiveKit() {
+  const url = window.WEB_COURSE_PLUS_LIVEKIT_URL;
+
+  if (!url) {
+    return {
+      state: "unknown",
+      detail: "LiveKitの接続先はブラウザから直接取得できません。サーバー側で管理されています。"
+    };
+  }
+
+  return {
+    state: "warning",
+    detail: "接続先設定を確認しました。実際の接続テストは授業参加時に行います。"
+  };
+}
+
+async function checkToken() {
+  if (!auth.currentUser) {
+    return {
+      state: "unknown",
+      detail: "ログインが必要です。授業IDを指定したトークン発行試験は行っていません。"
+    };
+  }
+
+  return {
+    state: "unknown",
+    detail: "実際の授業IDが必要なため、トークン発行は未検査です。"
+  };
+}
+
+async function checkVideo() {
+  if (!window.RTCPeerConnection) {
+    throw new Error("このブラウザはWebRTCに対応していません。");
+  }
+
+  return {
+    detail: "ブラウザのWebRTC機能が利用可能です。実際の通話は未検査です。"
+  };
+}
+
+async function checkChat() {
+  return {
+    state: "unknown",
+    detail: "実際の授業ルーム内で送受信テストを行う必要があります。"
+  };
+}
+
+async function checkBoard() {
+  return {
+    state: "unknown",
+    detail: "実際の授業ルーム内で描画同期テストを行う必要があります。"
+  };
+}
+
+async function checkCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("カメラ・マイク取得APIが利用できません。HTTPS環境を確認してください。");
+  }
+
+  return {
+    detail: "カメラ・マイク取得APIに対応しています。機器の利用許可は未確認です。"
+  };
+}
+
+async function checkScreen() {
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    throw new Error("画面共有APIが利用できません。");
+  }
+
+  return {
+    detail: "画面共有APIに対応しています。実際の共有開始は未検査です。"
+  };
+}
+
+async function runDiagnostics() {
+  if (running) return;
+  running = true;
+
+  $("refreshButton").disabled = true;
+  $("refreshButton").textContent = "診断中...";
+
+  for (const item of serviceDefinitions) {
+    setResult(item.id, "unknown", "診断中...");
+  }
+
+  await Promise.all(
+    serviceDefinitions.map(item =>
+      timedCheck(item.id, item.check)
+    )
+  );
+
+  const now = new Date();
+
+  $("overallDescription").textContent +=
+    ` 最終確認：${now.toLocaleString("ja-JP", {
+      timeZone: "Asia/Tokyo"
+    })} JST`;
+
+  $("refreshButton").disabled = false;
+  $("refreshButton").textContent = "再診断する";
+  running = false;
+}
+
+function startAutoRefresh() {
+  clearInterval(timer);
+
+  if (autoEnabled) {
+    timer = setInterval(runDiagnostics, 30000);
+  }
+
+  $("autoButton").textContent =
+    "自動更新：" + (autoEnabled ? "ON" : "OFF");
+}
+
+$("refreshButton").addEventListener("click", runDiagnostics);
+
+$("autoButton").addEventListener("click", () => {
+  autoEnabled = !autoEnabled;
+  startAutoRefresh();
+});
+
+renderInitial();
+
+try {
+  await authPersistenceReady;
+} catch (error) {
+  console.error("Firebase初期化エラー:", error);
+}
+
+runDiagnostics();
+startAutoRefresh();
+
+</script>
+</body>
+</html>
