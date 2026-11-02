@@ -5,43 +5,189 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>サービス稼働状況 | WEB Course-plus</title>
+
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f5f7fa;color:#172338;font-family:Arial,"Noto Sans JP",sans-serif}
-header{height:64px;padding:0 7%;background:#fff;border-bottom:1px solid #e5e9f0;display:flex;align-items:center;justify-content:space-between}
-.logo{font-size:19px;font-weight:800}
-.logo span{color:#2563eb}
-.header-label{color:#7b8798;font-size:12px}
-main{width:min(850px,92%);margin:45px auto}
-h1{font-size:27px;margin:0 0 9px}
-.subtitle{color:#718096;font-size:13px;margin-bottom:28px}
-.summary,.section{background:#fff;border:1px solid #e3e8ef;border-radius:12px}
-.summary{padding:25px;margin-bottom:22px}
-.summary-title{font-size:14px;font-weight:700;color:#68768a}
-.summary-message{font-size:21px;font-weight:800;margin-top:13px;line-height:1.6}
-.ok-text{color:#16834b}
-.error-text{color:#dc3545}
-.loading-text{color:#718096}
-.summary-time{color:#8a94a4;font-size:11px;margin-top:12px}
-.section{overflow:hidden;margin-bottom:18px}
-.section-heading{padding:17px 22px;font-size:14px;font-weight:800;border-bottom:1px solid #edf0f4}
-.service{min-height:62px;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:15px;border-bottom:1px solid #edf0f4}
-.service:last-child{border-bottom:0}
-.service-name{font-size:14px;font-weight:600}
-.status{font-size:24px;font-weight:800;min-width:30px;text-align:center}
-.status.ok{color:#16a05a}
-.status.error{color:#dc3545}
-.status.unknown{color:#a0a9b7}
-footer{text-align:center;color:#929baa;font-size:11px;padding:28px 15px}
-@media(max-width:600px){
- header{padding:0 17px}
- main{margin:30px auto}
- h1{font-size:23px}
- .summary-message{font-size:18px}
- .service{padding:14px 16px}
+:root {
+  font-family: Arial, "Noto Sans JP", sans-serif;
+  color: #172338;
+  background: #f5f7fa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+header {
+  height: 64px;
+  padding: 0 7%;
+  background: #fff;
+  border-bottom: 1px solid #e5e9f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.logo span {
+  color: #2563eb;
+}
+
+.header-label {
+  color: #7b8798;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+main {
+  width: min(850px, 92%);
+  margin: 45px auto;
+}
+
+h1 {
+  font-size: 27px;
+  margin: 0 0 9px;
+}
+
+.subtitle {
+  color: #718096;
+  font-size: 13px;
+  margin-bottom: 28px;
+}
+
+.summary,
+.section {
+  background: #fff;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+}
+
+.summary {
+  padding: 25px;
+  margin-bottom: 22px;
+}
+
+.summary-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #68768a;
+}
+
+.summary-message {
+  font-size: 21px;
+  font-weight: 800;
+  margin-top: 13px;
+  line-height: 1.6;
+}
+
+.ok-text {
+  color: #16834b;
+}
+
+.error-text {
+  color: #dc3545;
+}
+
+.loading-text {
+  color: #718096;
+}
+
+.summary-time {
+  color: #8a94a4;
+  font-size: 11px;
+  margin-top: 12px;
+}
+
+.section {
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.section-heading {
+  padding: 17px 22px;
+  font-size: 14px;
+  font-weight: 800;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.service {
+  min-height: 62px;
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.service:last-child {
+  border-bottom: 0;
+}
+
+.service-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status {
+  font-size: 24px;
+  font-weight: 800;
+  min-width: 30px;
+  text-align: center;
+}
+
+.status.ok {
+  color: #16a05a;
+}
+
+.status.error {
+  color: #dc3545;
+}
+
+.status.unknown {
+  color: #a0a9b7;
+}
+
+footer {
+  text-align: center;
+  color: #929baa;
+  font-size: 11px;
+  padding: 28px 15px;
+}
+
+@media(max-width:600px) {
+  header {
+    padding: 0 17px;
+  }
+
+  main {
+    margin: 30px auto;
+  }
+
+  h1 {
+    font-size: 23px;
+  }
+
+  .summary-message {
+    font-size: 18px;
+  }
+
+  .service {
+    padding: 14px 16px;
+  }
 }
 </style>
 </head>
+
 <body>
 
 <header>
@@ -50,23 +196,33 @@ footer{text-align:center;color:#929baa;font-size:11px;padding:28px 15px}
 </header>
 
 <main>
+
   <h1>サービス稼働状況</h1>
-  <div class="subtitle">各サービスの現在の稼働状況をお知らせします。</div>
+
+  <div class="subtitle">
+    各サービスの現在の稼働状況をお知らせします。
+  </div>
 
   <section class="summary">
     <div class="summary-title">現在のシステム状況</div>
+
     <div class="summary-message loading-text" id="summary">
       稼働状況を確認しています...
     </div>
-    <div class="summary-time" id="updated">最終確認：確認中</div>
+
+    <div class="summary-time" id="updated">
+      最終確認：確認中
+    </div>
   </section>
 
   <section class="section">
     <div class="section-heading">サーバー</div>
+
     <div class="service">
       <span class="service-name">APIサーバー</span>
       <span class="status unknown" id="api">－</span>
     </div>
+
     <div class="service">
       <span class="service-name">Webサーバー</span>
       <span class="status unknown" id="web">－</span>
@@ -75,15 +231,18 @@ footer{text-align:center;color:#929baa;font-size:11px;padding:28px 15px}
 
   <section class="section">
     <div class="section-heading">認証・データベース</div>
+
     <div class="service">
       <span class="service-name">Firebase Authentication</span>
       <span class="status unknown" id="auth">－</span>
     </div>
+
     <div class="service">
       <span class="service-name">Cloud Firestore</span>
       <span class="status unknown" id="firestore">－</span>
     </div>
   </section>
+
 </main>
 
 <footer>
@@ -91,14 +250,23 @@ footer{text-align:center;color:#929baa;font-size:11px;padding:28px 15px}
 </footer>
 
 <script type="module">
+
 const $ = id => document.getElementById(id);
+
+let checking = false;
 
 function setStatus(id, state) {
   const element = $(id);
+
   element.className = "status " + state;
-  element.textContent =
-    state === "ok" ? "✓" :
-    state === "error" ? "✕" : "－";
+
+  if (state === "ok") {
+    element.textContent = "✓";
+  } else if (state === "error") {
+    element.textContent = "✕";
+  } else {
+    element.textContent = "－";
+  }
 }
 
 function setSummary(message, state) {
@@ -106,32 +274,77 @@ function setSummary(message, state) {
   $("summary").className = "summary-message " + state;
 }
 
+function updateTime() {
+  $("updated").textContent =
+    "最終確認：" +
+    new Date().toLocaleString("ja-JP", {
+      timeZone: "Asia/Tokyo"
+    }) + " JST";
+}
+
+async function withTimeout(promise, ms = 10000) {
+  let timeoutId;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error("タイムアウト")),
+          ms
+        );
+      })
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function checkApi() {
-  const response = await fetch("/health", {
-    cache: "no-store"
-  });
-  if (!response.ok) throw new Error("API error");
+  const response = await withTimeout(
+    fetch("/health", {
+      cache: "no-store"
+    })
+  );
+
+  if (!response.ok) {
+    throw new Error("API HTTPエラー");
+  }
 
   const data = await response.json();
-  if (data.ok !== true) throw new Error("API unhealthy");
+
+  if (data.status !== "ok") {
+    throw new Error("APIの応答が正常ではありません");
+  }
+
+  return true;
 }
 
 async function checkWeb() {
-  const response = await fetch("/", {
-    cache: "no-store"
-  });
-  if (!response.ok) throw new Error("Web error");
+  const response = await withTimeout(
+    fetch("/", {
+      cache: "no-store"
+    })
+  );
+
+  if (!response.ok) {
+    throw new Error("Webサイトに接続できません");
+  }
+
+  return true;
 }
 
-async function checkFirebase() {
-  const firebase = await import("./assets/js/firebase.js");
+async function getFirebase() {
+  const firebase = await withTimeout(
+    import("./assets/js/firebase.js")
+  );
 
   if (!firebase.auth || !firebase.db) {
-    throw new Error("Firebase initialization failed");
+    throw new Error("Firebaseの初期化に失敗しました");
   }
 
   if (firebase.authPersistenceReady) {
-    await firebase.authPersistenceReady;
+    await withTimeout(firebase.authPersistenceReady);
   }
 
   return firebase;
@@ -142,16 +355,18 @@ async function checkFirestore(firebase) {
     return "unknown";
   }
 
-  const { doc, getDoc } = await import(
+  const firestore = await import(
     "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js"
   );
 
-  const snapshot = await getDoc(
-    doc(firebase.db, "settings", "system")
+  const snapshot = await withTimeout(
+    firestore.getDoc(
+      firestore.doc(firebase.db, "settings", "system")
+    )
   );
 
   if (!snapshot.exists()) {
-    throw new Error("System settings not found");
+    return "unknown";
   }
 
   return "ok";
@@ -159,91 +374,91 @@ async function checkFirestore(firebase) {
 
 async function safeCheck(id, callback) {
   try {
-    await Promise.race([
-      callback(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 10000)
-      )
-    ]);
+    await withTimeout(callback());
     setStatus(id, "ok");
-    return true;
+    return "ok";
   } catch (error) {
-    console.error(id, error);
+    console.error("診断エラー:", id, error);
     setStatus(id, "error");
-    return false;
+    return "error";
   }
 }
 
 async function updateStatus() {
-  setSummary("稼働状況を確認しています...", "loading-text");
+  if (checking) return;
 
-  const apiResult = await safeCheck("api", checkApi);
-  const webResult = await safeCheck("web", checkWeb);
+  checking = true;
 
-  let firebase;
-  const authResult = await safeCheck("auth", async () => {
-    firebase = await checkFirebase();
-  });
+  try {
+    const apiResult = await safeCheck("api", checkApi);
 
-  let firestoreResult = false;
+    const webResult = await safeCheck("web", checkWeb);
 
-  if (authResult) {
-    try {
-      const result = await checkFirestore(firebase);
+    let firebase = null;
 
-      if (result === "unknown") {
-        setStatus("firestore", "unknown");
-      } else {
-        setStatus("firestore", "ok");
-        firestoreResult = true;
+    const authResult = await safeCheck("auth", async () => {
+      firebase = await getFirebase();
+    });
+
+    let firestoreResult = "unknown";
+
+    if (authResult === "ok") {
+      try {
+        firestoreResult = await checkFirestore(firebase);
+        setStatus("firestore", firestoreResult);
+      } catch (error) {
+        console.error("Firestore診断エラー:", error);
+        firestoreResult = "error";
+        setStatus("firestore", "error");
       }
-    } catch (error) {
-      console.error("Firestore:", error);
-      setStatus("firestore", "error");
+    } else {
+      setStatus("firestore", "unknown");
     }
-  } else {
-    setStatus("firestore", "unknown");
-  }
 
-  const allOK = apiResult && webResult && authResult &&
-    (firestoreResult || $("firestore").textContent === "－");
+    const results = [
+      apiResult,
+      webResult,
+      authResult
+    ];
 
-  if (allOK) {
+    const hasError = results.includes("error") ||
+      firestoreResult === "error";
+
+    if (hasError) {
+      setSummary(
+        "一部のサービスで問題を確認しました",
+        "error-text"
+      );
+    } else {
+      setSummary(
+        "すべての確認可能なサービスが正常に稼働しています",
+        "ok-text"
+      );
+    }
+
+    updateTime();
+
+  } catch (error) {
+    console.error("全体診断エラー:", error);
+
     setSummary(
-      "すべてのサービスが正常に稼働しています",
-      "ok-text"
-    );
-  } else {
-    setSummary(
-      "一部のサービスで問題を確認しました",
+      "稼働状況を取得できませんでした",
       "error-text"
     );
-  }
 
-  $("updated").textContent =
-    "最終確認：" +
-    new Date().toLocaleString("ja-JP", {
-      timeZone: "Asia/Tokyo"
-    }) + " JST";
+    updateTime();
+
+  } finally {
+    checking = false;
+  }
 }
 
-async function start() {
-  try {
-    await updateStatus();
-  } catch (error) {
-    console.error(error);
-    setSummary("稼働状況を取得できませんでした", "error-text");
-  }
+updateStatus();
 
-  setInterval(() => {
-    updateStatus().catch(error => {
-      console.error(error);
-      setSummary("稼働状況を取得できませんでした", "error-text");
-    });
-  }, 30000);
-}
+setInterval(() => {
+  updateStatus();
+}, 30000);
 
-start();
 </script>
 
 </body>
