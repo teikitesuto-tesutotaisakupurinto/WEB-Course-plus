@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -6,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>講師ダッシュボード | WEB Course-plus</title>
   <link rel="stylesheet" href="/assets/css/common.css">
+  <style>
+  </style>
 </head>
 <body>
 <div class="app">
@@ -104,6 +105,7 @@
           <a href="/teacher/lessons.html" class="btn btn-primary">授業を設定する</a>
           <a href="/teacher/students.html" class="btn btn-secondary">生徒一覧</a>
           <a href="/teacher/records.html" class="btn btn-secondary">指導記録</a>
+          <a href="/teacher/loginsticker.html" class="btn btn-secondary">ログインシール発行</a>
         </div>
       </section>
 
@@ -149,21 +151,22 @@
       && date.getDate() === now.getDate();
   }
 
-  async function getStudentName(uid) {
-    if (!uid) return "生徒";
+  async function getStudentInfo(uid) {
+    if (!uid) return { name: "生徒", email: "" };
     if (studentCache.has(uid)) return studentCache.get(uid);
 
     try {
       const snapshot = await getDoc(doc(db, "users", uid));
-      const name = snapshot.exists()
-        ? snapshot.data().displayName || snapshot.data().name || "生徒"
-        : "生徒";
-
-      studentCache.set(uid, name);
-      return name;
+      const data = snapshot.exists() ? snapshot.data() : {};
+      const info = {
+        name: data.displayName || data.name || "生徒",
+        email: data.email || data.emailAddress || ""
+      };
+      studentCache.set(uid, info);
+      return info;
     } catch (error) {
-      console.error("[Student Name]", error);
-      return "生徒";
+      console.error("[Student Info]", error);
+      return { name: "生徒", email: "" };
     }
   }
 
@@ -305,8 +308,8 @@
     $("empty").classList.add("hidden");
 
     for (const lesson of upcoming.slice(0, 10)) {
-      const name = await getStudentName(lesson.studentId);
-      $("lesson-list").appendChild(createLessonCard(lesson, name));
+      const info = await getStudentInfo(lesson.studentId);
+      $("lesson-list").appendChild(createLessonCard(lesson, info.name));
     }
   }
 
