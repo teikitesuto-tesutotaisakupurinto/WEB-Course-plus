@@ -1,74 +1,81 @@
+**後半（2/4）**
+
 ```html
-      padding: 28px;
       align-items: center;
       justify-content: center;
+      padding: 20px;
       background: #f4f7fb;
     }
 
     .error-card {
-      width: min(460px, 100%);
-      padding: 28px;
+      width: min(440px, 100%);
+      padding: 30px;
       border: 1px solid var(--border);
       border-radius: 14px;
       background: #fff;
-      box-shadow: 0 10px 35px #15243a12;
       text-align: center;
     }
 
     .error-card h2 {
       margin: 0 0 10px;
-      color: #b91c1c;
       font-size: 19px;
     }
 
     .error-card p {
-      color: #64748b;
+      color: var(--muted);
       font-size: 13px;
       line-height: 1.8;
+      overflow-wrap: anywhere;
     }
 
     .error-card button {
-      height: 42px;
-      padding: 0 20px;
+      margin-top: 12px;
+      padding: 10px 18px;
       border: 0;
       border-radius: 8px;
       color: #fff;
       background: var(--blue);
     }
 
-    #remoteAudioContainer {
-      position: fixed;
-      width: 1px;
-      height: 1px;
-      left: -10000px;
-      top: -10000px;
-      overflow: hidden;
-    }
-
-    @media (max-width: 760px) {
-      .topbar {
-        height: 52px;
-        flex-basis: 52px;
-        padding: 0 12px;
+    @media (max-width: 850px) {
+      .room-main.has-share .video-area {
+        grid-template-columns: minmax(0, 1fr) 210px;
       }
 
+      .toolbar { gap: 5px; }
+
+      .tool-button {
+        min-width: 68px;
+        padding: 0 7px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .topbar { padding: 0 10px; }
       .brand { font-size: 14px; }
       .lesson-title { display: none; }
+
       .room-main { padding: 7px; }
 
       .camera-strip {
         grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
-        grid-template-rows: repeat(auto-fit, minmax(0, 1fr));
+        grid-auto-rows: minmax(0, 1fr);
+        align-content: stretch;
         gap: 7px;
       }
 
       .room-main.has-share .video-area {
-        grid-template-columns: minmax(0, 1fr) 112px;
+        grid-template-columns: minmax(0, 1fr) 115px;
         gap: 7px;
       }
 
-      .room-main.has-share .camera-strip { gap: 7px; }
-      .avatar { width: 42px; height: 42px; font-size: 17px; }
+      .camera-placeholder { font-size: 10px; }
+
+      .avatar {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+      }
 
       .camera-name {
         bottom: 6px;
@@ -84,40 +91,56 @@
         font-size: 9px;
       }
 
-      .toolbar {
-        height: 68px;
-        flex-basis: 68px;
-        gap: 5px;
-        padding: 6px;
-      }
-
-      .tool-button {
-        min-width: 0;
-        flex: 1;
-        height: 44px;
-        padding: 0 5px;
-        font-size: 10px;
-      }
-
       .chat-panel {
         top: 7px;
         right: 7px;
         bottom: 7px;
-        width: min(340px, calc(100% - 14px));
+        width: min(330px, calc(100% - 14px));
       }
 
-      .footer { height: 20px; flex-basis: 20px; }
+      .toolbar {
+        height: 66px;
+        flex-basis: 66px;
+        gap: 4px;
+        padding: 5px;
+      }
+
+      .tool-button {
+        flex: 1;
+        min-width: 0;
+        height: 46px;
+        padding: 0 2px;
+        font-size: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: clip;
+      }
+
+      .footer { font-size: 9px; }
     }
   </style>
 </head>
 
 <body>
+  <div class="loading-screen" id="loadingScreen">
+    授業室に接続しています...
+  </div>
+
+  <div class="error-screen" id="errorScreen">
+    <div class="error-card">
+      <h2>授業室に入室できません</h2>
+      <p id="errorMessage">エラーが発生しました。</p>
+      <button id="errorBackButton" type="button">ダッシュボードへ戻る</button>
+    </div>
+  </div>
+
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark">W</div>
       <span>WEB Course-plus</span>
       <span class="lesson-title" id="lessonTitle">オンライン授業</span>
     </div>
+
     <div class="connection" id="connectionStatus">
       <span class="connection-dot"></span>
       <span id="connectionText">接続準備中</span>
@@ -125,47 +148,75 @@
   </header>
 
   <main class="room-main" id="roomMain">
-    <div class="video-area">
-      <section class="share-stage" id="shareStage">
+    <section class="video-area">
+
+      <div class="share-stage" id="shareStage">
         <video id="shareVideo" autoplay playsinline></video>
-        <div class="share-label" id="shareLabel">画面共有</div>
+        <div class="share-label">画面共有</div>
         <canvas id="boardCanvas"></canvas>
-      </section>
+      </div>
 
-      <section class="camera-strip" id="cameraStrip">
-        <div class="camera-tile" id="localTile">
-          <video id="localVideo" autoplay muted playsinline></video>
-          <div class="camera-placeholder" id="localPlaceholder">
-            <div class="avatar" id="localAvatar">自</div>
-            <span>カメラOFF</span>
+      <div class="camera-strip">
+
+        <!-- 生徒の映像は常に左側 -->
+        <div class="camera-tile is-hidden" id="studentCameraTile">
+          <video id="studentVideo" autoplay playsinline></video>
+          <div class="camera-placeholder" id="studentPlaceholder">
+            <div class="avatar" id="studentAvatar">生</div>
+            <span id="studentPlaceholderText">カメラ OFF</span>
           </div>
-          <div class="camera-name" id="localName">自分</div>
-          <div class="camera-status" id="localCameraStatus">カメラOFF</div>
+          <div class="camera-name" id="studentName">生徒</div>
+          <div class="camera-status" id="studentCameraStatus">カメラ OFF</div>
         </div>
-      </section>
-    </div>
 
+        <!-- 先生の映像は常に右側 -->
+        <div class="camera-tile is-hidden" id="teacherCameraTile">
+          <video id="teacherVideo" autoplay playsinline></video>
+          <div class="camera-placeholder" id="teacherPlaceholder">
+            <div class="avatar" id="teacherAvatar">先</div>
+            <span id="teacherPlaceholderText">カメラ OFF</span>
+          </div>
+          <div class="camera-name" id="teacherName">先生</div>
+          <div class="camera-status" id="teacherCameraStatus">カメラ OFF</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- チャットは映像の上に重ねて開く -->
     <aside class="chat-panel" id="chatPanel">
       <div class="chat-heading">
-        <span>授業チャット</span>
-        <button class="chat-close" id="chatClose">閉じる</button>
+        <span>チャット</span>
+        <button class="chat-close" id="chatCloseButton" type="button">閉じる</button>
       </div>
+
       <div class="chat-messages" id="chatMessages">
-        <div class="chat-empty">メッセージはまだありません。</div>
+        <div class="chat-empty">
+          授業中のメッセージをここでやり取りできます。
+        </div>
       </div>
+
       <form class="chat-input-area" id="chatForm">
-        <input id="chatInput" type="text" maxlength="1000" placeholder="メッセージを入力">
+        <input
+          type="text"
+          id="chatInput"
+          maxlength="1000"
+          placeholder="メッセージを入力..."
+          autocomplete="off"
+        >
         <button class="send-button" id="sendButton" type="submit">送信</button>
       </form>
     </aside>
   </main>
 
   <nav class="toolbar">
-    <button class="tool-button" id="cameraButton" type="button">カメラON</button>
-    <button class="tool-button" id="micButton" type="button">マイクON</button>
+    <button class="tool-button" id="micButton" type="button">マイク OFF</button>
+    <button class="tool-button" id="cameraButton" type="button">カメラ OFF</button>
     <button class="tool-button" id="shareButton" type="button">画面共有</button>
-    <button class="tool-button" id="drawButton" type="button">書き込み</button>
-    <button class="tool-button" id="chatButton" type="button">チャット</button>
+    <button class="tool-button" id="drawButton" type="button" disabled>書き込み</button>
+    <button class="tool-button" id="eraseButton" type="button" disabled>消しゴム</button>
+    <button class="tool-button" id="clearButton" type="button" disabled>全消去</button>
+    <button class="tool-button" id="chatToggleButton" type="button">チャットを開く</button>
     <button class="tool-button danger" id="leaveButton" type="button">退出</button>
   </nav>
 
@@ -173,522 +224,778 @@
     © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
   </footer>
 
-  <div id="remoteAudioContainer" aria-hidden="true"></div>
   <div class="toast" id="toast"></div>
-
-  <div class="loading-screen" id="loadingScreen">
-    授業に接続しています…
-  </div>
-
-  <div class="error-screen" id="errorScreen">
-    <div class="error-card">
-      <h2 id="errorTitle">授業に接続できません</h2>
-      <p id="errorMessage">授業情報を確認してください。</p>
-      <button type="button" onclick="location.href='../dashboard.html'">ダッシュボードへ戻る</button>
-    </div>
-  </div>
+  <div id="remoteAudioContainer" aria-hidden="true"></div>
 
   <script type="module">
-    import { auth, db, authPersistenceReady } from "../assets/js/firebase.js";
+    import {
+      auth,
+      db,
+      authPersistenceReady
+    } from "../assets/js/firebase.js";
+
     import {
       doc,
       getDoc,
       collection,
       addDoc,
+      getDocs,
+      onSnapshot,
       query,
       orderBy,
-      onSnapshot,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+      serverTimestamp,
+      writeBatch
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
     import {
       Room,
       RoomEvent,
-      Track,
-      createLocalVideoTrack,
-      createLocalAudioTrack
+      Track
     } from "https://cdn.jsdelivr.net/npm/livekit-client@2.15.6/+esm";
 
     const $ = (id) => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+    const lessonId = params.get("lessonId") || params.get("id");
+
+    let currentUser = null;
+    let userProfile = null;
+    let lessonData = null;
+    let liveRoom = null;
+
+    let micEnabled = false;
+    let cameraEnabled = false;
+    let screenEnabled = false;
+    let drawingEnabled = false;
+    let drawingMode = "pen";
+    let chatOpen = false;
+    let leaving = false;
+
+    let localCameraTrack = null;
+    let remoteCameraTrack = null;
+    let localScreenTrack = null;
+    let remoteScreenTrack = null;
+    const remoteAudioElements = new Map();
+    const participantTileMap = new Map();
+    const cameraTrackTileMap = new Map();
+    let audioUnlocked = false;
+    let audioNeedsGesture = false;
+
+    let unsubscribeBoard = null;
+    let unsubscribeChat = null;
+    let resizeObserver = null;
+
+    let boardStrokes = new Map();
+    let activeStroke = null;
+    let boardContext = null;
+    let boardWidth = 0;
+    let boardHeight = 0;
+    let toastTimer = null;
 
     const roomMain = $("roomMain");
-    const loadingScreen = $("loadingScreen");
-    const errorScreen = $("errorScreen");
-    const connectionStatus = $("connectionStatus");
-    const connectionText = $("connectionText");
-    const cameraStrip = $("cameraStrip");
-    const shareStage = $("shareStage");
-    const shareVideo = $("shareVideo");
-    const remoteAudioContainer = $("remoteAudioContainer");
-    const chatPanel = $("chatPanel");
+    const boardCanvas = $("boardCanvas");
     const chatMessages = $("chatMessages");
-    const toastElement = $("toast");
-
-    let liveRoom = null;
-    let currentUser = null;
-    let currentProfile = null;
-    let currentLesson = null;
-    let lessonId = null;
-    let localVideoTrack = null;
-    let localAudioTrack = null;
-    let localScreenTrack = null;
-    let chatUnsubscribe = null;
-    let toastTimer = null;
-    let isDrawing = false;
-    let drawingEnabled = false;
-
-    const remoteAudioElements = new Map();
-    const participantTiles = new Map();
-    const participantVideoTracks = new Map();
 
     function showToast(message) {
-      toastElement.textContent = message;
-      toastElement.classList.add("show");
+      const element = $("toast");
+      element.textContent = message;
+      element.classList.add("show");
+
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => {
-        toastElement.classList.remove("show");
+        element.classList.remove("show");
       }, 2600);
     }
 
-    function setConnection(text, connected = false) {
-      connectionText.textContent = text;
-      connectionStatus.classList.toggle("connected", connected);
+    function setConnection(connected, message) {
+      $("connectionStatus").classList.toggle("connected", connected);
+      $("connectionText").textContent = message;
     }
 
-    function showError(title, message) {
-      $("errorTitle").textContent = title;
+    function showError(message) {
+      $("loadingScreen").classList.add("hidden");
       $("errorMessage").textContent = message;
-      loadingScreen.classList.add("hidden");
-      errorScreen.style.display = "flex";
+      $("errorScreen").style.display = "flex";
     }
 
-    function getInitial(name) {
-      return String(name || "？").trim().charAt(0) || "？";
+    function dashboardUrl() {
+      if (userProfile?.role === "teacher") {
+        return "https://web-course-plus.onrender.com/teacher/dashboard.html";
+      }
+
+      if (userProfile?.role === "admin") {
+        return "https://web-course-plus.onrender.com/admin/dashboard.html";
+      }
+
+      return "https://web-course-plus.onrender.com/student/dashboard.html";
     }
 
-    function safeText(value) {
-      return String(value ?? "");
+    function goDashboard() {
+      location.href = dashboardUrl();
     }
 
-    function getLessonTitle(lesson) {
-      return lesson.title || lesson.name || lesson.subject || "オンライン授業";
+    $("errorBackButton").addEventListener("click", goDashboard);
+
+    function isStudent() {
+      return userProfile?.role === "student";
     }
 
-    function makeParticipantTile(identity, name, isLocal = false) {
-      const tileId = isLocal ? "localTile" : `remote-${identity}`;
-      let tile = document.getElementById(tileId);
+    function localTile() {
+      return isStudent() ? "student" : "teacher";
+    }
 
-      if (tile) return tile;
+    function remoteTile() {
+      return isStudent() ? "teacher" : "student";
+    }
 
-      tile = document.createElement("div");
+    function tileElements(role) {
+      return {
+        tile: $(role + "CameraTile"),
+        video: $(role + "Video"),
+        placeholder: $(role + "Placeholder"),
+        status: $(role + "CameraStatus"),
+        placeholderText: $(role + "PlaceholderText")
+      };
+    }
+
+    function setTileCameraVisible(elements, enabled, message) {
+      if (!elements) return;
+      elements.video.style.display = enabled ? "block" : "none";
+      elements.placeholder.style.display = enabled ? "none" : "flex";
+      elements.status.textContent = enabled ? "カメラ ON" : "カメラ OFF";
+      if (message) elements.placeholderText.textContent = message;
+    }
+
+    function setCameraVisible(role, enabled, message) {
+      setTileCameraVisible(tileElements(role), enabled, message);
+    }
+
+    function getParticipantRole(participant) {
+      try {
+        const metadata = JSON.parse(participant.metadata || "{}");
+        return metadata.role || "";
+      } catch (_) {
+        return "";
+                function createExtraCameraTile(participant) {
+      const tile = document.createElement("div");
       tile.className = "camera-tile";
-      tile.id = tileId;
+      tile.dataset.identity = participant.identity;
 
       const video = document.createElement("video");
       video.autoplay = true;
       video.playsInline = true;
-      video.muted = isLocal;
 
       const placeholder = document.createElement("div");
       placeholder.className = "camera-placeholder";
-
       const avatar = document.createElement("div");
       avatar.className = "avatar";
-      avatar.textContent = getInitial(name);
-
+      const displayName = participant.name || participant.identity || "参加者";
+      avatar.textContent = displayName.slice(0, 1);
       const placeholderText = document.createElement("span");
-      placeholderText.textContent = "カメラOFF";
-
+      placeholderText.textContent = "カメラ OFF";
       placeholder.append(avatar, placeholderText);
 
-      const nameLabel = document.createElement("div");
-      nameLabel.className = "camera-name";
-      nameLabel.textContent = name || "参加者";
+      const name = document.createElement("div");
+      name.className = "camera-name";
+      name.textContent = displayName;
 
-      const statusLabel = document.createElement("div");
-      statusLabel.className = "camera-status";
-      statusLabel.textContent = "カメラOFF";
+      const status = document.createElement("div");
+      status.className = "camera-status";
+      status.textContent = "カメラ OFF";
 
-      tile.append(video, placeholder, nameLabel, statusLabel);
-      cameraStrip.appendChild(tile);
+      tile.append(video, placeholder, name, status);
+      $("studentCameraTile").parentElement.appendChild(tile);
 
-      participantTiles.set(identity, {
-        tile,
-        video,
-        placeholder,
-        statusLabel,
-        nameLabel
-      });
-
-      return tile;
+      return { tile, video, placeholder, status, placeholderText };
     }
 
-    function updateParticipantName(identity, name) {
-      const item = participantTiles.get(identity);
-      if (!item) return;
-      item.nameLabel.textContent = name || "参加者";
-      item.placeholder.querySelector(".avatar").textContent = getInitial(name);
-    }
-
-    function setTileCameraState(identity, enabled) {
-      const item = participantTiles.get(identity);
-      if (!item) return;
-
-      item.video.style.display = enabled ? "block" : "none";
-      item.placeholder.style.display = enabled ? "none" : "flex";
-      item.statusLabel.textContent = enabled ? "カメラON" : "カメラOFF";
-    }
-
-    function attachRemoteVideo(track, participant) {
-      if (!participant) return;
-
+    function getParticipantTile(participant) {
+      if (!participant) return null;
       const identity = participant.identity;
-      const name = participant.name || participant.metadata || identity;
-      makeParticipantTile(identity, name);
-      updateParticipantName(identity, name);
+      if (participantTileMap.has(identity)) return participantTileMap.get(identity);
 
-      const item = participantTiles.get(identity);
-      if (!item) return;
+      const participantRole = getParticipantRole(participant);
+      const localRole = userProfile?.role;
+      let role = null;
+
+      // 参加者の役割に対応する既定タイルを優先する。
+      if (participantRole === "student" && localRole !== "student") role = "student";
+      if (participantRole === "teacher" && localRole !== "teacher") role = "teacher";
+
+      let elements = null;
+      if (role) {
+        const candidate = tileElements(role);
+        const alreadyUsed = [...participantTileMap.values()].some(item => item.tile === candidate.tile);
+        if (!alreadyUsed) {
+          elements = candidate;
+          candidate.tile.classList.remove("is-hidden");
+        }
+      }
+
+      // 同じ役割の教師が複数いる場合は参加者ごとのタイルを追加する。
+      if (!elements) elements = createExtraCameraTile(participant);
+
+      const displayName = participant.name || participant.identity || "参加者";
+      if (elements.tile.id) {
+        const baseRole = elements.tile.id.replace("CameraTile", "");
+        $(baseRole + "Name").textContent = displayName;
+        $(baseRole + "Avatar").textContent = displayName.slice(0, 1);
+        setTileCameraVisible(elements, false, "カメラ OFF");
+      }
+
+      participantTileMap.set(identity, elements);
+      return elements;
+    }
+
+    function removeParticipantTile(participant) {
+      if (!participant) return;
+      const elements = participantTileMap.get(participant.identity);
+      if (!elements) return;
+
+      if (elements.tile.id) {
+        elements.tile.classList.add("is-hidden");
+        setTileCameraVisible(elements, false, "相手のカメラは OFF です");
+      } else {
+        elements.video.srcObject = null;
+        elements.tile.remove();
+      }
+
+      participantTileMap.delete(participant.identity);
+    }
+
+    function attachCamera(track, isLocal, participant = null) {
+      if (!track) return;
+
+      const elements = isLocal
+        ? tileElements(localTile())
+        : getParticipantTile(participant);
+      if (!elements) return;
 
       try {
-        track.attach(item.video);
-        item.video.style.display = "block";
-        item.placeholder.style.display = "none";
-        item.statusLabel.textContent = "カメラON";
-        participantVideoTracks.set(identity, track);
+        track.attach(elements.video);
+        elements.video.style.display = "block";
+        setTileCameraVisible(elements, true);
+        cameraTrackTileMap.set(track, elements);
+
+        if (isLocal) localCameraTrack = track;
+        else if (!remoteCameraTrack) remoteCameraTrack = track;
       } catch (error) {
-        console.error("Remote video attach error:", error);
+        console.error("カメラ映像の表示に失敗:", error);
       }
     }
 
-    function detachRemoteVideo(track, participant) {
-      try {
-        track.detach();
-      } catch (error) {
-        console.warn("Remote video detach error:", error);
-      }
+    function detachCamera(track, isLocal, participant = null) {
+      const elements = isLocal
+        ? tileElements(localTile())
+        : (cameraTrackTileMap.get(track) || getParticipantTile(participant));
+      if (!elements) return;
 
-      if (participant) {
-        const identity = participant.identity;
-        participantVideoTracks.delete(identity);
-        setTileCameraState(identity, false);
+      if (track) {
+        try { track.detach(elements.video); } catch (error) { console.warn(error); }
+      }
+      elements.video.srcObject = null;
+      setTileCameraVisible(
+        elements,
+        false,
+        isLocal ? "カメラ OFF" : "相手のカメラは OFF です"
+      );
+      cameraTrackTileMap.delete(track);
+
+      if (isLocal) localCameraTrack = null;
+      else if (remoteCameraTrack === track) remoteCameraTrack = null;
+    }
+
+    async function unlockRemoteAudio() {
+      if (!liveRoom) return false;
+      try {
+        await liveRoom.startAudio();
+        for (const audioElement of remoteAudioElements.values()) {
+          try { await audioElement.play(); } catch (error) { console.warn(error); }
+        }
+        audioUnlocked = true;
+        return true;
+      } catch (error) {
+        audioNeedsGesture = true;
+        console.warn("音声の自動再生はブラウザにより保留されています:", error);
+        return false;
       }
     }
 
     function attachRemoteAudio(track, participant) {
-      if (!track || !participant) return;
-
-      const key = `${participant.identity}:${track.sid || track.mediaStreamTrack?.id || Math.random()}`;
-
+      if (!track) return;
+      const key = track.sid || track.mediaStreamTrack?.id || `${participant?.identity || "remote"}-${Date.now()}`;
       if (remoteAudioElements.has(key)) return;
 
       try {
-        const audioElement = track.attach();
-        audioElement.autoplay = true;
-        audioElement.controls = false;
-        audioElement.playsInline = true;
-        audioElement.muted = false;
-        audioElement.style.display = "none";
-        remoteAudioContainer.appendChild(audioElement);
-
-        const playPromise = audioElement.play();
-        if (playPromise && typeof playPromise.catch === "function") {
-          playPromise.catch((error) => {
-            console.warn("Audio autoplay was blocked:", error);
-            unlockRemoteAudio();
-          });
-        }
-
-        remoteAudioElements.set(key, { track, audioElement });
+        const audio = track.attach();
+        audio.autoplay = true;
+        audio.controls = false;
+        audio.muted = false;
+        audio.volume = 1;
+        audio.setAttribute("playsinline", "");
+        audio.style.position = "fixed";
+        audio.style.width = "1px";
+        audio.style.height = "1px";
+        audio.style.left = "-10px";
+        audio.style.top = "-10px";
+        audio.style.opacity = "0";
+        $("remoteAudioContainer").appendChild(audio);
+        remoteAudioElements.set(key, {
+          audio,
+          track,
+          participantId: participant?.identity || null
+        });
+        audio.play().catch(error => {
+          console.warn("音声の自動再生が制限されました:", error);
+          audioNeedsGesture = true;
+          audioUnlocked = false;
+        });
       } catch (error) {
-        console.error("Remote audio attach error:", error);
+        console.error("相手の音声を接続できません:", error);
+        showToast("相手の音声を再生できませんでした。");
       }
     }
 
     function detachRemoteAudio(track) {
+      if (!track) return;
+      try {
+        const detached = track.detach();
+        (Array.isArray(detached) ? detached : [detached]).forEach(element => element?.remove?.());
+      } catch (error) { console.warn("音声トラック切断:", error); }
+
       for (const [key, item] of remoteAudioElements.entries()) {
         if (item.track === track) {
-          try {
-            track.detach(item.audioElement);
-            item.audioElement.remove();
-          } catch (error) {
-            console.warn("Audio detach error:", error);
-          }
+          item.audio.pause();
+          item.audio.srcObject = null;
+          item.audio.remove();
           remoteAudioElements.delete(key);
         }
       }
     }
 
-    async function unlockRemoteAudio() {
-      if (!liveRoom) return;
+    function updateShareLayout() {
+      const hasShare = Boolean(localScreenTrack || remoteScreenTrack);
+
+      roomMain.classList.toggle("has-share", hasShare);
+
+      $("drawButton").disabled = !hasShare;
+      $("eraseButton").disabled = !hasShare;
+      $("clearButton").disabled = !hasShare;
+
+      if (!hasShare) {
+        drawingEnabled = false;
+        drawingMode = "pen";
+        roomMain.classList.remove("drawing");
+        $("drawButton").classList.remove("active");
+        $("eraseButton").classList.remove("active");
+        $("drawButton").textContent = "書き込み";
+        $("eraseButton").classList.remove("active");
+        clearCanvas();
+      }
+
+      resizeCanvas();
+    }
+
+    function attachScreenTrack(track, isLocal) {
+      if (!track) return;
 
       try {
-        await liveRoom.startAudio();
+        track.attach($("shareVideo"));
 
-        for (const item of remoteAudioElements.values()) {
-          try {
-            await item.audioElement.play();
-          } catch (error) {
-            console.warn("Audio playback retry failed:", error);
-          }
+        if (isLocal) {
+          localScreenTrack = track;
+        } else {
+          remoteScreenTrack = track;
         }
+
+        updateShareLayout();
       } catch (error) {
-        console.warn("Could not start remote audio:", error);
+        console.error("画面共有の表示に失敗:", error);
       }
     }
 
-    function installAudioAutoplayRecovery() {
-      let unlocked = false;
+    function detachScreenTrack(track, isLocal) {
+      if (track) {
+        try {
+          track.detach($("shareVideo"));
+        } catch (error) {
+          console.warn(error);
+        }
+      }
 
-      const unlockOnce = async () => {
-        if (unlocked) return;
-        unlocked = true;
-        await unlockRemoteAudio();
-        document.removeEventListener("pointerdown", unlockOnce);
-        document.removeEventListener("keydown", unlockOnce);
-        document.removeEventListener("touchstart", unlockOnce);
+      $("shareVideo").srcObject = null;
+
+      if (isLocal) {
+        localScreenTrack = null;
+      } else {
+        remoteScreenTrack = null;
+      }
+
+      const remaining = localScreenTrack || remoteScreenTrack;
+
+      if (remaining) {
+        remaining.attach($("shareVideo"));
+      }
+
+      updateShareLayout();
+    }
+
+    function resizeCanvas() {
+      const stage = $("shareStage");
+      const video = $("shareVideo");
+      if (!stage || !boardCanvas) return;
+
+      const stageRect = stage.getBoundingClientRect();
+      if (!stageRect.width || !stageRect.height) return;
+
+      // object-fit: contain の余白を除いた「実際の共有映像」領域にキャンバスを合わせる。
+      const sourceWidth = video.videoWidth || stageRect.width;
+      const sourceHeight = video.videoHeight || stageRect.height;
+      const sourceRatio = sourceWidth / sourceHeight;
+      const stageRatio = stageRect.width / stageRect.height;
+      let contentWidth = stageRect.width;
+      let contentHeight = stageRect.height;
+
+      if (sourceRatio > stageRatio) contentHeight = contentWidth / sourceRatio;
+      else contentWidth = contentHeight * sourceRatio;
+
+      const left = (stageRect.width - contentWidth) / 2;
+      const top = (stageRect.height - contentHeight) / 2;
+      boardCanvas.style.left = `${left}px`;
+      boardCanvas.style.top = `${top}px`;
+      boardCanvas.style.right = "auto";
+      boardCanvas.style.bottom = "auto";
+      boardCanvas.style.width = `${contentWidth}px`;
+      boardCanvas.style.height = `${contentHeight}px`;
+
+      const ratio = Math.max(1, window.devicePixelRatio || 1);
+      boardWidth = contentWidth;
+      boardHeight = contentHeight;
+      boardCanvas.width = Math.round(contentWidth * ratio);
+      boardCanvas.height = Math.round(contentHeight * ratio);
+      boardContext = boardCanvas.getContext("2d");
+      boardContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+      renderBoard();
+    }
+
+    function clearCanvas() {
+      if (!boardContext) return;
+      boardContext.clearRect(0, 0, boardWidth, boardHeight);
+    }
+
+    function drawStroke(ctx, stroke) {
+      if (!stroke || !Array.isArray(stroke.points) || !stroke.points.length) {
+        return;
+      }
+
+      const points = stroke.points;
+
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      const storedWidth = Number(stroke.width) || 3;
+      ctx.lineWidth = storedWidth <= 1
+        ? storedWidth * boardWidth
+        : (storedWidth / 1000) * boardWidth;
+
+      if (stroke.mode === "eraser") {
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
+      } else {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeStyle = stroke.color || "#2563eb";
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(
+        points[0].x * boardWidth,
+        points[0].y * boardHeight
+      );
+
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(
+          points[i].x * boardWidth,
+          points[i].y * boardHeight
+        );
+      }
+
+      if (points.length === 1) {
+        ctx.lineTo(
+          points[0].x * boardWidth + 0.1,
+          points[0].y * boardHeight + 0.1
+        );
+      }
+
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function renderBoard() {
+      if (!boardContext) return;
+
+      clearCanvas();
+
+      const strokes = [...boardStrokes.values()].sort((a, b) => {
+        const at = a.createdAt?.seconds || 0;
+        const bt = b.createdAt?.seconds || 0;
+        return at - bt;
+      });
+
+      for (const stroke of strokes) {
+        drawStroke(boardContext, stroke);
+      }
+
+      if (activeStroke) {
+        drawStroke(boardContext, activeStroke);
+      }
+    }
+
+    function getCanvasPoint(event) {
+      const rect = boardCanvas.getBoundingClientRect();
+
+      if (!rect.width || !rect.height) return { x: 0, y: 0 };
+      return {
+        x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+        y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+      };
+    }
+
+    function startDrawing(event) {
+      if (!drawingEnabled || !roomMain.classList.contains("has-share")) return;
+      if (event.button !== undefined && event.button !== 0) return;
+
+      event.preventDefault();
+      boardCanvas.setPointerCapture(event.pointerId);
+
+      activeStroke = {
+        userId: currentUser.uid,
+        mode: drawingMode,
+        color: "#2563eb",
+        width: drawingMode === "eraser" ? 0.022 : 0.003,
+        points: [getCanvasPoint(event)]
       };
 
-      document.addEventListener("pointerdown", unlockOnce, { passive: true });
-      document.addEventListener("keydown", unlockOnce);
-      document.addEventListener("touchstart", unlockOnce, { passive: true });
+      renderBoard();
+    }
+                function moveDrawing(event) {
+      if (!activeStroke) return;
+
+      event.preventDefault();
+      activeStroke.points.push(getCanvasPoint(event));
+      renderBoard();
     }
 
-    function updateLocalCameraUI(enabled) {
-      $("localVideo").style.display = enabled ? "block" : "none";
-      $("localPlaceholder").style.display = enabled ? "none" : "flex";
-      $("localCameraStatus").textContent = enabled ? "カメラON" : "カメラOFF";
-      $("cameraButton").textContent = enabled ? "カメラOFF" : "カメラON";
-      $("cameraButton").classList.toggle("active", enabled);
-    }
+    async function finishDrawing() {
+      if (!activeStroke) return;
 
-    function updateLocalMicUI(enabled) {
-      $("micButton").textContent = enabled ? "マイクOFF" : "マイクON";
-      $("micButton").classList.toggle("active", enabled);
-    }
-
-    function updateShareUI(enabled) {
-      roomMain.classList.toggle("has-share", enabled);
-      $("shareButton").textContent = enabled ? "共有を停止" : "画面共有";
-      $("shareButton").classList.toggle("active", enabled);
-    }
-
-    async function startCamera() {
-      if (!liveRoom || localVideoTrack) return;
+      const stroke = activeStroke;
+      activeStroke = null;
+      renderBoard();
 
       try {
-        localVideoTrack = await createLocalVideoTrack({
-          resolution: { width: 1280, height: 720 },
-          facingMode: "user"
-        });
-
-        await liveRoom.localParticipant.publishTrack(localVideoTrack);
-        localVideoTrack.attach($("localVideo"));
-        updateLocalCameraUI(true);
-      } catch (error) {
-        console.error("Camera start error:", error);
-        showToast("カメラを開始できませんでした。ブラウザの権限を確認してください。");
-      }
-    }
-
-    async function stopCamera() {
-      if (!localVideoTrack) return;
-
-      try {
-        await liveRoom.localParticipant.unpublishTrack(localVideoTrack);
-        localVideoTrack.stop();
-        localVideoTrack.detach();
-      } catch (error) {
-        console.warn("Camera stop error:", error);
-      }
-
-      localVideoTrack = null;
-      updateLocalCameraUI(false);
-    }
-
-    async function toggleCamera() {
-      if (localVideoTrack) {
-        await stopCamera();
-      } else {
-        await startCamera();
-      }
-    }
-
-    async function startMicrophone() {
-      if (!liveRoom || localAudioTrack) return;
-
-      try {
-        localAudioTrack = await createLocalAudioTrack({
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        });
-
-        await liveRoom.localParticipant.publishTrack(localAudioTrack);
-        updateLocalMicUI(true);
-      } catch (error) {
-        console.error("Microphone start error:", error);
-        showToast("マイクを開始できませんでした。ブラウザの権限を確認してください。");
-      }
-    }
-
-    async function stopMicrophone() {
-      if (!localAudioTrack) return;
-
-      try {
-        await liveRoom.localParticipant.unpublishTrack(localAudioTrack);
-        localAudioTrack.stop();
-      } catch (error) {
-        console.warn("Microphone stop error:", error);
-      }
-
-      localAudioTrack = null;
-      updateLocalMicUI(false);
-    }
-
-    async function toggleMicrophone() {
-      if (localAudioTrack) {
-        await stopMicrophone();
-      } else {
-        await startMicrophone();
-      }
-    }
-
-    async function startScreenShare() {
-      if (!liveRoom || localScreenTrack) return;
-
-      try {
-        const tracks = await liveRoom.localParticipant.createScreenTracks({
-          audio: false,
-          video: {
-            resolution: { width: 1920, height: 1080 },
-            frameRate: 15
+        await addDoc(
+          collection(db, "lessonBoards", lessonId, "strokes"),
+          {
+            userId: stroke.userId,
+            mode: stroke.mode,
+            color: stroke.color,
+            width: stroke.width,
+            points: stroke.points,
+            createdAt: serverTimestamp()
           }
-        });
+        );
+      } catch (error) {
+        console.error(error);
+        showToast("書き込みを保存できませんでした。");
+      }
+    }
 
-        localScreenTrack = tracks.find((track) => track.kind === Track.Kind.Video);
+    boardCanvas.addEventListener("pointerdown", startDrawing);
+    boardCanvas.addEventListener("pointermove", moveDrawing);
+    boardCanvas.addEventListener("pointerup", finishDrawing);
+    boardCanvas.addEventListener("pointercancel", finishDrawing);
 
-        if (!localScreenTrack) {
-          showToast("画面共有を開始できませんでした。");
-          return;
+    function listenBoard() {
+      const strokesRef = collection(
+        db,
+        "lessonBoards",
+        lessonId,
+        "strokes"
+      );
+
+      unsubscribeBoard = onSnapshot(
+        strokesRef,
+        (snapshot) => {
+          boardStrokes.clear();
+
+          snapshot.forEach((item) => {
+            boardStrokes.set(item.id, item.data());
+          });
+
+          renderBoard();
+        },
+        (error) => {
+          console.error("ホワイトボード取得エラー:", error);
+          showToast("ホワイトボードを読み込めませんでした。");
+        }
+      );
+    }
+
+    async function clearBoard() {
+      if (!confirm("ホワイトボードの書き込みをすべて消去しますか？")) {
+        return;
+      }
+
+      try {
+        const strokesRef = collection(
+          db,
+          "lessonBoards",
+          lessonId,
+          "strokes"
+        );
+
+        const snapshot = await getDocs(strokesRef);
+        const items = snapshot.docs;
+
+        for (let i = 0; i < items.length; i += 450) {
+          const batch = writeBatch(db);
+
+          items.slice(i, i + 450).forEach((item) => {
+            batch.delete(item.ref);
+          });
+
+          await batch.commit();
         }
 
-        await liveRoom.localParticipant.publishTrack(localScreenTrack);
-        localScreenTrack.attach(shareVideo);
-        $("shareLabel").textContent = `${currentProfile?.name || "講師"} の画面共有`;
-        updateShareUI(true);
-
-        localScreenTrack.mediaStreamTrack.addEventListener("ended", stopScreenShare);
+        boardStrokes.clear();
+        clearCanvas();
+        showToast("書き込みをすべて消去しました。");
       } catch (error) {
-        console.error("Screen share error:", error);
-        showToast("画面共有を開始できませんでした。");
+        console.error(error);
+        showToast("消去に失敗しました。");
       }
     }
 
-    async function stopScreenShare() {
-      if (!localScreenTrack) return;
+    $("drawButton").addEventListener("click", () => {
+      if (!roomMain.classList.contains("has-share")) return;
 
-      try {
-        await liveRoom.localParticipant.unpublishTrack(localScreenTrack);
-        localScreenTrack.stop();
-        localScreenTrack.detach();
-      } catch (error) {
-        console.warn("Screen share stop error:", error);
+      drawingEnabled = !drawingEnabled;
+      drawingMode = "pen";
+
+      roomMain.classList.toggle("drawing", drawingEnabled);
+      $("drawButton").classList.toggle("active", drawingEnabled);
+      $("eraseButton").classList.remove("active");
+
+      $("drawButton").textContent =
+        drawingEnabled ? "書き込み中" : "書き込み";
+    });
+
+    $("eraseButton").addEventListener("click", () => {
+      if (!roomMain.classList.contains("has-share")) return;
+
+      drawingEnabled = true;
+      drawingMode = "eraser";
+
+      roomMain.classList.add("drawing");
+      $("drawButton").classList.remove("active");
+      $("eraseButton").classList.add("active");
+      $("drawButton").textContent = "書き込み";
+    });
+
+    $("clearButton").addEventListener("click", clearBoard);
+
+    function setChatOpen(open) {
+      chatOpen = open;
+      $("chatPanel").classList.toggle("open", open);
+      $("chatToggleButton").classList.toggle("active", open);
+      $("chatToggleButton").textContent =
+        open ? "チャットを閉じる" : "チャットを開く";
+
+      if (open) {
+        setTimeout(() => $("chatInput").focus(), 150);
       }
-
-      localScreenTrack = null;
-      shareVideo.srcObject = null;
-      updateShareUI(false);
     }
 
-    async function toggleScreenShare() {
-      if (localScreenTrack) {
-        await stopScreenShare();
-      } else {
-        await startScreenShare();
-      }
-    }
+    $("chatToggleButton").addEventListener("click", () => {
+      setChatOpen(!chatOpen);
+    });
 
-    function attachRemoteScreenShare(track, participant) {
-      try {
-        track.attach(shareVideo);
-        shareVideo.style.display = "block";
-        $("shareLabel").textContent = `${participant?.name || "参加者"} の画面共有`;
-        updateShareUI(true);
-      } catch (error) {
-        console.error("Remote screen share attach error:", error);
-      }
-    }
-
-    function detachRemoteScreenShare(track) {
-      try {
-        track.detach(shareVideo);
-      } catch (error) {
-        console.warn("Remote screen share detach error:", error);
-      }
-
-      shareVideo.srcObject = null;
-      shareVideo.style.display = "none";
-      updateShareUI(false);
-    }
+    $("chatCloseButton").addEventListener("click", () => {
+      setChatOpen(false);
+    });
 
     function listenChat() {
-      if (chatUnsubscribe || !lessonId) return;
+      const messagesRef = collection(
+        db,
+        "lessonMessages",
+        lessonId,
+        "messages"
+      );
 
-      const chatRef = collection(db, "lessons", lessonId, "messages");
-      const chatQuery = query(chatRef, orderBy("createdAt", "asc"));
+      const messagesQuery = query(
+        messagesRef,
+        orderBy("createdAt", "asc")
+      );
 
-      chatUnsubscribe = onSnapshot(chatQuery, (snapshot) => {
-        chatMessages.innerHTML = "";
+      unsubscribeChat = onSnapshot(
+        messagesQuery,
+        (snapshot) => {
+          chatMessages.innerHTML = "";
 
-        if (snapshot.empty) {
-          const empty = document.createElement("div");
-          empty.className = "chat-empty";
-          empty.textContent = "メッセージはまだありません。";
-          chatMessages.appendChild(empty);
-          return;
+          if (snapshot.empty) {
+            const empty = document.createElement("div");
+            empty.className = "chat-empty";
+            empty.textContent =
+              "授業中のメッセージをここでやり取りできます。";
+
+            chatMessages.appendChild(empty);
+          }
+
+          snapshot.forEach((item) => {
+            const data = item.data();
+            const mine = data.senderId === currentUser.uid;
+
+            const message = document.createElement("div");
+            message.className = "message" + (mine ? " mine" : "");
+
+            const meta = document.createElement("div");
+            meta.className = "message-meta";
+
+            const name = document.createElement("span");
+            name.textContent = data.senderName || "参加者";
+
+            const time = document.createElement("span");
+
+            if (data.createdAt?.toDate) {
+              time.textContent = data.createdAt.toDate().toLocaleTimeString(
+                "ja-JP",
+                { hour: "2-digit", minute: "2-digit" }
+              );
+            }
+
+            meta.append(name, time);
+
+            const bubble = document.createElement("div");
+            bubble.className = "message-bubble";
+            bubble.textContent = data.text || "";
+
+            message.append(meta, bubble);
+            chatMessages.appendChild(message);
+          });
+
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        },
+        (error) => {
+          console.error("チャット取得エラー:", error);
+          showToast("チャットを読み込めませんでした。");
         }
-
-        snapshot.forEach((messageDoc) => {
-          const message = messageDoc.data();
-          const wrapper = document.createElement("div");
-          wrapper.className = "message";
-
-          if (message.uid === currentUser.uid) {
-            wrapper.classList.add("mine");
-          }
-
-          const meta = document.createElement("div");
-          meta.className = "message-meta";
-
-          const sender = document.createElement("span");
-          sender.textContent = message.name || "参加者";
-
-          const time = document.createElement("span");
-          if (message.createdAt?.toDate) {
-            time.textContent = message.createdAt.toDate().toLocaleTimeString("ja-JP", {
-              hour: "2-digit",
-              minute: "2-digit"
-            });
-          }
-
-          meta.append(sender, time);
-
-          const bubble = document.createElement("div");
-          bubble.className = "message-bubble";
-          bubble.textContent = safeText(message.text);
-
-          wrapper.append(meta, bubble);
-          chatMessages.appendChild(wrapper);
-        });
-
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }, (error) => {
-        console.error("Chat listener error:", error);
-        showToast("チャットを読み込めませんでした。");
-      });
+      );
     }
 
-    async function sendChatMessage(event) {
+    $("chatForm").addEventListener("submit", async (event) => {
       event.preventDefault();
 
       const input = $("chatInput");
@@ -699,189 +1006,115 @@
       $("sendButton").disabled = true;
 
       try {
-        await addDoc(collection(db, "lessons", lessonId, "messages"), {
-          uid: currentUser.uid,
-          name: currentProfile?.name || currentUser.email || "参加者",
-          text,
-          createdAt: serverTimestamp()
-        });
+        await addDoc(
+          collection(db, "lessonMessages", lessonId, "messages"),
+          {
+            senderId: currentUser.uid,
+            senderName:
+              userProfile?.displayName ||
+              currentUser.displayName ||
+              "参加者",
+            text,
+            createdAt: serverTimestamp()
+          }
+        );
 
         input.value = "";
       } catch (error) {
-        console.error("Chat send error:", error);
+        console.error(error);
         showToast("メッセージを送信できませんでした。");
       } finally {
         $("sendButton").disabled = false;
+        input.focus();
       }
-    }
+    });
 
-    function setDrawingEnabled(enabled) {
-      drawingEnabled = enabled;
-      roomMain.classList.toggle("drawing", enabled);
-      $("drawButton").classList.toggle("active", enabled);
-      $("drawButton").textContent = enabled ? "書き込み終了" : "書き込み";
-      $("boardCanvas").style.pointerEvents = enabled ? "auto" : "none";
-    }
+    async function getLessonAndProfile(user) {
+      const profileSnapshot = await getDoc(
+        doc(db, "users", user.uid)
+      );
 
-    function resizeBoardCanvas() {
-      const canvas = $("boardCanvas");
-      const rect = canvas.getBoundingClientRect();
-      const ratio = window.devicePixelRatio || 1;
-
-      canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-      canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-
-      const context = canvas.getContext("2d");
-      context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      context.lineWidth = 3;
-      context.lineCap = "round";
-      context.lineJoin = "round";
-      context.strokeStyle = "#ef4444";
-    }
-
-    function getCanvasPoint(event) {
-      const canvas = $("boardCanvas");
-      const rect = canvas.getBoundingClientRect();
-
-      return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-      };
-    }
-
-    function startDrawing(event) {
-      if (!drawingEnabled) return;
-
-      isDrawing = true;
-      const point = getCanvasPoint(event);
-      const context = $("boardCanvas").getContext("2d");
-      context.beginPath();
-      context.moveTo(point.x, point.y);
-      $("boardCanvas").setPointerCapture?.(event.pointerId);
-    }
-
-    function drawOnCanvas(event) {
-      if (!isDrawing || !drawingEnabled) return;
-
-      const point = getCanvasPoint(event);
-      const context = $("boardCanvas").getContext("2d");
-      context.lineTo(point.x, point.y);
-      context.stroke();
-    }
-
-    function stopDrawing() {
-      isDrawing = false;
-    }
-
-    function setupDrawing() {
-      const canvas = $("boardCanvas");
-      resizeBoardCanvas();
-
-      canvas.addEventListener("pointerdown", startDrawing);
-      canvas.addEventListener("pointermove", drawOnCanvas);
-      canvas.addEventListener("pointerup", stopDrawing);
-      canvas.addEventListener("pointercancel", stopDrawing);
-      window.addEventListener("resize", resizeBoardCanvas);
-    }
-
-    function setupRoomEvents() {
-      liveRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-        if (track.kind === Track.Kind.Audio) {
-          attachRemoteAudio(track, participant);
-          return;
-        }
-
-        if (track.kind === Track.Kind.Video) {
-          if (publication.source === Track.Source.ScreenShare) {
-            attachRemoteScreenShare(track, participant);
-          } else {
-            attachRemoteVideo(track, participant);
-          }
-        }
-      });
-
-      liveRoom.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
-        if (track.kind === Track.Kind.Audio) {
-          detachRemoteAudio(track);
-          return;
-        }
-
-        if (track.kind === Track.Kind.Video) {
-          if (publication.source === Track.Source.ScreenShare) {
-            detachRemoteScreenShare(track);
-          } else {
-            detachRemoteVideo(track, participant);
-          }
-        }
-      });
-
-      liveRoom.on(RoomEvent.ParticipantConnected, (participant) => {
-        makeParticipantTile(
-          participant.identity,
-          participant.name || participant.identity
+      if (!profileSnapshot.exists()) {
+        throw new Error(
+          "ユーザー情報が登録されていません。管理者にお問い合わせください。"
         );
-        showToast(`${participant.name || "参加者"} が入室しました。`);
-      });
-
-      liveRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
-        const item = participantTiles.get(participant.identity);
-
-        if (item) {
-          item.tile.remove();
-          participantTiles.delete(participant.identity);
-          participantVideoTracks.delete(participant.identity);
-        }
-
-        showToast(`${participant.name || "参加者"} が退出しました。`);
-      });
-
-      liveRoom.on(RoomEvent.Disconnected, () => {
-        setConnection("切断されました", false);
-      });
-
-      liveRoom.on(RoomEvent.Reconnected, () => {
-        setConnection("接続中", true);
-      });
-
-      liveRoom.on(RoomEvent.Reconnecting, () => {
-        setConnection("再接続中", false);
-      });
-    }
-
-    async function processExistingParticipants() {
-      if (!liveRoom) return;
-
-      for (const participant of liveRoom.remoteParticipants.values()) {
-        makeParticipantTile(
-          participant.identity,
-          participant.name || participant.identity
-        );
-
-        for (const publication of participant.trackPublications.values()) {
-          const track = publication.track;
-          if (!track) continue;
-
-          if (track.kind === Track.Kind.Audio) {
-            attachRemoteAudio(track, participant);
-          } else if (track.kind === Track.Kind.Video) {
-            if (publication.source === Track.Source.ScreenShare) {
-              attachRemoteScreenShare(track, participant);
-            } else {
-              attachRemoteVideo(track, participant);
-            }
-          }
-        }
       }
+
+      userProfile = profileSnapshot.data();
+
+      if (!["student", "teacher", "admin"].includes(userProfile.role)) {
+        throw new Error("このアカウントには授業室の利用権限がありません。");
+      }
+
+      if (!lessonId) {
+        throw new Error("授業IDが指定されていません。");
+      }
+
+      const lessonSnapshot = await getDoc(
+        doc(db, "lessons", lessonId)
+      );
+
+      if (!lessonSnapshot.exists()) {
+        throw new Error("指定された授業が見つかりません。");
+      }
+
+      lessonData = lessonSnapshot.data();
+
+      const isAdmin = userProfile.role === "admin";
+      // 授業を作成した教師以外の教師も、同じ授業室に参加できる。
+      const isTeacher = userProfile.role === "teacher";
+      const isStudent =
+        userProfile.role === "student" &&
+        lessonData.studentId === user.uid;
+
+      if (!isAdmin && !isTeacher && !isStudent) {
+        throw new Error("この授業室に入室する権限がありません。");
+      }
+
+      $("lessonTitle").textContent =
+        lessonData.title || "オンライン授業";
+
+      const studentDisplayName =
+        userProfile.role === "student"
+          ? (userProfile.displayName || user.displayName || "生徒")
+          : (lessonData.studentName || "生徒");
+
+      const teacherDisplayName =
+        userProfile.role === "teacher"
+          ? (userProfile.displayName || user.displayName || "先生")
+          : (lessonData.teacherName || "先生");
+
+      $("studentName").textContent = studentDisplayName;
+      $("teacherName").textContent = teacherDisplayName;
+
+      $("studentAvatar").textContent = studentDisplayName.slice(0, 1);
+      $("teacherAvatar").textContent = teacherDisplayName.slice(0, 1);
+
+      // 自分のタイルだけを最初から表示し、相手が未参加なら相手側の枠は出さない。
+      $(localTile() + "CameraTile").classList.remove("is-hidden");
+      $(remoteTile() + "CameraTile").classList.add("is-hidden");
+
+      setCameraVisible(
+        "student",
+        false,
+        "生徒のカメラを待っています"
+      );
+
+      setCameraVisible(
+        "teacher",
+        false,
+        "先生のカメラを待っています"
+      );
     }
 
-    async function getLiveKitToken() {
+    async function connectLiveKit() {
       const idToken = await currentUser.getIdToken();
 
       const response = await fetch("/api/livekit/token", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${idToken}`
+          "Authorization": "Bearer " + idToken
         },
         body: JSON.stringify({ lessonId })
       });
@@ -889,19 +1122,18 @@
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || "授業参加トークンを取得できませんでした。");
+        throw new Error(
+          data.error ||
+          data.message ||
+          "接続トークンを取得できませんでした。"
+        );
       }
 
-      return data;
-    }
-
-    async function connectToRoom() {
-      const tokenData = await getLiveKitToken();
-      const serverUrl = tokenData.url || tokenData.livekitUrl || tokenData.serverUrl;
-      const token = tokenData.token;
+      const serverUrl = data.url || data.serverUrl;
+      const token = data.token;
 
       if (!serverUrl || !token) {
-        throw new Error("LiveKitの接続情報が不足しています。");
+        throw new Error("LiveKit接続情報が正しくありません。");
       }
 
       liveRoom = new Room({
@@ -909,152 +1141,349 @@
         dynacast: true
       });
 
-      setupRoomEvents();
+      liveRoom.on(RoomEvent.Connected, () => {
+        setConnection(true, "接続済み");
+      });
+
+      liveRoom.on(RoomEvent.Disconnected, () => {
+        setConnection(false, "切断されました");
+      });
+
+      liveRoom.on(RoomEvent.ParticipantConnected, (participant) => {
+        getParticipantTile(participant);
+        setConnection(true, "参加者と接続済み");
+      });
+
+      liveRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        for (const [key, item] of remoteAudioElements.entries()) {
+          if (item.participantId === participant.identity) {
+            item.audio.pause();
+            item.audio.srcObject = null;
+            item.audio.remove();
+            remoteAudioElements.delete(key);
+          }
+        }
+
+        if (remoteScreenTrack) {
+          detachScreenTrack(remoteScreenTrack, false);
+        }
+
+        const elements = participantTileMap.get(participant.identity);
+        if (elements) {
+          for (const [track, tile] of cameraTrackTileMap.entries()) {
+            if (tile === elements) detachCamera(track, false, participant);
+          }
+        }
+        removeParticipantTile(participant);
+        setConnection(true, "接続済み");
+      });
+
+      liveRoom.on(
+        RoomEvent.TrackSubscribed,
+        (track, publication, participant) => {
+          if (track.kind === Track.Kind.Audio) {
+            attachRemoteAudio(track, participant);
+            return;
+          }
+
+          if (track.kind === Track.Kind.Video) {
+            if (publication.source === Track.Source.ScreenShare) {
+              attachScreenTrack(track, false);
+            } else if (publication.source === Track.Source.Camera) {
+              attachCamera(track, false, participant);
+            }
+          }
+        }
+      );
+
+      liveRoom.on(
+        RoomEvent.TrackUnsubscribed,
+        (track, publication, participant) => {
+          if (track.kind === Track.Kind.Audio) {
+            detachRemoteAudio(track);
+            return;
+          }
+
+          if (publication.source === Track.Source.ScreenShare && remoteScreenTrack === track) {
+            detachScreenTrack(track, false);
+          }
+
+          if (publication.source === Track.Source.Camera) {
+            detachCamera(track, false, participant);
+          }
+        }
+      );
+
+      liveRoom.on(RoomEvent.LocalTrackPublished, (publication) => {
+        const track = publication.track;
+        if (!track) return;
+
+        if (publication.source === Track.Source.Camera) {
+          attachCamera(track, true);
+        }
+
+        if (publication.source === Track.Source.ScreenShare) {
+          attachScreenTrack(track, true);
+          screenEnabled = true;
+          $("shareButton").textContent = "共有を停止";
+          $("shareButton").classList.add("active");
+        }
+      });
+
+      liveRoom.on(RoomEvent.LocalTrackUnpublished, (publication) => {
+        if (publication.source === Track.Source.Camera && localCameraTrack) {
+          detachCamera(localCameraTrack, true);
+        }
+
+        if (publication.source === Track.Source.ScreenShare && localScreenTrack) {
+          detachScreenTrack(localScreenTrack, true);
+          screenEnabled = false;
+          $("shareButton").textContent = "画面共有";
+          $("shareButton").classList.remove("active");
+        }
+      });
+
+      liveRoom.on(RoomEvent.TrackMuted, (publication, participant) => {
+        if (participant.identity === liveRoom.localParticipant.identity) {
+          return;
+        }
+
+        if (publication.source === Track.Source.Camera) {
+          const elements = getParticipantTile(participant);
+          setTileCameraVisible(elements, false, "相手のカメラは OFF です");
+        }
+      });
+
+      liveRoom.on(RoomEvent.TrackUnmuted, (publication, participant) => {
+        if (participant.identity === liveRoom.localParticipant.identity) {
+          return;
+        }
+
+        if (publication.source === Track.Source.Camera) {
+          const elements = getParticipantTile(participant);
+          setTileCameraVisible(elements, true);
+        }
+      });
 
       await liveRoom.connect(serverUrl, token, {
         autoSubscribe: true
       });
+      setConnection(true, "接続済み");
 
-      await processExistingParticipants();
+      // 受信音声は入室時に自動再生を試みる。操作ボタンは表示しない。
+      try {
+        await liveRoom.startAudio();
+        audioUnlocked = true;
+      } catch (audioError) {
+        console.warn("音声の自動再生はブラウザにより保留されました:", audioError);
+        audioNeedsGesture = true;
+      }
 
-      // 音声受信を自動開始する。ブラウザ側の制限時は初回操作で再試行。
-      await unlockRemoteAudio();
-      installAudioAutoplayRecovery();
+      for (const participant of liveRoom.remoteParticipants.values()) {
+        getParticipantTile(participant);
 
-      setConnection("接続中", true);
+        for (const publication of participant.audioTrackPublications.values()) {
+          if (publication.track) attachRemoteAudio(publication.track, participant);
+        }
+
+        for (const publication of participant.videoTrackPublications.values()) {
+          if (!publication.track) continue;
+
+          if (publication.source === Track.Source.Camera) {
+            attachCamera(publication.track, false, participant);
+          }
+
+          if (publication.source === Track.Source.ScreenShare) {
+            attachScreenTrack(publication.track, false);
+          }
+        }
+      }
+
+      await liveRoom.localParticipant.setMicrophoneEnabled(false);
+      await liveRoom.localParticipant.setCameraEnabled(false);
     }
 
-    async function loadLesson() {
-      const params = new URLSearchParams(location.search);
-      lessonId = params.get("lessonId") || params.get("id");
+    async function toggleMic() {
+      if (!liveRoom) return;
 
-      if (!lessonId) {
-        throw new Error("授業IDが指定されていません。");
+      try {
+        const next = !micEnabled;
+
+        await liveRoom.localParticipant.setMicrophoneEnabled(next);
+        micEnabled = next;
+
+        $("micButton").classList.toggle("active", micEnabled);
+        $("micButton").textContent =
+          micEnabled ? "マイク ON" : "マイク OFF";
+
+        showToast(
+          micEnabled ? "マイクを ON にしました。" : "マイクを OFF にしました。"
+        );
+      } catch (error) {
+        console.error(error);
+        showToast("マイクを切り替えられませんでした。");
       }
+    }
 
-      const lessonSnapshot = await getDoc(doc(db, "lessons", lessonId));
+    async function toggleCamera() {
+      if (!liveRoom) return;
 
-      if (!lessonSnapshot.exists()) {
-        throw new Error("授業が見つかりません。");
+      try {
+        const next = !cameraEnabled;
+
+        await liveRoom.localParticipant.setCameraEnabled(next);
+        cameraEnabled = next;
+        $(localTile() + "CameraTile").classList.remove("is-hidden");
+
+        $("cameraButton").classList.toggle("active", cameraEnabled);
+        $("cameraButton").textContent =
+          cameraEnabled ? "カメラ ON" : "カメラ OFF";
+
+        if (!cameraEnabled && localCameraTrack) {
+          detachCamera(localCameraTrack, true);
+        }
+
+        showToast(
+          cameraEnabled ? "カメラを ON にしました。" : "カメラを OFF にしました。"
+        );
+      } catch (error) {
+        console.error(error);
+        showToast("カメラを切り替えられませんでした。");
       }
+    }
 
-      currentLesson = {
-        id: lessonSnapshot.id,
-        ...lessonSnapshot.data()
-      };
+    async function toggleScreenShare() {
+      if (!liveRoom) return;
 
-      $("lessonTitle").textContent = getLessonTitle(currentLesson);
-
-      const role = currentProfile?.role;
-
-      if (role === "student" && currentLesson.studentId !== currentUser.uid) {
-        throw new Error("この授業に参加する権限がありません。");
-      }
-
-      if (role !== "student" && role !== "teacher" && role !== "admin") {
-        throw new Error("このアカウントでは授業に参加できません。");
+      try {
+        if (!screenEnabled) {
+          await liveRoom.localParticipant.setScreenShareEnabled(true);
+        } else {
+          await liveRoom.localParticipant.setScreenShareEnabled(false);
+        }
+      } catch (error) {
+        console.error(error);
+        showToast("画面共有を切り替えられませんでした。");
       }
     }
 
     async function leaveRoom() {
+      if (leaving) return;
+
+      leaving = true;
+      $("leaveButton").disabled = true;
+      $("leaveButton").textContent = "退出中";
+
       try {
-        if (localVideoTrack) {
-          await stopCamera();
-        }
-
-        if (localAudioTrack) {
-          await stopMicrophone();
-        }
-
-        if (localScreenTrack) {
-          await stopScreenShare();
-        }
-
         if (liveRoom) {
           await liveRoom.disconnect();
         }
       } catch (error) {
-        console.warn("Leave room error:", error);
+        console.warn("切断処理:", error);
       }
 
-      if (chatUnsubscribe) {
-        chatUnsubscribe();
-        chatUnsubscribe = null;
+      if (unsubscribeBoard) unsubscribeBoard();
+      if (unsubscribeChat) unsubscribeChat();
+      if (resizeObserver) resizeObserver.disconnect();
+      for (const item of remoteAudioElements.values()) {
+        item.audio.pause();
+        item.audio.srcObject = null;
+        item.audio.remove();
       }
+      remoteAudioElements.clear();
 
-      location.href = currentProfile?.role === "student"
-        ? "../student/dashboard.html"
-        : "../teacher/dashboard.html";
+      goDashboard();
     }
 
-    function setupButtons() {
-      $("cameraButton").addEventListener("click", toggleCamera);
-      $("micButton").addEventListener("click", toggleMicrophone);
-      $("shareButton").addEventListener("click", toggleScreenShare);
+    $("micButton").addEventListener("click", async () => {
+      if (!audioUnlocked) await unlockRemoteAudio();
+      await toggleMic();
+    });
+    // ブラウザが自動再生を保留した場合、最初の画面操作で音声受信を無言で再試行する。
+    const retryAudioOnGesture = async () => {
+      if (!audioNeedsGesture || !liveRoom) return;
+      const ok = await unlockRemoteAudio();
+      if (ok) audioNeedsGesture = false;
+    };
+    document.addEventListener("pointerdown", retryAudioOnGesture, { capture: true });
+    document.addEventListener("keydown", retryAudioOnGesture, { capture: true });
+    $("cameraButton").addEventListener("click", toggleCamera);
+    $("shareButton").addEventListener("click", toggleScreenShare);
+    $("leaveButton").addEventListener("click", leaveRoom);
 
-      $("drawButton").addEventListener("click", () => {
-        setDrawingEnabled(!drawingEnabled);
-      });
-
-      $("chatButton").addEventListener("click", () => {
-        chatPanel.classList.toggle("open");
-      });
-
-      $("chatClose").addEventListener("click", () => {
-        chatPanel.classList.remove("open");
-      });
-
-      $("chatForm").addEventListener("submit", sendChatMessage);
-      $("leaveButton").addEventListener("click", leaveRoom);
-    }
-
-    async function initialize() {
+    async function start() {
       try {
+        if (!authPersistenceReady) {
+          throw new Error("Firebase認証の初期化が完了していません。");
+        }
+
         await authPersistenceReady;
 
-        currentUser = auth.currentUser;
+        const user = await new Promise((resolve, reject) => {
+          let unsubscribe = null;
 
-        if (!currentUser) {
+          unsubscribe = onAuthStateChanged(
+            auth,
+            (current) => {
+              if (unsubscribe) unsubscribe();
+              resolve(current);
+            },
+            reject
+          );
+        });
+
+        if (!user) {
           location.href = "../login.html";
           return;
         }
 
-        const userSnapshot = await getDoc(doc(db, "users", currentUser.uid));
+        currentUser = user;
 
-        if (!userSnapshot.exists()) {
-          throw new Error("ユーザー情報が見つかりません。");
-        }
+        await getLessonAndProfile(user);
 
-        currentProfile = userSnapshot.data();
-
-        if (currentProfile.status === "disabled" || currentProfile.active === false) {
-          throw new Error("このアカウントは現在利用できません。");
-        }
-
-        $("localName").textContent = currentProfile.name || currentUser.email || "自分";
-        $("localAvatar").textContent = getInitial(currentProfile.name || currentUser.email);
-
-        await loadLesson();
-
-        setupButtons();
-        setupDrawing();
+        listenBoard();
         listenChat();
 
-        await connectToRoom();
+        resizeObserver = new ResizeObserver(resizeCanvas);
+        resizeObserver.observe($("shareStage"));
+        $("shareVideo").addEventListener("loadedmetadata", resizeCanvas);
+        $("shareVideo").addEventListener("resize", resizeCanvas);
+        window.addEventListener("resize", resizeCanvas);
 
-        loadingScreen.classList.add("hidden");
+        await connectLiveKit();
+
+        $("loadingScreen").classList.add("hidden");
+        setConnection(true, "接続済み");
+
       } catch (error) {
-        console.error("Room initialization error:", error);
-        showError("授業に接続できません", error.message || "時間をおいて再度お試しください。");
+        console.error("授業室初期化エラー:", error);
+
+        showError(
+          error?.message ||
+          "授業室の初期化に失敗しました。時間をおいて再度お試しください。"
+        );
       }
     }
 
     window.addEventListener("beforeunload", () => {
-      if (chatUnsubscribe) chatUnsubscribe();
-      if (liveRoom) liveRoom.disconnect();
+      if (unsubscribeBoard) unsubscribeBoard();
+      if (unsubscribeChat) unsubscribeChat();
+      if (resizeObserver) resizeObserver.disconnect();
+
+      if (liveRoom) {
+        liveRoom.disconnect();
+      }
+      for (const item of remoteAudioElements.values()) {
+        item.audio.pause();
+        item.audio.srcObject = null;
+        item.audio.remove();
+      }
+      remoteAudioElements.clear();
     });
 
-    initialize();
+    start();
   </script>
 </body>
 </html>
+      }
+    }
