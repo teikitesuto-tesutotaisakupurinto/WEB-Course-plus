@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>講師ダッシュボード | WEB Course-plus</title>
   <link rel="stylesheet" href="/assets/css/common.css">
-  <style>
-  </style>
 </head>
 <body>
 <div class="app">
@@ -43,7 +41,7 @@
         <div>
           <h1 class="page-title">講師ダッシュボード</h1>
           <p class="page-description" id="welcome">
-            授業予定と登録生徒を確認できます。
+            授業の予定・実施状況と登録生徒を確認できます。
           </p>
         </div>
         <a href="/teacher/lessons.html" class="btn btn-primary">
@@ -57,12 +55,12 @@
         <div class="stat-card">
           <div class="stat-label">本日の授業</div>
           <div class="stat-value" id="today-count">-</div>
-          <div class="stat-note">本日予定されている授業</div>
+          <div class="stat-note">本日の予定・授業中の授業</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">今後の授業</div>
           <div class="stat-value" id="upcoming-count">-</div>
-          <div class="stat-note">終了していない授業</div>
+          <div class="stat-note">予定・授業中の授業</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">登録生徒数</div>
@@ -75,7 +73,7 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">直近の授業</h2>
-            <p class="card-description">自分が設定した授業を表示します。</p>
+            <p class="card-description">予定・授業中・実施済みの授業を表示します。</p>
           </div>
           <a href="/teacher/schedule.html" class="btn btn-secondary btn-sm">
             スケジュールを見る
@@ -105,7 +103,6 @@
           <a href="/teacher/lessons.html" class="btn btn-primary">授業を設定する</a>
           <a href="/teacher/students.html" class="btn btn-secondary">生徒一覧</a>
           <a href="/teacher/records.html" class="btn btn-secondary">指導記録</a>
-          <a href="/teacher/loginsticker.html" class="btn btn-secondary">ログインシール発行</a>
         </div>
       </section>
 
@@ -170,32 +167,57 @@
     }
   }
 
+  // 授業の表示状態は、開始・終了時刻から自動判定する
   function getJoinState(lesson) {
     const now = Date.now();
     const start = toDate(lesson.startAt)?.getTime();
     const end = toDate(lesson.endAt)?.getTime();
 
-    if (!start || !end || end <= start) {
-      return { canJoin: false, label: "日時未設定", type: "secondary" };
-    }
-
     if (lesson.status === "cancelled") {
-      return { canJoin: false, label: "キャンセル済み", type: "secondary" };
+      return {
+        canJoin: false,
+        label: "キャンセル済み",
+        type: "secondary",
+        category: "cancelled"
+      };
     }
 
-    if (lesson.status === "completed") {
-      return { canJoin: false, label: "終了済み", type: "secondary" };
+    if (!start || !end || end <= start) {
+      return {
+        canJoin: false,
+        label: "日時未設定",
+        type: "secondary",
+        category: "invalid"
+      };
     }
 
-    if (now < start - 5 * 60 * 1000) {
-      return { canJoin: false, label: "開始前", type: "secondary" };
+    // 終了時刻を過ぎた授業
+    if (now > end) {
+      return {
+        canJoin: false,
+        label: "実施済み",
+        type: "secondary",
+        category: "completed"
+      };
     }
 
-    if (now <= end + 30 * 60 * 1000) {
-      return { canJoin: true, label: "授業に参加", type: "primary" };
+    // 開始時刻を過ぎ、終了時刻前の授業
+    if (now >= start) {
+      return {
+        canJoin: true,
+        label: "授業中",
+        type: "success",
+        category: "in_progress"
+      };
     }
 
-    return { canJoin: false, label: "終了", type: "secondary" };
+    // 授業開始5分前から入室可能。ただし表示状態は「予定」
+    return {
+      canJoin: now >= start - 5 * 60 * 1000,
+      label: "予定",
+      type: "secondary",
+      category: "scheduled"
+    };
   }
 
   function createLessonCard(lesson, name) {
@@ -230,7 +252,7 @@
         <span class="badge badge-primary">
           ${escapeHTML(lesson.subject || "教科未設定")}
         </span>
-        <span class="badge ${state.canJoin ? "badge-success" : "badge-gray"}">
+        <span class="badge ${state.category === "in_progress" ? "badge-success" : state.category === "completed" ? "badge-gray" : "badge-primary"}">
           ${escapeHTML(state.label)}
         </span>
       </div>
@@ -265,28 +287,26 @@
       ))
     ]);
 
-    const now = new Date();
-
     const lessons = lessonSnapshot.docs.map(item => ({
       id: item.id,
       ...item.data()
     }));
 
-    lessons.sort((a, b) =>
-      (toDate(a.startAt)?.getTime() || 0) -
-      (toDate(b.startAt)?.getTime() || 0)
+    const validLessons = lessons.filter(lesson =>
+      lesson.status !== "cancelled"
     );
 
-    const upcoming = lessons.filter(lesson => {
-      const end = toDate(lesson.endAt);
-      return end && end.getTime() >= now.getTime() - 30 * 60 * 1000
-        && !["cancelled", "completed"].includes(lesson.status);
+    // 予定・授業中の授業
+    const upcoming = validLessons.filter(lesson => {
+      const state = getJoinState(lesson);
+      return state.category === "scheduled" ||
+             state.category === "in_progress";
     });
 
-    const today = lessons.filter(lesson => {
+    // 本日の予定・授業中の授業
+    const today = upcoming.filter(lesson => {
       const date = toDate(lesson.startAt);
-      return date && isToday(date) &&
-        !["cancelled", "completed"].includes(lesson.status);
+      return date && isToday(date);
     });
 
     const activeStudents = studentSnapshot.docs.filter(item =>
@@ -297,19 +317,48 @@
     $("upcoming-count").textContent = upcoming.length;
     $("student-count").textContent = activeStudents.length;
 
+    // 予定・授業中を先に開始時刻順で表示
+    const scheduledLessons = validLessons
+      .filter(lesson => {
+        const state = getJoinState(lesson);
+        return state.category === "scheduled" ||
+               state.category === "in_progress";
+      })
+      .sort((a, b) =>
+        (toDate(a.startAt)?.getTime() || 0) -
+        (toDate(b.startAt)?.getTime() || 0)
+      );
+
+    // 実施済みは終了時刻が新しいものから表示
+    const completedLessons = validLessons
+      .filter(lesson =>
+        getJoinState(lesson).category === "completed"
+      )
+      .sort((a, b) =>
+        (toDate(b.startAt)?.getTime() || 0) -
+        (toDate(a.startAt)?.getTime() || 0)
+      );
+
+    const displayLessons = [
+      ...scheduledLessons,
+      ...completedLessons
+    ].slice(0, 10);
+
     $("lesson-list").replaceChildren();
     $("loading").classList.add("hidden");
 
-    if (!upcoming.length) {
+    if (!displayLessons.length) {
       $("empty").classList.remove("hidden");
       return;
     }
 
     $("empty").classList.add("hidden");
 
-    for (const lesson of upcoming.slice(0, 10)) {
+    for (const lesson of displayLessons) {
       const info = await getStudentInfo(lesson.studentId);
-      $("lesson-list").appendChild(createLessonCard(lesson, info.name));
+      $("lesson-list").appendChild(
+        createLessonCard(lesson, info.name)
+      );
     }
   }
 
@@ -327,7 +376,7 @@
 
       await loadDashboard(user.uid);
 
-      // 入室可能時刻になったらボタン表示を更新
+      // 60秒ごとに授業状態を自動更新
       refreshTimer = setInterval(() => {
         loadDashboard(user.uid).catch(error =>
           console.error("[Dashboard Refresh]", error)
