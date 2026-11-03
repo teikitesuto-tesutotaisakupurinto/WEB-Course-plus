@@ -1,5 +1,9 @@
 
-import { auth, db, authPersistenceReady } from "./firebase.js";
+import {
+  auth,
+  db,
+  authPersistenceReady
+} from "./firebase.js";
 
 import {
   onAuthStateChanged,
@@ -11,9 +15,17 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-// ========================================
-// 認証状態の取得
-// ========================================
+import {
+  getSessionId,
+  apiFetch,
+  startSessionHeartbeat,
+  stopSessionHeartbeat,
+  setSessionId
+} from "./common.js";
+
+/* ========================================
+   認証状態
+======================================== */
 
 export async function getCurrentUser() {
   await authPersistenceReady;
@@ -33,33 +45,51 @@ export async function getCurrentUser() {
   });
 }
 
-// ========================================
-// ユーザープロフィール取得
-// ========================================
+/* ========================================
+   プロフィール取得
+======================================== */
 
 export async function getProfile(uid) {
   if (!uid) {
     throw new Error("ユーザーIDが指定されていません。");
   }
 
-  const profileRef = doc(db, "users", uid);
-  const snapshot = await getDoc(profileRef);
+  const snapshot = await getDoc(
+    doc(db, "users", uid)
+  );
 
   if (!snapshot.exists()) {
     throw new Error("利用者情報が登録されていません。");
   }
 
-  const profile = snapshot.data();
-
   return {
     uid,
-    ...profile
+    ...snapshot.data()
   };
 }
 
-// ========================================
-// ログインユーザーとプロフィール
-// ========================================
+/* ========================================
+   利用状態確認
+======================================== */
+
+function isActiveProfile(profile) {
+  if (!profile || profile.active === false) {
+    return false;
+  }
+
+  const status = String(profile.status || "active").toLowerCase();
+
+  return ![
+    "inactive",
+    "disabled",
+    "suspended",
+    "deleted"
+  ].includes(status);
+}
+
+/* ========================================
+   認証済みプロフィール
+======================================== */
 
 export async function getAuthenticatedProfile() {
   await authPersistenceReady;
@@ -72,7 +102,7 @@ export async function getAuthenticatedProfile() {
 
   const profile = await getProfile(user.uid);
 
-  if (profile.status !== "active") {
+  if (!isActiveProfile(profile)) {
     throw new Error("このアカウントは利用できません。");
   }
 
@@ -82,12 +112,43 @@ export async function getAuthenticatedProfile() {
   };
 }
 
-// ========================================
-// ロール別アクセス制御
-// ========================================
+/* ========================================
+   端末セッション確認
+======================================== */
+
+export async function verifyDeviceSession() {
+  if (!auth.currentUser) {
+    throw new Error("ログインしてください。");
+  }
+
+  const sessionId = getSessionId();
+
+  if (!sessionId) {
+    throw new Error("端末セッションが登録されていません。");
+  }
+
+  const result = await apiFetch("/api/sessions/heartbeat", {
+    method: "POST",
+    body: JSON.stringify({ sessionId })
+  });
+
+  if (!result.success) {
+    throw new Error("端末セッションを確認できません。");
+  }
+
+  startSessionHeartbeat();
+
+  return true;
+}
+
+/* ========================================
+   ロール別アクセス制御
+======================================== */
 
 export async function requireRole(expectedRole) {
   try {
+    await authPersistenceReady;
+
     const result = await getAuthenticatedProfile();
 
     if (!result) {
@@ -102,19 +163,17 @@ export async function requireRole(expectedRole) {
       : [expectedRole];
 
     if (!allowedRoles.includes(profile.role)) {
-      if (profile.role === "admin") {
-        window.location.replace("/admin/dashboard.html");
-      } else if (profile.role === "teacher") {
-        window.location.replace("/teacher/dashboard.html");
-      } else if (profile.role === "student") {
-        window.location.replace("/student/dashboard.html");
-      } else {
+      const destination = getDashboardUrl(profile.role);
+
+      if (destination === "/login.html") {
         await signOut(auth);
-        window.location.replace("/login.html");
       }
 
+      window.location.replace(destination);
       return null;
     }
+
+    await verifyDeviceSession();
 
     return {
       user,
@@ -124,22 +183,38 @@ export async function requireRole(expectedRole) {
   } catch (error) {
     console.error("[Auth] Access check failed:", error);
 
+    stopSessionHeartbeat();
+    setSessionId("");
+
     if (auth.currentUser) {
       await signOut(auth).catch(() => {});
     }
 
-    window.location.replace("/login.html");
+    window.location.replace("/login.html?reason=session");
     return null;
   }
 }
 
-// ========================================
-// ログアウト
-// ========================================
+/* ========================================
+   ログアウト
+======================================== */
 
 export async function logout() {
   try {
+    const sessionId = getSessionId();
+
+    if (auth.currentUser && sessionId) {
+      await apiFetch("/api/sessions/logout", {
+        method: "POST",
+        body: JSON.stringify({ sessionId })
+      }).catch(() => {});
+    }
+
+    stopSessionHeartbeat();
+    setSessionId("");
+
     await signOut(auth);
+
     window.location.replace("/login.html");
 
   } catch (error) {
@@ -148,9 +223,9 @@ export async function logout() {
   }
 }
 
-// ========================================
-// Firebase ID Token取得
-// ========================================
+/* ========================================
+   Firebase ID Token
+======================================== */
 
 export async function getAccessToken() {
   await authPersistenceReady;
@@ -164,9 +239,9 @@ export async function getAccessToken() {
   return user.getIdToken();
 }
 
-// ========================================
-// ロール別ホームページ
-// ========================================
+/* ========================================
+   ホームURL
+======================================== */
 
 export function getDashboardUrl(role) {
   const routes = {
@@ -178,22 +253,23 @@ export function getDashboardUrl(role) {
   return routes[role] || "/login.html";
 }
 
-// ========================================
-// ログイン状態の監視
-// ========================================
+/* ========================================
+   認証状態監視
+======================================== */
 
 export function observeAuthState(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
-// ========================================
-// 互換用 Auth オブジェクト
-// ========================================
+/* ========================================
+   Auth互換オブジェクト
+======================================== */
 
 export const Auth = {
   getCurrentUser,
   getProfile,
   getAuthenticatedProfile,
+  verifyDeviceSession,
   requireRole,
   logout,
   getAccessToken,
