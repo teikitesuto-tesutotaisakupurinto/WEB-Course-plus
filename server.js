@@ -1,98 +1,64 @@
-
 "use strict";
 
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
-const crypto = require("crypto");
-const os = require("os");
 const admin = require("firebase-admin");
 const { AccessToken } = require("livekit-server-sdk");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const MAX_SESSIONS = 4;
-const SESSION_DAYS = 30;
-const HEARTBEAT_INTERVAL_MS = 60 * 1000;
-const STARTED_AT = Date.now();
+const MAX_SESSIONS_PER_USER = 4;
+const SESSION_IDLE_DAYS = 30;
+const SESSION_COLLECTION = "userSessions";
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 
-// ==========================================
-// 1. 基本セキュリティ・リクエスト計測
-// ==========================================
-
-const metrics = {
-  requests: 0,
-  errors: 0,
-  apiRequests: 0,
-  apiErrors: 0,
-  startedAt: new Date().toISOString(),
-  recentErrors: []
-};
-
 app.use((req, res, next) => {
-  const started = Date.now();
-
-  metrics.requests++;
-  if (req.path.startsWith("/api/")) metrics.apiRequests++;
-
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Cache-Control", "no-store");
-
-  res.on("finish", () => {
-    if (res.statusCode >= 400) {
-      metrics.errors++;
-      if (req.path.startsWith("/api/")) metrics.apiErrors++;
-
-      metrics.recentErrors.unshift({
-        time: new Date().toISOString(),
-        method: req.method,
-        path: req.path,
-        status: res.statusCode,
-        durationMs: Date.now() - started
-      });
-
-      metrics.recentErrors = metrics.recentErrors.slice(0, 100);
-    }
-  });
-
   next();
 });
 
 // ==========================================
-// 2. 環境変数
+// 環境変数
 // ==========================================
+
+const FIREBASE_SERVICE_ACCOUNT_JSON =
+  process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
-const FIREBASE_SERVICE_ACCOUNT_JSON =
-  process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
 if (!FIREBASE_SERVICE_ACCOUNT_JSON) {
   console.error("FIREBASE_SERVICE_ACCOUNT_JSON が未設定です。");
   process.exit(1);
 }
 
+if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+  console.error("LiveKitの環境変数が不足しています。");
+  process.exit(1);
+}
+
+// ==========================================
+// Firebase Admin
+// ==========================================
+
 let serviceAccount;
 
 try {
   serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT_JSON);
+
   if (serviceAccount.private_key) {
     serviceAccount.private_key =
       serviceAccount.private_key.replace(/\\n/g, "\n");
   }
 } catch (error) {
-  console.error("Firebase JSONの解析に失敗しました。");
-  process.exit(1);
-}
-
-if (!serviceAccount.project_id || !serviceAccount.private_key) {
-  console.error("Firebaseサービスアカウント情報が不足しています。");
+  console.error("Firebase JSONの解析に失敗:", error.message);
   process.exit(1);
 }
 
@@ -105,340 +71,268 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
-const Timestamp = admin.firestore.Timestamp;
-
-if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
-  console.error("LiveKit環境変数が不足しています。");
-  process.exit(1);
-}
 
 // ==========================================
-// 3. 共通関数
+// 共通関数
 // ==========================================
 
-function sendError(res, status, message) {
+function errorResponse(res, status, message, code) {
   return res.status(status).json({
     success: false,
-    error: message
+    error: message,
+    ...(code ? { code } : {})
   });
 }
 
-function bearerToken(req) {
-  const value = req.headers.authorization || "";
-  return value.startsWith("Bearer ") ? value.slice(7).trim() : null;
+function getBearerToken(req) {
+  const authorization = req.headers.authorization || "";
+
+  if (!authorization.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return authorization.slice(7).trim();
 }
 
-function sessionIdFromRequest(req) {
-  return String(req.headers["x-session-id"] || "").trim();
-}
-
-function isActiveProfile(profile) {
-  if (!profile || profile.active === false) return false;
-
-  const status = String(profile.status || "").toLowerCase();
-  return !["inactive", "disabled", "suspended", "deleted"].includes(status);
-}
-
-function validRole(role) {
+function isValidRole(role) {
   return ["admin", "teacher", "student"].includes(role);
 }
 
-function sessionExpiry() {
-  return Timestamp.fromDate(
-    new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000)
+function isActiveProfile(profile) {
+  if (!profile || profile.active === false) {
+    return false;
+  }
+
+  const status = String(profile.status || "").toLowerCase();
+
+  return ![
+    "inactive",
+    "disabled",
+    "suspended",
+    "deleted"
+  ].includes(status);
+}
+
+function isValidSessionId(id) {
+  return (
+    typeof id === "string" &&
+    /^[a-f0-9-]{30,80}$/i.test(id)
   );
 }
 
-function cleanText(value, max = 120) {
-  return String(value || "").trim().replace(/[<>]/g, "").slice(0, max);
+function getSessionRef(uid, sessionId) {
+  return db
+    .collection(SESSION_COLLECTION)
+    .doc(uid)
+    .collection("sessions")
+    .doc(sessionId);
 }
 
-function serializeSession(doc) {
-  const data = doc.data();
-
-  return {
-    id: doc.id,
-    uid: data.uid || "",
-    email: data.email || "",
-    deviceName: data.deviceName || "不明な端末",
-    browser: data.browser || "",
-    platform: data.platform || "",
-    createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
-    lastSeenAt: data.lastSeenAt?.toDate?.()?.toISOString() || null,
-    expiresAt: data.expiresAt?.toDate?.()?.toISOString() || null
-  };
+function getSessionsCollection(uid) {
+  return db
+    .collection(SESSION_COLLECTION)
+    .doc(uid)
+    .collection("sessions");
 }
 
-async function writeSystemLog(type, message, details = {}) {
-  try {
-    await db.collection("systemLogs").add({
-      type,
-      message: cleanText(message, 500),
-      details,
-      createdAt: FieldValue.serverTimestamp()
-    });
-  } catch (error) {
-    console.error("システムログ保存失敗:", error.message);
-  }
-}
-
-async function writeAdminLog(req, action, details = {}) {
+async function writeAdminLog(req, action, targetUid = null, details = {}) {
   await db.collection("adminLogs").add({
     adminUid: req.user.uid,
-    adminEmail: req.user.email || "",
+    adminEmail: req.user.email,
     action,
+    targetUid,
     details,
     createdAt: FieldValue.serverTimestamp()
   });
 }
 
-async function getSystemSettings() {
-  const snapshot = await db.collection("settings").doc("system").get();
-  return snapshot.exists ? snapshot.data() : {};
-}
-
 // ==========================================
-// 4. Firestore初期化
+// Firebase認証
 // ==========================================
 
-async function initializeFirestore() {
-  const ref = db.collection("settings").doc("system");
-  const snapshot = await ref.get();
-
-  if (!snapshot.exists) {
-    await ref.set({
-      maintenance: false,
-      maintenanceMessage: "",
-      maxSessions: MAX_SESSIONS,
-      sessionDays: SESSION_DAYS,
-      updatedAt: FieldValue.serverTimestamp(),
-      createdAt: FieldValue.serverTimestamp()
-    });
-  }
-
-  console.log("Firestore system settings initialized.");
-}
-
-// ==========================================
-// 5. Firebase IDトークン検証
-// ==========================================
-
-async function verifyFirebaseToken(req) {
-  const token = bearerToken(req);
-  if (!token) throw new Error("NO_TOKEN");
-
-  return admin.auth().verifyIdToken(token);
-}
-
-// ==========================================
-// 6. ログインセッション登録
-// Firebaseログイン成功後に呼び出す
-// ==========================================
-
-app.post("/api/sessions/register", async (req, res) => {
-  try {
-    const decoded = await verifyFirebaseToken(req);
-    const uid = decoded.uid;
-
-    const userRef = db.collection("users").doc(uid);
-    const userSnapshot = await userRef.get();
-
-    if (!userSnapshot.exists) {
-      return sendError(res, 403, "ユーザー情報がありません。");
-    }
-
-    const profile = userSnapshot.data();
-
-    if (!isActiveProfile(profile) || !validRole(profile.role)) {
-      return sendError(res, 403, "このアカウントは利用できません。");
-    }
-
-    const deviceName = cleanText(req.body.deviceName, 100) || "不明な端末";
-    const browser = cleanText(req.body.browser, 100);
-    const platform = cleanText(req.body.platform, 100);
-
-    const sessionRef = db.collection("sessions").doc(crypto.randomUUID());
-    const sessionsRef = db.collection("sessions");
-
-    const result = await db.runTransaction(async (transaction) => {
-      const query = sessionsRef.where("uid", "==", uid);
-      const snapshot = await transaction.get(query);
-
-      const now = Date.now();
-      const validSessions = [];
-
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data();
-        const expiresAt = data.expiresAt?.toDate?.()?.getTime() || 0;
-
-        if (expiresAt > now && data.revoked !== true) {
-          validSessions.push(doc);
-        } else {
-          transaction.delete(doc.ref);
-        }
-      });
-
-      if (validSessions.length >= MAX_SESSIONS) {
-        return { full: true, count: validSessions.length };
-      }
-
-      transaction.set(sessionRef, {
-        uid,
-        email: decoded.email || profile.email || "",
-        deviceName,
-        browser,
-        platform,
-        role: profile.role,
-        revoked: false,
-        createdAt: FieldValue.serverTimestamp(),
-        lastSeenAt: FieldValue.serverTimestamp(),
-        expiresAt: sessionExpiry()
-      });
-
-      return { full: false, count: validSessions.length + 1 };
-    });
-
-    if (result.full) {
-      await writeSystemLog("session_limit", "同時ログイン上限に到達しました。", {
-        uid,
-        count: result.count
-      });
-
-      return res.status(429).json({
-        success: false,
-        error: "同時ログインは最大4台までです。",
-        sessionLimit: MAX_SESSIONS,
-        currentSessions: result.count
-      });
-    }
-
-    await writeSystemLog("session_created", "ログインセッションを作成しました。", {
-      uid,
-      sessionId: sessionRef.id
-    });
-
-    return res.json({
-      success: true,
-      sessionId: sessionRef.id,
-      sessionLimit: MAX_SESSIONS,
-      currentSessions: result.count
-    });
-  } catch (error) {
-    console.error("セッション登録エラー:", error.message);
-    return sendError(res, 401, "ログインセッションを作成できませんでした。");
-  }
-});
-
-// ==========================================
-// 7. 認証・セッション確認ミドルウェア
-// ==========================================
-
+// Firebase IDトークンとユーザープロフィールを検証する。
+// セッション登録前にも使用する。
 async function authenticate(req, res, next) {
   try {
-    const decoded = await verifyFirebaseToken(req);
-    const uid = decoded.uid;
+    const idToken = getBearerToken(req);
 
-    const userSnapshot = await db.collection("users").doc(uid).get();
-
-    if (!userSnapshot.exists) {
-      return sendError(res, 403, "ユーザー情報がありません。");
+    if (!idToken) {
+      return errorResponse(res, 401, "ログインしてください。");
     }
 
-    const profile = userSnapshot.data();
+    const decoded = await admin.auth().verifyIdToken(idToken);
 
-    if (!isActiveProfile(profile) || !validRole(profile.role)) {
-      return sendError(res, 403, "このアカウントは利用できません。");
+    const userSnap = await db
+      .collection("users")
+      .doc(decoded.uid)
+      .get();
+
+    if (!userSnap.exists) {
+      return errorResponse(
+        res,
+        403,
+        "ユーザー情報が登録されていません。"
+      );
     }
 
-    const sessionId = sessionIdFromRequest(req);
+    const profile = userSnap.data();
 
-    if (!sessionId) {
-      return sendError(res, 401, "セッション情報がありません。再ログインしてください。");
+    if (!isActiveProfile(profile)) {
+      return errorResponse(
+        res,
+        403,
+        "このアカウントは利用停止中です。"
+      );
     }
 
-    const sessionRef = db.collection("sessions").doc(sessionId);
-    const sessionSnapshot = await sessionRef.get();
-
-    if (!sessionSnapshot.exists) {
-      return sendError(res, 401, "セッションが無効です。再ログインしてください。");
-    }
-
-    const session = sessionSnapshot.data();
-    const expiresAt = session.expiresAt?.toDate?.()?.getTime() || 0;
-
-    if (
-      session.uid !== uid ||
-      session.revoked === true ||
-      expiresAt <= Date.now()
-    ) {
-      return sendError(res, 401, "セッションが無効または期限切れです。");
-    }
-
-    // 最終アクセス時刻を更新
-    const lastSeen = session.lastSeenAt?.toDate?.()?.getTime() || 0;
-
-    if (Date.now() - lastSeen >= HEARTBEAT_INTERVAL_MS) {
-      await sessionRef.update({
-        lastSeenAt: FieldValue.serverTimestamp(),
-        expiresAt: sessionExpiry()
-      });
+    if (!isValidRole(profile.role)) {
+      return errorResponse(
+        res,
+        403,
+        "ユーザー権限が正しくありません。"
+      );
     }
 
     req.user = {
-      uid,
+      uid: decoded.uid,
       email: decoded.email || profile.email || "",
-      profile,
-      sessionId
+      profile
     };
 
-    return next();
+    next();
+
   } catch (error) {
-    console.error("認証エラー:", error.message);
-    return sendError(res, 401, "認証に失敗しました。再ログインしてください。");
+    console.error("認証エラー:", error);
+
+    return errorResponse(
+      res,
+      401,
+      "認証に失敗しました。再度ログインしてください。"
+    );
+  }
+}
+
+// ==========================================
+// セッション認証
+// ==========================================
+
+async function requireSession(req, res, next) {
+  try {
+    const sessionId = String(
+      req.headers["x-session-id"] || ""
+    );
+
+    if (!isValidSessionId(sessionId)) {
+      return errorResponse(
+        res,
+        401,
+        "端末セッションを確認できません。",
+        "SESSION_INVALID"
+      );
+    }
+
+    const ref = getSessionRef(req.user.uid, sessionId);
+    const snap = await ref.get();
+
+    if (!snap.exists || snap.data().active !== true) {
+      return errorResponse(
+        res,
+        401,
+        "この端末のセッションは無効です。再ログインしてください。",
+        "SESSION_REVOKED"
+      );
+    }
+
+    const data = snap.data();
+
+    const lastSeen = data.lastSeenAt &&
+      typeof data.lastSeenAt.toDate === "function"
+      ? data.lastSeenAt.toDate()
+      : null;
+
+    if (
+      lastSeen &&
+      Date.now() - lastSeen.getTime() >
+        SESSION_IDLE_DAYS * 24 * 60 * 60 * 1000
+    ) {
+      await ref.set({
+        active: false,
+        expiredAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      return errorResponse(
+        res,
+        401,
+        "セッションの有効期限が切れました。再ログインしてください。",
+        "SESSION_EXPIRED"
+      );
+    }
+
+    // 最終利用時刻は5分ごとに更新
+    if (
+      !lastSeen ||
+      Date.now() - lastSeen.getTime() > 5 * 60 * 1000
+    ) {
+      await ref.set({
+        lastSeenAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+
+    req.sessionId = sessionId;
+
+    next();
+
+  } catch (error) {
+    console.error("セッション確認エラー:", error);
+
+    return errorResponse(
+      res,
+      500,
+      "セッションを確認できませんでした。"
+    );
   }
 }
 
 function requireAdmin(req, res, next) {
-  if (req.user?.profile?.role !== "admin") {
-    return sendError(res, 403, "管理者権限が必要です。");
+  if (req.user.profile.role !== "admin") {
+    return errorResponse(
+      res,
+      403,
+      "システム管理者権限が必要です。"
+    );
   }
-  return next();
+
+  next();
 }
 
 // ==========================================
-// 8. ログアウト
+// Firestore初期設定
 // ==========================================
 
-app.post("/api/sessions/logout", authenticate, async (req, res) => {
-  try {
-    await db.collection("sessions").doc(req.user.sessionId).delete();
+async function initializeFirestore() {
+  const ref = db.collection("settings").doc("system");
+  const snap = await ref.get();
 
-    await writeSystemLog("session_logout", "セッションを終了しました。", {
-      uid: req.user.uid,
-      sessionId: req.user.sessionId
+  if (!snap.exists) {
+    await ref.set({
+      maintenance: false,
+      maintenanceMessage: "",
+      maxSessionsPerUser: MAX_SESSIONS_PER_USER,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     });
-
-    return res.json({ success: true, message: "ログアウトしました。" });
-  } catch (error) {
-    console.error("ログアウトエラー:", error);
-    return sendError(res, 500, "ログアウト処理に失敗しました。");
+  } else if (
+    typeof snap.data().maxSessionsPerUser !== "number"
+  ) {
+    await ref.set({
+      maxSessionsPerUser: MAX_SESSIONS_PER_USER,
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
   }
-});
+}
 
 // ==========================================
-// 9. セッション確認API
-// ==========================================
-
-app.get("/api/sessions/current", authenticate, (req, res) => {
-  res.json({
-    success: true,
-    sessionId: req.user.sessionId,
-    sessionLimit: MAX_SESSIONS
-  });
-});
-
-// ==========================================
-// 10. ヘルスチェック
+// ヘルスチェック
 // ==========================================
 
 app.get("/health", (req, res) => {
@@ -458,589 +352,693 @@ app.get("/api/health", (req, res) => {
 });
 
 // ==========================================
-// 11. メンテナンス状態
+// システム状態
 // ==========================================
 
 app.get("/api/system/status", async (req, res) => {
   try {
-    const settings = await getSystemSettings();
+    const snap = await db
+      .collection("settings")
+      .doc("system")
+      .get();
+
+    const settings = snap.exists ? snap.data() : {};
 
     res.json({
       success: true,
       maintenance: settings.maintenance === true,
-      maintenanceMessage: settings.maintenanceMessage || ""
+      maintenanceMessage:
+        settings.maintenanceMessage || "",
+      maxSessionsPerUser: MAX_SESSIONS_PER_USER
     });
+
   } catch (error) {
-    return sendError(res, 500, "システム状態を取得できませんでした。");
-  }
-});
-
-// ==========================================
-// 12. ログインユーザー情報
-// ==========================================
-
-app.get("/api/me", authenticate, (req, res) => {
-  res.json({
-    success: true,
-    user: {
-      uid: req.user.uid,
-      email: req.user.email,
-      role: req.user.profile.role,
-      displayName: req.user.profile.displayName || ""
-    }
-  });
-});
-
-// ==========================================
-// 13. 管理者ダッシュボード概要
-// ==========================================
-
-app.get("/api/admin/overview", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const sessionsSnapshot = await db.collection("sessions").get();
-    const now = Date.now();
-
-    let activeSessions = 0;
-
-    sessionsSnapshot.forEach((doc) => {
-      const data = doc.data();
-      const expiry = data.expiresAt?.toDate?.()?.getTime() || 0;
-      if (data.revoked !== true && expiry > now) activeSessions++;
-    });
-
-    const settings = await getSystemSettings();
-
-    res.json({
-      success: true,
-      system: {
-        uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
-        nodeVersion: process.version,
-        platform: process.platform,
-        memory: process.memoryUsage(),
-        totalMemory: os.totalmem(),
-        freeMemory: os.freemem(),
-        cpuCount: os.cpus().length,
-        serverTime: new Date().toISOString()
-      },
-      metrics: {
-        ...metrics,
-        activeSessions
-      },
-      settings: {
-        maintenance: settings.maintenance === true
-      }
-    });
-  } catch (error) {
-    console.error("概要取得エラー:", error);
-    return sendError(res, 500, "概要を取得できませんでした。");
-  }
-});
-
-// ==========================================
-// 14. 管理者：セッション一覧
-// ==========================================
-
-app.get("/api/admin/sessions", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const snapshot = await db.collection("sessions").get();
-    const now = Date.now();
-
-    const sessions = snapshot.docs
-      .map(serializeSession)
-      .filter((session) => !session.expiresAt || new Date(session.expiresAt).getTime() > now);
-
-    res.json({
-      success: true,
-      sessions,
-      count: sessions.length,
-      limitPerAccount: MAX_SESSIONS
-    });
-  } catch (error) {
-    console.error("セッション一覧エラー:", error);
-    return sendError(res, 500, "セッション一覧を取得できませんでした。");
-  }
-});
-
-// ==========================================
-// 15. 管理者：個別セッション削除
-// ==========================================
-
-app.delete("/api/admin/sessions/:sessionId", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const id = cleanText(req.params.sessionId, 150);
-    if (!id) return sendError(res, 400, "セッションIDが不正です。");
-
-    const ref = db.collection("sessions").doc(id);
-    const snapshot = await ref.get();
-
-    if (!snapshot.exists) {
-      return sendError(res, 404, "セッションが見つかりません。");
-    }
-
-    const data = snapshot.data();
-    await ref.delete();
-
-    await writeAdminLog(req, "session_deleted", {
-      sessionId: id,
-      targetUid: data.uid || ""
-    });
-
-    await writeSystemLog("session_revoked", "管理者がセッションを削除しました。", {
-      sessionId: id,
-      targetUid: data.uid || ""
-    });
-
-    res.json({ success: true, message: "セッションを削除しました。" });
-  } catch (error) {
-    console.error("セッション削除エラー:", error);
-    return sendError(res, 500, "セッションを削除できませんでした。");
-  }
-});
-
-// ==========================================
-// 16. 管理者：アカウント単位の全セッション削除
-// ==========================================
-
-app.delete("/api/admin/sessions/user/:uid", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const uid = cleanText(req.params.uid, 128);
-    if (!uid) return sendError(res, 400, "アカウントIDが不正です。");
-
-    const snapshot = await db.collection("sessions")
-      .where("uid", "==", uid)
-      .get();
-
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
-
-    await writeAdminLog(req, "all_user_sessions_deleted", {
-      targetUid: uid,
-      deletedCount: snapshot.size
-    });
-
-    res.json({
-      success: true,
-      deletedCount: snapshot.size
-    });
-  } catch (error) {
-    console.error("全セッション削除エラー:", error);
-    return sendError(res, 500, "セッションを削除できませんでした。");
-  }
-});
-
-// ==========================================
-// 17. 管理者：メンテナンス設定取得
-// ==========================================
-
-app.get("/api/admin/settings", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const settings = await getSystemSettings();
-
-    res.json({
-      success: true,
-      settings: {
-        maintenance: settings.maintenance === true,
-        maintenanceMessage: settings.maintenanceMessage || "",
-        maxSessions: MAX_SESSIONS,
-        sessionDays: SESSION_DAYS
-      }
-    });
-  } catch (error) {
-    return sendError(res, 500, "設定を取得できませんでした。");
-  }
-});
-
-// ==========================================
-// 18. 管理者：メンテナンス設定変更
-// ==========================================
-
-app.patch("/api/admin/settings", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const updates = {};
-
-    if (typeof req.body.maintenance === "boolean") {
-      updates.maintenance = req.body.maintenance;
-    }
-
-    if (typeof req.body.maintenanceMessage === "string") {
-      updates.maintenanceMessage = req.body.maintenanceMessage.slice(0, 1000);
-    }
-
-    if (!Object.keys(updates).length) {
-      return sendError(res, 400, "変更する設定がありません。");
-    }
-
-    updates.updatedAt = FieldValue.serverTimestamp();
-
-    await db.collection("settings").doc("system").set(updates, { merge: true });
-
-    await writeAdminLog(req, "system_settings_updated", {
-      maintenance: updates.maintenance,
-      maintenanceMessageChanged: updates.maintenanceMessage !== undefined
-    });
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error("設定更新エラー:", error);
-    return sendError(res, 500, "設定を更新できませんでした。");
-  }
-});
-
-// ==========================================
-// 19. 管理者：サーバー情報
-// ==========================================
-
-app.get("/api/admin/server", authenticate, requireAdmin, (req, res) => {
-  res.json({
-    success: true,
-    server: {
-      uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
-      nodeVersion: process.version,
-      platform: process.platform,
-      architecture: process.arch,
-      hostname: os.hostname(),
-      cpuCount: os.cpus().length,
-      loadAverage: os.loadavg(),
-      totalMemory: os.totalmem(),
-      freeMemory: os.freemem(),
-      processMemory: process.memoryUsage(),
-      pid: process.pid,
-      port: PORT
-    }
-  });
-});
-
-// ==========================================
-// 20. 管理者：Firebase接続確認
-// ==========================================
-
-app.get("/api/admin/firebase", authenticate, requireAdmin, async (req, res) => {
-  const started = Date.now();
-
-  try {
-    await db.collection("settings").doc("system").get();
-
-    res.json({
-      success: true,
-      firebase: {
-        status: "connected",
-        projectId: serviceAccount.project_id,
-        firestore: "connected",
-        authentication: "admin-sdk-initialized",
-        responseTimeMs: Date.now() - started
-      }
-    });
-  } catch (error) {
-    res.status(503).json({
-      success: false,
-      firebase: {
-        status: "error",
-        message: "Firebaseへの接続に失敗しました。",
-        responseTimeMs: Date.now() - started
-      }
-    });
-  }
-});
-
-// ==========================================
-// 21. 管理者：LiveKit設定確認
-// ==========================================
-
-app.get("/api/admin/livekit", authenticate, requireAdmin, async (req, res) => {
-  res.json({
-    success: true,
-    livekit: {
-      configured: Boolean(LIVEKIT_API_KEY && LIVEKIT_API_SECRET && LIVEKIT_URL),
-      serverUrl: LIVEKIT_URL,
-      apiKeyConfigured: Boolean(LIVEKIT_API_KEY),
-      apiSecretConfigured: Boolean(LIVEKIT_API_SECRET)
-    }
-  });
-});
-
-// ==========================================
-// 22. 管理者：システムログ
-// ==========================================
-
-app.get("/api/admin/logs", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 300);
-    const snapshot = await db.collection("systemLogs")
-      .orderBy("createdAt", "desc")
-      .limit(limit)
-      .get();
-
-    const logs = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        type: data.type || "",
-        message: data.message || "",
-        details: data.details || {},
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || null
-      };
-    });
-
-    res.json({ success: true, logs });
-  } catch (error) {
-    console.error("システムログ取得エラー:", error);
-    return sendError(res, 500, "システムログを取得できませんでした。");
-  }
-});
-
-// ==========================================
-// 23. 管理者：管理操作ログ
-// ==========================================
-
-app.get("/api/admin/audit-logs", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 300);
-    const snapshot = await db.collection("adminLogs")
-      .orderBy("createdAt", "desc")
-      .limit(limit)
-      .get();
-
-    const logs = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        adminEmail: data.adminEmail || "",
-        action: data.action || "",
-        details: data.details || {},
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || null
-      };
-    });
-
-    res.json({ success: true, logs });
-  } catch (error) {
-    return sendError(res, 500, "管理操作ログを取得できませんでした。");
-  }
-});
-
-// ==========================================
-// 24. 管理者：セキュリティ状況
-// ==========================================
-
-app.get("/api/admin/security", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const snapshot = await db.collection("systemLogs")
-      .where("type", "in", ["session_limit", "session_revoked", "auth_failure"])
-      .limit(200)
-      .get();
-
-    const events = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        type: data.type,
-        message: data.message,
-        details: data.details || {},
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || null
-      };
-    });
-
-    res.json({
-      success: true,
-      sessionLimit: MAX_SESSIONS,
-      events
-    });
-  } catch (error) {
-    return sendError(res, 500, "セキュリティ情報を取得できませんでした。");
-  }
-});
-
-// ==========================================
-// 25. 管理者：通知一覧
-// ==========================================
-
-app.get("/api/admin/notifications", authenticate, requireAdmin, async (req, res) => {
-  try {
-    const snapshot = await db.collection("systemLogs")
-      .where("type", "in", ["error", "service_warning", "service_recovered"])
-      .limit(100)
-      .get();
-
-    const notifications = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        type: data.type,
-        message: data.message,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || null
-      };
-    });
-
-    res.json({ success: true, notifications });
-  } catch (error) {
-    return sendError(res, 500, "通知を取得できませんでした。");
-  }
-});
-
-// ==========================================
-// 26. 管理者：APIメトリクス
-// ==========================================
-
-app.get("/api/admin/metrics", authenticate, requireAdmin, (req, res) => {
-  res.json({
-    success: true,
-    metrics: {
-      ...metrics,
-      uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000),
-      memory: process.memoryUsage()
-    }
-  });
-});
-
-// ==========================================
-// 27. 日時変換・授業時間判定
-// ==========================================
-
-function toDate(value) {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  if (typeof value.toDate === "function") return value.toDate();
-  if (typeof value === "number") return new Date(value);
-  if (typeof value === "string") {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  return null;
-}
-
-function getLessonStart(lesson) {
-  const direct =
-    toDate(lesson.startAt) ||
-    toDate(lesson.startsAt) ||
-    toDate(lesson.scheduledAt) ||
-    toDate(lesson.startDateTime);
-
-  if (direct) return direct;
-
-  if (lesson.date && lesson.startTime) {
-    const date = String(lesson.date).slice(0, 10);
-    const time = String(lesson.startTime).slice(0, 5);
-    const parsed = new Date(`${date}T${time}:00+09:00`);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-
-  return null;
-}
-
-function getLessonEnd(lesson, start) {
-  const direct =
-    toDate(lesson.endAt) ||
-    toDate(lesson.endsAt) ||
-    toDate(lesson.endDateTime);
-
-  if (direct) return direct;
-
-  if (lesson.date && lesson.endTime) {
-    const date = String(lesson.date).slice(0, 10);
-    const time = String(lesson.endTime).slice(0, 5);
-    const parsed = new Date(`${date}T${time}:00+09:00`);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-
-  if (start && Number(lesson.durationMinutes) > 0) {
-    return new Date(start.getTime() + Number(lesson.durationMinutes) * 60000);
-  }
-
-  return null;
-}
-
-// ==========================================
-// 28. LiveKit授業参加トークン
-// ==========================================
-
-app.post("/api/livekit/token", authenticate, async (req, res) => {
-  try {
-    const profile = req.user.profile;
-    const uid = req.user.uid;
-
-    if (profile.role === "admin") {
-      return sendError(res, 403, "システム管理者は授業に参加できません。");
-    }
-
-    const lessonId = cleanText(req.body.lessonId, 150);
-    if (!lessonId) return sendError(res, 400, "授業IDが必要です。");
-
-    const lessonSnapshot = await db.collection("lessons").doc(lessonId).get();
-
-    if (!lessonSnapshot.exists) {
-      return sendError(res, 404, "授業が見つかりません。");
-    }
-
-    const lesson = lessonSnapshot.data();
-
-    const isTeacher = profile.role === "teacher";
-    const isStudent = profile.role === "student" && lesson.studentId === uid;
-
-    if (!isTeacher && !isStudent) {
-      return sendError(res, 403, "この授業に参加する権限がありません。");
-    }
-
-    if (!["scheduled", "in_progress"].includes(lesson.status)) {
-      return sendError(res, 403, "現在この授業には入室できません。");
-    }
-
-    const start = getLessonStart(lesson);
-    const end = getLessonEnd(lesson, start);
-    const now = Date.now();
-
-    if (start && now < start.getTime() - 5 * 60 * 1000) {
-      return sendError(res, 403, "授業開始5分前から入室できます。");
-    }
-
-    if (end && now > end.getTime() + 30 * 60 * 1000) {
-      return sendError(res, 403, "この授業の入室可能時間は終了しました。");
-    }
-
-    const roomName = `lesson-${lessonId}`;
-    const displayName =
-      profile.displayName ||
-      req.user.email ||
-      (profile.role === "teacher" ? "先生" : "生徒");
-
-    const token = new AccessToken(
-      LIVEKIT_API_KEY,
-      LIVEKIT_API_SECRET,
-      {
-        identity: uid,
-        name: displayName,
-        metadata: JSON.stringify({
-          uid,
-          role: profile.role,
-          lessonId
-        }),
-        ttl: "2h"
-      }
+    console.error("システム状態取得エラー:", error);
+
+    errorResponse(
+      res,
+      500,
+      "システム状態を取得できませんでした。"
     );
-
-    token.addGrant({
-      roomJoin: true,
-      room: roomName,
-      canPublish: true,
-      canSubscribe: true,
-      canPublishData: true
-    });
-
-    res.json({
-      success: true,
-      url: LIVEKIT_URL,
-      token: await token.toJwt(),
-      roomName,
-      identity: uid,
-      name: displayName
-    });
-  } catch (error) {
-    console.error("LiveKitトークン発行エラー:", error);
-    return sendError(res, 500, "授業室への接続準備に失敗しました。");
   }
 });
 
 // ==========================================
-// 29. 静的ファイル
+// 端末セッション登録
+// ==========================================
+
+app.post(
+  "/api/sessions/register",
+  authenticate,
+  async (req, res) => {
+    try {
+      const sessionId = String(req.body.sessionId || "");
+
+      if (!isValidSessionId(sessionId)) {
+        return errorResponse(
+          res,
+          400,
+          "端末セッションIDが正しくありません。"
+        );
+      }
+
+      const uid = req.user.uid;
+      const collection = getSessionsCollection(uid);
+      const currentRef = collection.doc(sessionId);
+
+      const result = await db.runTransaction(async (tx) => {
+        const allSessions = await tx.get(collection);
+
+        const activeSessions = allSessions.docs.filter(
+          (doc) => doc.data().active === true
+        );
+
+        const existing = activeSessions.find(
+          (doc) => doc.id === sessionId
+        );
+
+        // すでに登録済みなら同じ端末として扱う
+        if (existing) {
+          tx.set(currentRef, {
+            lastSeenAt: FieldValue.serverTimestamp(),
+            userAgent: String(
+              req.headers["user-agent"] || ""
+            ).slice(0, 300)
+          }, { merge: true });
+
+          return {
+            success: true,
+            count: activeSessions.length
+          };
+        }
+
+        // 4端末を超える場合は拒否
+        if (activeSessions.length >= MAX_SESSIONS_PER_USER) {
+          return {
+            success: false,
+            count: activeSessions.length
+          };
+        }
+
+        tx.set(currentRef, {
+          uid,
+          sessionId,
+          active: true,
+          userAgent: String(
+            req.headers["user-agent"] || ""
+          ).slice(0, 300),
+          createdAt: FieldValue.serverTimestamp(),
+          lastSeenAt: FieldValue.serverTimestamp()
+        });
+
+        return {
+          success: true,
+          count: activeSessions.length + 1
+        };
+      });
+
+      if (!result.success) {
+        return res.status(409).json({
+          success: false,
+          code: "SESSION_LIMIT",
+          error: "同時ログイン上限の4台に達しています。",
+          activeCount: result.count,
+          maxSessions: MAX_SESSIONS_PER_USER
+        });
+      }
+
+      res.json({
+        success: true,
+        activeCount: result.count,
+        maxSessions: MAX_SESSIONS_PER_USER
+      });
+
+    } catch (error) {
+      console.error("セッション登録エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "端末セッションを登録できませんでした。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// ログアウト
+// ==========================================
+
+app.post(
+  "/api/sessions/logout",
+  authenticate,
+  async (req, res) => {
+    try {
+      const sessionId = String(req.body.sessionId || "");
+
+      if (!isValidSessionId(sessionId)) {
+        return errorResponse(
+          res,
+          400,
+          "端末セッションIDが正しくありません。"
+        );
+      }
+
+      const ref = getSessionRef(
+        req.user.uid,
+        sessionId
+      );
+
+      const snap = await ref.get();
+
+      if (snap.exists && snap.data().active === true) {
+        await ref.set({
+          active: false,
+          loggedOutAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+
+      res.json({ success: true });
+
+    } catch (error) {
+      console.error("ログアウト処理エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "セッションを終了できませんでした。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// 現在のセッション確認
+// ==========================================
+
+app.get(
+  "/api/sessions/current",
+  authenticate,
+  requireSession,
+  (req, res) => {
+    res.json({
+      success: true,
+      valid: true,
+      sessionId: req.sessionId
+    });
+  }
+);
+
+// ==========================================
+// ログインユーザー情報
+// ==========================================
+
+app.get(
+  "/api/me",
+  authenticate,
+  requireSession,
+  (req, res) => {
+    res.json({
+      success: true,
+      user: {
+        uid: req.user.uid,
+        email: req.user.email,
+        role: req.user.profile.role,
+        displayName:
+          req.user.profile.displayName || "",
+        status:
+          req.user.profile.status || "active"
+      }
+    });
+  }
+);
+
+// ==========================================
+// 管理者：システム概要
+// ==========================================
+
+app.get(
+  "/api/admin/overview",
+  authenticate,
+  requireSession,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const [sessions, settings, logs] = await Promise.all([
+        db.collectionGroup("sessions")
+          .where("active", "==", true)
+          .get(),
+
+        db.collection("settings")
+          .doc("system")
+          .get(),
+
+        db.collection("adminLogs")
+          .orderBy("createdAt", "desc")
+          .limit(1)
+          .get()
+      ]);
+
+      const settingData = settings.exists
+        ? settings.data()
+        : {};
+
+      res.json({
+        success: true,
+        overview: {
+          activeSessions: sessions.size,
+          maxSessionsPerUser: MAX_SESSIONS_PER_USER,
+          maintenance:
+            settingData.maintenance === true,
+          latestAdminActionAt: logs.empty
+            ? null
+            : logs.docs[0].data().createdAt
+                ?.toDate?.()
+                .toISOString() || null,
+          serverStatus: "ok",
+          serverTime: new Date().toISOString()
+        }
+      });
+
+    } catch (error) {
+      console.error("管理者概要取得エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "システム概要を取得できませんでした。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// 管理者：全端末セッション一覧
+// ==========================================
+
+app.get(
+  "/api/admin/sessions",
+  authenticate,
+  requireSession,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const users = await db.collection("users").get();
+      const sessions = [];
+
+      for (const userDoc of users.docs) {
+        const sessionSnap = await getSessionsCollection(
+          userDoc.id
+        )
+          .where("active", "==", true)
+          .get();
+
+        const profile = userDoc.data();
+
+        for (const sessionDoc of sessionSnap.docs) {
+          const data = sessionDoc.data();
+
+          sessions.push({
+            uid: userDoc.id,
+            email: profile.email || "",
+            displayName: profile.displayName || "",
+            role: profile.role || "",
+            sessionId: sessionDoc.id,
+            createdAt:
+              data.createdAt?.toDate?.().toISOString() || null,
+            lastSeenAt:
+              data.lastSeenAt?.toDate?.().toISOString() || null,
+            userAgent: data.userAgent || ""
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        sessions,
+        count: sessions.length
+      });
+
+    } catch (error) {
+      console.error("セッション一覧取得エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "セッション一覧を取得できませんでした。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// 管理者：端末セッション強制解除
+// ==========================================
+
+app.delete(
+  "/api/admin/sessions/:uid/:sessionId",
+  authenticate,
+  requireSession,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const uid = String(req.params.uid || "");
+      const sessionId = String(req.params.sessionId || "");
+
+      if (!uid || !isValidSessionId(sessionId)) {
+        return errorResponse(
+          res,
+          400,
+          "指定されたセッション情報が正しくありません。"
+        );
+      }
+
+      const ref = getSessionRef(uid, sessionId);
+      const snap = await ref.get();
+
+      if (!snap.exists || snap.data().active !== true) {
+        return errorResponse(
+          res,
+          404,
+          "有効なセッションが見つかりません。"
+        );
+      }
+
+      await ref.set({
+        active: false,
+        revokedAt: FieldValue.serverTimestamp(),
+        revokedBy: req.user.uid
+      }, { merge: true });
+
+      await writeAdminLog(
+        req,
+        "session_revoked",
+        uid,
+        { sessionId }
+      );
+
+      res.json({
+        success: true,
+        message: "端末セッションを解除しました。"
+      });
+
+    } catch (error) {
+      console.error("セッション解除エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "セッションを解除できませんでした。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// 管理者：システム設定取得
+// ==========================================
+
+app.get(
+  "/api/admin/settings",
+  authenticate,
+  requireSession,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const snap = await db
+        .collection("settings")
+        .doc("system")
+        .get();
+
+      const data = snap.exists ? snap.data() : {};
+
+      res.json({
+        success: true,
+        settings: {
+          maintenance: data.maintenance === true,
+          maintenanceMessage:
+            data.maintenanceMessage || "",
+          maxSessionsPerUser: MAX_SESSIONS_PER_USER
+        }
+      });
+
+    } catch (error) {
+      console.error("設定取得エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "システム設定を取得できませんでした。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// 管理者：システム設定変更
+// ==========================================
+
+app.patch(
+  "/api/admin/settings",
+  authenticate,
+  requireSession,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const updates = {};
+      const details = {};
+
+      if (typeof req.body.maintenance === "boolean") {
+        updates.maintenance = req.body.maintenance;
+        details.maintenance = req.body.maintenance;
+      }
+
+      if (
+        typeof req.body.maintenanceMessage === "string"
+      ) {
+        updates.maintenanceMessage =
+          req.body.maintenanceMessage.trim().slice(0, 1000);
+
+        details.maintenanceMessage =
+          updates.maintenanceMessage;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return errorResponse(
+          res,
+          400,
+          "変更する設定がありません。"
+        );
+      }
+
+      updates.updatedAt = FieldValue.serverTimestamp();
+
+      await db.collection("settings")
+        .doc("system")
+        .set(updates, { merge: true });
+
+      await writeAdminLog(
+        req,
+        "system_settings_updated",
+        null,
+        details
+      );
+
+      res.json({
+        success: true,
+        message: "システム設定を更新しました。"
+      });
+
+    } catch (error) {
+      console.error("設定更新エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "システム設定を更新できませんでした。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// 管理者：操作ログ
+// ==========================================
+
+app.get(
+  "/api/admin/logs",
+  authenticate,
+  requireSession,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const limit = Math.min(
+        Math.max(Number(req.query.limit) || 50, 1),
+        100
+      );
+
+      const snap = await db.collection("adminLogs")
+        .orderBy("createdAt", "desc")
+        .limit(limit)
+        .get();
+
+      const logs = snap.docs.map((doc) => {
+        const data = doc.data();
+
+        return {
+          id: doc.id,
+          adminEmail: data.adminEmail || "",
+          action: data.action || "",
+          targetUid: data.targetUid || null,
+          details: data.details || {},
+          createdAt:
+            data.createdAt?.toDate?.().toISOString() || null
+        };
+      });
+
+      res.json({
+        success: true,
+        logs
+      });
+
+    } catch (error) {
+      console.error("ログ取得エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "操作ログを取得できませんでした。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// LiveKit：授業参加トークン
+// ==========================================
+
+app.post(
+  "/api/livekit/token",
+  authenticate,
+  requireSession,
+  async (req, res) => {
+    try {
+      const profile = req.user.profile;
+      const uid = req.user.uid;
+
+      if (profile.role === "admin") {
+        return errorResponse(
+          res,
+          403,
+          "システム管理者は授業に参加できません。"
+        );
+      }
+
+      const lessonId = String(
+        req.body.lessonId || ""
+      ).trim();
+
+      if (!lessonId || lessonId.length > 150) {
+        return errorResponse(
+          res,
+          400,
+          "授業IDが正しくありません。"
+        );
+      }
+
+      const lessonSnap = await db
+        .collection("lessons")
+        .doc(lessonId)
+        .get();
+
+      if (!lessonSnap.exists) {
+        return errorResponse(
+          res,
+          404,
+          "授業が見つかりません。"
+        );
+      }
+
+      const lesson = lessonSnap.data();
+
+      const isTeacher = profile.role === "teacher";
+      const isStudent =
+        profile.role === "student" &&
+        lesson.studentId === uid;
+
+      if (!isTeacher && !isStudent) {
+        return errorResponse(
+          res,
+          403,
+          "この授業に参加する権限がありません。"
+        );
+      }
+
+      if (
+        !["scheduled", "in_progress"].includes(
+          lesson.status
+        )
+      ) {
+        return errorResponse(
+          res,
+          403,
+          "現在この授業には入室できません。"
+        );
+      }
+
+      const roomName = `lesson-${lessonId}`;
+
+      const displayName =
+        profile.displayName ||
+        req.user.email ||
+        (isTeacher ? "先生" : "生徒");
+
+      const token = new AccessToken(
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+        {
+          identity: uid,
+          name: displayName,
+          metadata: JSON.stringify({
+            uid,
+            role: profile.role,
+            lessonId
+          }),
+          ttl: "2h"
+        }
+      );
+
+      token.addGrant({
+        roomJoin: true,
+        room: roomName,
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true
+      });
+
+      res.json({
+        success: true,
+        url: LIVEKIT_URL,
+        token: await token.toJwt(),
+        roomName,
+        identity: uid,
+        name: displayName
+      });
+
+    } catch (error) {
+      console.error("LiveKitトークン発行エラー:", error);
+
+      errorResponse(
+        res,
+        500,
+        "授業室への接続準備に失敗しました。"
+      );
+    }
+  }
+);
+
+// ==========================================
+// 静的ファイル
 // ==========================================
 
 const publicDirectory = path.join(__dirname, "public");
@@ -1053,22 +1051,29 @@ if (fs.existsSync(publicDirectory)) {
   }));
 
   app.get("/", (req, res) => {
-    const loginPath = path.join(publicDirectory, "login.html");
-    const indexPath = path.join(publicDirectory, "index.html");
+    const loginPath = path.join(
+      publicDirectory,
+      "login.html"
+    );
 
-    if (fs.existsSync(loginPath)) return res.sendFile(loginPath);
-    if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
+    if (fs.existsSync(loginPath)) {
+      return res.sendFile(loginPath);
+    }
 
-    return res.status(404).send("WEB Course-plus");
+    res.status(404).send("WEB Course-plus");
   });
 }
 
 // ==========================================
-// 30. 404・エラー処理
+// 404 / エラー処理
 // ==========================================
 
 app.use("/api", (req, res) => {
-  sendError(res, 404, "指定されたAPIは存在しません。");
+  errorResponse(
+    res,
+    404,
+    "指定されたAPIは存在しません。"
+  );
 });
 
 app.use((req, res) => {
@@ -1078,13 +1083,19 @@ app.use((req, res) => {
 app.use((error, req, res, next) => {
   console.error("サーバーエラー:", error);
 
-  if (res.headersSent) return next(error);
+  if (res.headersSent) {
+    return next(error);
+  }
 
-  return sendError(res, 500, "サーバー内部でエラーが発生しました。");
+  errorResponse(
+    res,
+    500,
+    "サーバー内部でエラーが発生しました。"
+  );
 });
 
 // ==========================================
-// 31. 起動
+// サーバー起動
 // ==========================================
 
 async function startServer() {
@@ -1092,15 +1103,22 @@ async function startServer() {
     await initializeFirestore();
 
     app.listen(PORT, "0.0.0.0", () => {
-      console.log("WEB Course-plus server started.");
+      console.log("----------------------------------");
+      console.log("WEB Course-plus");
+      console.log("Server: running");
       console.log(`Port: ${PORT}`);
-      console.log("Session limit: 4");
-      console.log("Admin system: enabled");
-      console.log("User management API: removed");
-      console.log("Health endpoint: /health");
+      console.log("Firebase: initialized");
+      console.log("Firestore: initialized");
+      console.log("LiveKit: configured");
+      console.log(
+        `Maximum sessions: ${MAX_SESSIONS_PER_USER}`
+      );
+      console.log("Health: /health");
+      console.log("----------------------------------");
     });
+
   } catch (error) {
-    console.error("サーバー起動失敗:", error);
+    console.error("サーバー起動エラー:", error);
     process.exit(1);
   }
 }
