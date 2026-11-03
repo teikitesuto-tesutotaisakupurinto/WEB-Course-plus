@@ -1,45 +1,43 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function signedIn() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-
-    function userDoc() {
-      return get(
-        /databases/$(database)/documents/users/$(request.auth.uid)
+    function activeUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && me().status == 'active'
+        && me().active != false;
+    }
+    function isAdmin() { return activeUser() && me().role == 'admin'; }
+    function isTeacher() { return activeUser() && me().role == 'teacher'; }
+    function isStudent() { return activeUser() && me().role == 'student'; }
+    function lessonExists(lessonId) {
+      return exists(/databases/$(database)/documents/lessons/$(lessonId));
+    }
+    function lessonData(lessonId) {
+      return get(/databases/$(database)/documents/lessons/$(lessonId)).data;
+    }
+    function canAccessLesson(lessonId) {
+      return activeUser() && lessonExists(lessonId) && (
+        isAdmin()
+        || (isTeacher() && lessonData(lessonId).teacherId == request.auth.uid)
+        || (isStudent() && lessonData(lessonId).studentId == request.auth.uid)
       );
     }
 
-    function activeUser() {
-      return signedIn()
-        && userDoc().exists()
-        && userDoc().data.active != false
-        && (!('status' in userDoc().data)
-          || !['inactive', 'disabled', 'suspended', 'deleted']
-            .hasAny([userDoc().data.status]));
-    }
-
-    function isAdmin() {
-      return activeUser() && userDoc().data.role == 'admin';
-    }
-
-    function isTeacher() {
-      return activeUser() && userDoc().data.role == 'teacher';
-    }
-
-    function isStudent() {
-      return activeUser() && userDoc().data.role == 'student';
-    }
-
     match /users/{uid} {
-      allow read: if activeUser()
-        && (request.auth.uid == uid || isAdmin());
-
-      allow create, update, delete: if false;
-
+      allow read: if activeUser() && (
+        request.auth.uid == uid
+        || isAdmin()
+        || (isTeacher() && resource.data.role == 'student')
+      );
+      allow create, delete: if false;
+      allow update: if activeUser() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['displayName','name','phone','photoURL','updatedAt']);
       match /sessions/{sessionId} {
         allow read, write: if false;
       }
@@ -51,24 +49,47 @@ service cloud.firestore {
     }
 
     match /lessons/{lessonId} {
-      allow read: if activeUser()
-        && (
-          isAdmin()
-          || (isTeacher()
-            && resource.data.teacherId == request.auth.uid)
-          || (isStudent()
-            && resource.data.studentId == request.auth.uid)
-        );
-
-      allow write: if false;
-
-      match /{subcollection}/{documentId} {
-        allow read, write: if false;
-      }
+      allow read: if activeUser() && (
+        isAdmin()
+        || (isTeacher() && resource.data.teacherId == request.auth.uid)
+        || (isStudent() && resource.data.studentId == request.auth.uid)
+      );
+      allow create: if isTeacher()
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.studentId is string
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.studentId))
+        && get(/databases/$(database)/documents/users/$(request.resource.data.studentId)).data.role == 'student';
+      allow update: if isTeacher()
+        && resource.data.teacherId == request.auth.uid
+        && request.resource.data.teacherId == resource.data.teacherId
+        && request.resource.data.studentId == resource.data.studentId;
+      allow delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
     }
 
-    match /adminLogs/{logId} {
-      allow read, write: if false;
+    match /lessonRecords/{recordId} {
+      allow read: if activeUser() && (
+        isAdmin()
+        || (isTeacher() && resource.data.teacherId == request.auth.uid)
+        || (isStudent() && resource.data.studentId == request.auth.uid)
+      );
+      allow create: if isTeacher()
+        && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /lessonMessages/{lessonId}/messages/{messageId} {
+      allow read: if canAccessLesson(lessonId);
+      allow create: if canAccessLesson(lessonId)
+        && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /lessonBoards/{lessonId}/strokes/{strokeId} {
+      allow read: if canAccessLesson(lessonId);
+      allow create: if canAccessLesson(lessonId)
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if canAccessLesson(lessonId)
+        && resource.data.userId == request.auth.uid;
     }
 
     match /{document=**} {
