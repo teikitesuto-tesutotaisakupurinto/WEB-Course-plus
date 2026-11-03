@@ -7,124 +7,70 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function myProfile() {
+    function userDoc() {
       return get(
         /databases/$(database)/documents/users/$(request.auth.uid)
-      ).data;
-    }
-
-    function isAdmin() {
-      return signedIn() && myProfile().role == 'admin';
-    }
-
-    function isTeacher() {
-      return signedIn() && myProfile().role == 'teacher';
-    }
-
-    function isStudent() {
-      return signedIn() && myProfile().role == 'student';
-    }
-
-    function lessonExists(id) {
-      return exists(
-        /databases/$(database)/documents/lessons/$(id)
       );
     }
 
-    function lessonData(id) {
-      return get(
-        /databases/$(database)/documents/lessons/$(id)
-      ).data;
-    }
-
-    function canAccessLesson(id) {
+    function activeUser() {
       return signedIn()
-        && lessonExists(id)
-        && (
-          isAdmin()
-          || (isTeacher() && lessonData(id).teacherId == request.auth.uid)
-          || (isStudent() && lessonData(id).studentId == request.auth.uid)
-        );
+        && userDoc().exists()
+        && userDoc().data.active != false
+        && (!('status' in userDoc().data)
+          || !['inactive', 'disabled', 'suspended', 'deleted']
+            .hasAny([userDoc().data.status]));
     }
 
-    // ユーザー
+    function isAdmin() {
+      return activeUser() && userDoc().data.role == 'admin';
+    }
+
+    function isTeacher() {
+      return activeUser() && userDoc().data.role == 'teacher';
+    }
+
+    function isStudent() {
+      return activeUser() && userDoc().data.role == 'student';
+    }
+
     match /users/{uid} {
-      allow read: if signedIn()
-        && (
-          request.auth.uid == uid
-          || isAdmin()
-          || isTeacher()
-        );
+      allow read: if activeUser()
+        && (request.auth.uid == uid || isAdmin());
 
-      allow create: if isAdmin();
-      allow update: if isAdmin()
-        || (
-          signedIn()
-          && request.auth.uid == uid
-          && request.resource.data.diff(resource.data)
-            .affectedKeys()
-            .hasOnly([
-              'displayName',
-              'phone',
-              'introduction',
-              'updatedAt'
-            ])
-        );
-      allow delete: if isAdmin();
+      allow create, update, delete: if false;
+
+      match /sessions/{sessionId} {
+        allow read, write: if false;
+      }
     }
 
-    // 授業
-    match /lessons/{id} {
-      allow read: if signedIn()
+    match /settings/{settingId} {
+      allow read: if settingId == 'system';
+      allow write: if false;
+    }
+
+    match /lessons/{lessonId} {
+      allow read: if activeUser()
         && (
           isAdmin()
-          || (isTeacher() && resource.data.teacherId == request.auth.uid)
-          || (isStudent() && resource.data.studentId == request.auth.uid)
+          || (isTeacher()
+            && resource.data.teacherId == request.auth.uid)
+          || (isStudent()
+            && resource.data.studentId == request.auth.uid)
         );
 
-      allow create: if isTeacher()
-        && request.resource.data.teacherId == request.auth.uid;
+      allow write: if false;
 
-      allow update: if isAdmin()
-        || (
-          isTeacher()
-          && resource.data.teacherId == request.auth.uid
-        );
-
-      allow delete: if isAdmin();
+      match /{subcollection}/{documentId} {
+        allow read, write: if false;
+      }
     }
 
-    // 授業記録
-    match /lessonRecords/{id} {
-      allow read: if signedIn()
-        && (
-          isAdmin()
-          || (isTeacher() && resource.data.teacherId == request.auth.uid)
-          || (isStudent() && resource.data.studentId == request.auth.uid)
-        );
-
-      allow create: if isTeacher();
-      allow update, delete: if isAdmin()
-        || (isTeacher() && resource.data.teacherId == request.auth.uid);
+    match /adminLogs/{logId} {
+      allow read, write: if false;
     }
 
-    // システム設定
-    match /settings/{id} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
-    }
-
-    // ホワイトボード
-    match /lessonBoards/{lessonId}/strokes/{strokeId} {
-      allow read, write: if canAccessLesson(lessonId);
-    }
-
-    // チャット
-    match /lessonMessages/{lessonId}/messages/{messageId} {
-      allow read, write: if canAccessLesson(lessonId);
-    }
-
-    // その他
     match /{document=**} {
       allow read, write: if false;
     }
