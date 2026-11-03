@@ -1,4 +1,3 @@
-
 "use strict";
 
 const express = require("express");
@@ -70,11 +69,8 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
-
-const livekitHost = LIVEKIT_URL
-  .replace(/^wss:/, "https:")
+const livekitHost = LIVEKIT_URL.replace(/^wss:/, "https:")
   .replace(/^ws:/, "http:");
-
 const roomService = new RoomServiceClient(
   livekitHost,
   LIVEKIT_API_KEY,
@@ -82,28 +78,18 @@ const roomService = new RoomServiceClient(
 );
 
 function sendError(res, status, message) {
-  return res.status(status).json({
-    success: false,
-    error: message
-  });
+  return res.status(status).json({ success: false, error: message });
 }
 
 function bearer(req) {
   const value = req.headers.authorization || "";
-  return value.startsWith("Bearer ")
-    ? value.slice(7).trim()
-    : null;
+  return value.startsWith("Bearer ") ? value.slice(7).trim() : null;
 }
 
 function activeProfile(profile) {
   if (!profile || profile.active === false) return false;
-
-  return ![
-    "inactive",
-    "disabled",
-    "suspended",
-    "deleted"
-  ].includes(String(profile.status || "").toLowerCase());
+  return !["inactive", "disabled", "suspended", "deleted"]
+    .includes(String(profile.status || "").toLowerCase());
 }
 
 function validRole(role) {
@@ -129,42 +115,23 @@ function validSessionId(value) {
 async function authenticate(req, res, next) {
   try {
     const token = bearer(req);
-
-    if (!token) {
-      return sendError(res, 401, "ログインが必要です。");
-    }
+    if (!token) return sendError(res, 401, "ログインが必要です。");
 
     const decoded = await admin.auth().verifyIdToken(token);
-
-    const snapshot = await db
-      .collection("users")
-      .doc(decoded.uid)
-      .get();
+    const snapshot = await db.collection("users").doc(decoded.uid).get();
 
     if (!snapshot.exists) {
-      return sendError(
-        res,
-        403,
-        "ユーザー情報が登録されていません。"
-      );
+      return sendError(res, 403, "ユーザー情報が登録されていません。");
     }
 
     const profile = snapshot.data();
 
     if (!activeProfile(profile)) {
-      return sendError(
-        res,
-        403,
-        "このアカウントは利用停止中です。"
-      );
+      return sendError(res, 403, "このアカウントは利用停止中です。");
     }
 
     if (!validRole(profile.role)) {
-      return sendError(
-        res,
-        403,
-        "ユーザー権限が正しくありません。"
-      );
+      return sendError(res, 403, "ユーザー権限が正しくありません。");
     }
 
     req.user = {
@@ -176,12 +143,7 @@ async function authenticate(req, res, next) {
     next();
   } catch (error) {
     console.error("認証エラー:", error.message);
-
-    return sendError(
-      res,
-      401,
-      "認証に失敗しました。再度ログインしてください。"
-    );
+    return sendError(res, 401, "認証に失敗しました。再度ログインしてください。");
   }
 }
 
@@ -189,41 +151,28 @@ function requireAdmin(req, res, next) {
   if (req.user?.profile?.role !== "admin") {
     return sendError(res, 403, "管理者権限が必要です。");
   }
-
   next();
 }
 
 /*
- * 有効な端末セッションを確認する。
- *
- * メンテナンス中は一般利用者の保護されたAPI利用を拒否する。
- * 管理者はメンテナンス中でも通常どおり利用できる。
+ * Firebase認証のみ必要な処理。
+ * セッション登録・ログアウトでは既存セッションを要求しない。
  */
 async function requireSession(req, res, next) {
   try {
     const sid = sessionIdFrom(req);
-
     if (!validSessionId(sid)) {
-      return sendError(
-        res,
-        401,
-        "端末セッションIDが不正です。"
-      );
+      return sendError(res, 401, "端末セッションIDが不正です。");
     }
 
     const ref = sessionCollection(req.user.uid).doc(sid);
     const snap = await ref.get();
 
     if (!snap.exists) {
-      return sendError(
-        res,
-        401,
-        "端末セッションが登録されていません。"
-      );
+      return sendError(res, 401, "端末セッションが登録されていません。");
     }
 
     const data = snap.data();
-
     const lastSeen = data.lastSeenAt?.toDate
       ? data.lastSeenAt.toDate().getTime()
       : 0;
@@ -233,60 +182,26 @@ async function requireSession(req, res, next) {
       data.revoked === true ||
       Date.now() - lastSeen > SESSION_STALE_MS
     ) {
-      return sendError(
-        res,
-        401,
-        "端末セッションが無効です。"
-      );
-    }
-
-    if (req.user.profile.role !== "admin") {
-      const settings = await getSystemSettings();
-
-      if (settings.maintenance === true) {
-        return res.status(503).json({
-          success: false,
-          code: "MAINTENANCE",
-          error: settings.maintenanceMessage ||
-            "現在メンテナンス中です。"
-        });
-      }
+      return sendError(res, 401, "端末セッションが無効です。");
     }
 
     req.sessionId = sid;
     req.sessionRef = ref;
-
     next();
   } catch (error) {
     console.error("セッション確認エラー:", error);
-
-    return sendError(
-      res,
-      500,
-      "端末セッションを確認できませんでした。"
-    );
+    return sendError(res, 500, "端末セッションを確認できませんでした。");
   }
 }
 
 function requireAdminSession(req, res, next) {
   if (req.user.profile.role !== "admin") {
-    return sendError(
-      res,
-      403,
-      "管理者権限が必要です。"
-    );
+    return sendError(res, 403, "管理者権限が必要です。");
   }
-
   next();
 }
 
-async function writeLog(
-  uid,
-  email,
-  action,
-  target = "",
-  details = ""
-) {
+async function writeLog(uid, email, action, target = "", details = "") {
   await db.collection("adminLogs").add({
     adminUid: uid,
     adminEmail: email || "",
@@ -297,13 +212,7 @@ async function writeLog(
   });
 }
 
-async function writeSecurityEvent(
-  type,
-  label,
-  uid = "",
-  email = "",
-  details = ""
-) {
+async function writeSecurityEvent(type, label, uid = "", email = "", details = "") {
   await db.collection("securityEvents").add({
     type,
     label,
@@ -315,11 +224,8 @@ async function writeSecurityEvent(
 }
 
 function getRequestAddress(req) {
-  return String(
-    req.headers["x-forwarded-for"] ||
-    req.socket.remoteAddress ||
-    ""
-  ).split(",")[0].trim().slice(0, 100);
+  return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "")
+    .split(",")[0].trim().slice(0, 100);
 }
 
 async function getSystemSettings() {
@@ -331,22 +237,16 @@ async function getSystemSettings() {
       maintenance: false,
       maintenanceMessage: "",
       maxSessionsPerUser: MAX_SESSIONS,
-      maintenanceSchedule: {
-        enabled: false
-      },
+      maintenanceSchedule: { enabled: false },
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
     };
-
     await ref.set(initial);
-
     return {
       maintenance: false,
       maintenanceMessage: "",
       maxSessionsPerUser: MAX_SESSIONS,
-      maintenanceSchedule: {
-        enabled: false
-      }
+      maintenanceSchedule: { enabled: false }
     };
   }
 
@@ -355,17 +255,12 @@ async function getSystemSettings() {
 
 async function cleanStaleSessions(uid) {
   const ref = sessionCollection(uid);
-
-  const snapshot = await ref
-    .where("active", "==", true)
-    .get();
-
+  const snapshot = await ref.where("active", "==", true).get();
   const cutoff = Date.now() - SESSION_STALE_MS;
   const batch = db.batch();
 
   for (const docSnap of snapshot.docs) {
     const data = docSnap.data();
-
     const lastSeen = data.lastSeenAt?.toDate
       ? data.lastSeenAt.toDate().getTime()
       : 0;
@@ -379,16 +274,13 @@ async function cleanStaleSessions(uid) {
     }
   }
 
-  if (!snapshot.empty) {
-    await batch.commit();
-  }
+  if (!snapshot.empty) await batch.commit();
 }
 
 async function initializeFirestore() {
   await getSystemSettings();
   console.log("Firestore settings/system initialized");
 }
-
 /* ヘルスチェック */
 
 app.get("/health", (req, res) => {
@@ -400,13 +292,10 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    status: "ok"
-  });
+  res.json({ success: true, status: "ok" });
 });
 
-/* ログイン前のメンテナンス確認 */
+/* ログイン前のメンテナンス状態確認 */
 
 app.get("/api/system/status", async (req, res) => {
   try {
@@ -419,141 +308,92 @@ app.get("/api/system/status", async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-
-    sendError(
-      res,
-      500,
-      "システム状態を取得できませんでした。"
-    );
+    sendError(res, 500, "システム状態を取得できませんでした。");
   }
 });
 
-/* セッション登録 */
+/*
+ * セッション登録
+ * メンテナンス中でもログイン・セッション登録を許可する。
+ * メンテナンス画面への切り替えはログイン後の画面側で行う。
+ */
 
-app.post(
-  "/api/sessions/register",
-  authenticate,
-  async (req, res) => {
-    try {
-      const sid = sessionIdFrom(req);
+app.post("/api/sessions/register", authenticate, async (req, res) => {
+  try {
+    const sid = sessionIdFrom(req);
 
-      if (!validSessionId(sid)) {
-        return sendError(
-          res,
-          400,
-          "端末セッションIDが不正です。"
-        );
-      }
+    if (!validSessionId(sid)) {
+      return sendError(res, 400, "端末セッションIDが不正です。");
+    }
 
-      const settings = await getSystemSettings();
+    const uid = req.user.uid;
+    const ref = sessionCollection(uid);
+    const ownRef = ref.doc(sid);
 
-      if (
-        settings.maintenance === true &&
-        req.user.profile.role !== "admin"
-      ) {
-        return res.status(503).json({
-          success: false,
-          code: "MAINTENANCE",
-          error: settings.maintenanceMessage ||
-            "現在メンテナンス中です。"
-        });
-      }
+    await cleanStaleSessions(uid);
 
-      const uid = req.user.uid;
-      const ref = sessionCollection(uid);
-      const ownRef = ref.doc(sid);
-
-      await cleanStaleSessions(uid);
-
-      const result = await db.runTransaction(
-        async transaction => {
-          const ownSnap = await transaction.get(ownRef);
-
-          const allSnap = await transaction.get(
-            ref.where("active", "==", true)
-          );
-
-          const activeOthers = allSnap.docs.filter(docSnap => {
-            if (docSnap.id === sid) return false;
-            return docSnap.data().revoked !== true;
-          });
-
-          if (
-            !ownSnap.exists &&
-            activeOthers.length >= MAX_SESSIONS
-          ) {
-            return {
-              allowed: false,
-              count: activeOthers.length
-            };
-          }
-
-          transaction.set(
-            ownRef,
-            {
-              uid,
-              sessionId: sid,
-              email: req.user.email || "",
-              displayName:
-                req.user.profile.displayName || "",
-              role: req.user.profile.role,
-              active: true,
-              revoked: false,
-              userAgent: String(
-                req.headers["user-agent"] || ""
-              ).slice(0, 300),
-              lastSeenAt: FieldValue.serverTimestamp(),
-              updatedAt: FieldValue.serverTimestamp(),
-              createdAt: ownSnap.exists
-                ? ownSnap.data().createdAt ||
-                  FieldValue.serverTimestamp()
-                : FieldValue.serverTimestamp()
-            },
-            { merge: true }
-          );
-
-          return {
-            allowed: true,
-            count: activeOthers.length + 1
-          };
-        }
+    const result = await db.runTransaction(async transaction => {
+      const ownSnap = await transaction.get(ownRef);
+      const allSnap = await transaction.get(
+        ref.where("active", "==", true)
       );
 
-      if (!result.allowed) {
-        await writeSecurityEvent(
-          "session_limit",
-          "同時ログイン端末数の上限超過",
-          req.user.uid,
-          req.user.email,
-          `有効端末数=${result.count} / 上限=${MAX_SESSIONS}`
-        );
+      const activeOthers = allSnap.docs.filter(docSnap => {
+        if (docSnap.id === sid) return false;
+        return docSnap.data().revoked !== true;
+      });
 
-        return res.status(409).json({
-          success: false,
-          error:
-            `同時ログインできる端末は${MAX_SESSIONS}台までです。`,
-          activeSessions: result.count,
-          maxSessionsPerUser: MAX_SESSIONS
-        });
+      if (!ownSnap.exists && activeOthers.length >= MAX_SESSIONS) {
+        return { allowed: false, count: activeOthers.length };
       }
 
-      res.json({
-        success: true,
+      transaction.set(ownRef, {
+        uid,
         sessionId: sid,
+        email: req.user.email || "",
+        displayName: req.user.profile.displayName || "",
+        role: req.user.profile.role,
+        active: true,
+        revoked: false,
+        userAgent: String(req.headers["user-agent"] || "").slice(0, 300),
+        lastSeenAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: ownSnap.exists
+          ? ownSnap.data().createdAt || FieldValue.serverTimestamp()
+          : FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      return { allowed: true, count: activeOthers.length + 1 };
+    });
+
+    if (!result.allowed) {
+      await writeSecurityEvent(
+        "session_limit",
+        "同時ログイン端末数の上限超過",
+        req.user.uid,
+        req.user.email,
+        `有効端末数=${result.count} / 上限=${MAX_SESSIONS}`
+      );
+
+      return res.status(409).json({
+        success: false,
+        error: `同時ログインできる端末は${MAX_SESSIONS}台までです。`,
         activeSessions: result.count,
         maxSessionsPerUser: MAX_SESSIONS
       });
-    } catch (error) {
-      console.error("セッション登録エラー:", error);
-
-      sendError(
-        res,
-        500,
-        "端末セッションを登録できませんでした。"
-      );
     }
+
+    res.json({
+      success: true,
+      sessionId: sid,
+      activeSessions: result.count,
+      maxSessionsPerUser: MAX_SESSIONS
+    });
+  } catch (error) {
+    console.error("セッション登録エラー:", error);
+    sendError(res, 500, "端末セッションを登録できませんでした。");
   }
-);
+});
 
 /* セッション生存確認 */
 
@@ -571,80 +411,49 @@ app.post(
       res.json({ success: true });
     } catch (error) {
       console.error(error);
-
-      sendError(
-        res,
-        500,
-        "セッション確認に失敗しました。"
-      );
+      sendError(res, 500, "セッション確認に失敗しました。");
     }
   }
 );
 
 /* ログアウト */
 
-app.post(
-  "/api/sessions/logout",
-  authenticate,
-  async (req, res) => {
-    try {
-      const sid = sessionIdFrom(req);
+app.post("/api/sessions/logout", authenticate, async (req, res) => {
+  try {
+    const sid = sessionIdFrom(req);
 
-      if (!validSessionId(sid)) {
-        return sendError(
-          res,
-          400,
-          "端末セッションIDが不正です。"
-        );
-      }
-
-      await sessionCollection(req.user.uid)
-        .doc(sid)
-        .set(
-          {
-            active: false,
-            revoked: false,
-            inactiveReason: "logout",
-            updatedAt: FieldValue.serverTimestamp()
-          },
-          { merge: true }
-        );
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error(error);
-
-      sendError(
-        res,
-        500,
-        "ログアウト処理に失敗しました。"
-      );
+    if (!validSessionId(sid)) {
+      return sendError(res, 400, "端末セッションIDが不正です。");
     }
+
+    await sessionCollection(req.user.uid).doc(sid).set({
+      active: false,
+      revoked: false,
+      inactiveReason: "logout",
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    sendError(res, 500, "ログアウト処理に失敗しました。");
   }
-);
+});
 
 /* 以下、ログイン済みかつ有効な端末だけが利用可能 */
 
-/* ログインユーザー情報 */
-
-app.get(
-  "/api/me",
-  authenticate,
-  requireSession,
-  (req, res) => {
-    res.json({
-      success: true,
-      user: {
-        uid: req.user.uid,
-        email: req.user.email,
-        role: req.user.profile.role,
-        displayName:
-          req.user.profile.displayName || "",
-        status: req.user.profile.status || "active"
-      }
-    });
-  }
-);
+app.get("/api/me", authenticate, requireSession, (req, res) => {
+  res.json({
+    success: true,
+    user: {
+      uid: req.user.uid,
+      email: req.user.email,
+      role: req.user.profile.role,
+      displayName: req.user.profile.displayName || "",
+      status: req.user.profile.status || "active"
+    }
+  });
+});
 
 /* 管理者：概要 */
 
@@ -656,20 +465,16 @@ app.get(
   async (req, res) => {
     try {
       const users = await db.collection("users").get();
-
       let activeSessions = 0;
 
       for (const userDoc of users.docs) {
         const sessions = await sessionCollection(userDoc.id)
-          .where("active", "==", true)
-          .get();
+          .where("active", "==", true).get();
 
         activeSessions += sessions.docs.filter(d => {
           const s = d.data();
-
           const last = s.lastSeenAt?.toDate
-            ? s.lastSeenAt.toDate().getTime()
-            : 0;
+            ? s.lastSeenAt.toDate().getTime() : 0;
 
           return s.revoked !== true &&
             Date.now() - last <= SESSION_STALE_MS;
@@ -678,37 +483,22 @@ app.get(
 
       const settings = await getSystemSettings();
 
-      const [
-        studentSnap,
-        teacherSnap,
-        lessonSnap
-      ] = await Promise.all([
-        db.collection("users")
-          .where("role", "==", "student")
-          .get(),
-
-        db.collection("users")
-          .where("role", "==", "teacher")
-          .get(),
-
+      const [studentSnap, teacherSnap, lessonSnap] = await Promise.all([
+        db.collection("users").where("role", "==", "student").get(),
+        db.collection("users").where("role", "==", "teacher").get(),
         db.collection("lessons").get()
       ]);
 
-      const students = studentSnap.docs
-        .filter(d => activeProfile(d.data())).length;
-
-      const teachers = teacherSnap.docs
-        .filter(d => activeProfile(d.data())).length;
+      const students = studentSnap.docs.filter(d => activeProfile(d.data())).length;
+      const teachers = teacherSnap.docs.filter(d => activeProfile(d.data())).length;
 
       res.json({
         success: true,
-
         statistics: {
           students,
           teachers,
           lessons: lessonSnap.size
         },
-
         overview: {
           activeSessions,
           maxSessionsPerUser: MAX_SESSIONS,
@@ -718,12 +508,7 @@ app.get(
       });
     } catch (error) {
       console.error(error);
-
-      sendError(
-        res,
-        500,
-        "概要情報を取得できませんでした。"
-      );
+      sendError(res, 500, "概要情報を取得できませんでした。");
     }
   }
 );
@@ -742,7 +527,6 @@ app.get(
 
       for (const userDoc of users.docs) {
         const profile = userDoc.data();
-
         const snap = await sessionCollection(userDoc.id).get();
 
         for (const sessionDoc of snap.docs) {
@@ -752,41 +536,27 @@ app.get(
             uid: userDoc.id,
             userId: userDoc.id,
             email: s.email || profile.email || "",
-            displayName:
-              s.displayName || profile.displayName || "",
+            displayName: s.displayName || profile.displayName || "",
             role: s.role || profile.role || "",
             sessionId: sessionDoc.id,
             active: s.active === true,
             revoked: s.revoked === true,
-
             lastSeen: s.lastSeenAt?.toDate
-              ? s.lastSeenAt.toDate().toISOString()
-              : null,
-
+              ? s.lastSeenAt.toDate().toISOString() : null,
             createdAt: s.createdAt?.toDate
-              ? s.createdAt.toDate().toISOString()
-              : null
+              ? s.createdAt.toDate().toISOString() : null
           });
         }
       }
 
       sessions.sort((a, b) =>
-        String(b.lastSeen || "")
-          .localeCompare(String(a.lastSeen || ""))
+        String(b.lastSeen || "").localeCompare(String(a.lastSeen || ""))
       );
 
-      res.json({
-        success: true,
-        sessions
-      });
+      res.json({ success: true, sessions });
     } catch (error) {
       console.error(error);
-
-      sendError(
-        res,
-        500,
-        "セッション一覧を取得できませんでした。"
-      );
+      sendError(res, 500, "セッション一覧を取得できませんでした。");
     }
   }
 );
@@ -803,35 +573,24 @@ app.delete(
       const { uid, sessionId } = req.params;
 
       if (!uid || !validSessionId(sessionId)) {
-        return sendError(
-          res,
-          400,
-          "指定内容が不正です。"
-        );
+        return sendError(res, 400, "指定内容が不正です。");
       }
 
       const ref = sessionCollection(uid).doc(sessionId);
       const snap = await ref.get();
 
       if (!snap.exists) {
-        return sendError(
-          res,
-          404,
-          "セッションが見つかりません。"
-        );
+        return sendError(res, 404, "セッションが見つかりません。");
       }
 
-      await ref.set(
-        {
-          active: false,
-          revoked: true,
-          inactiveReason: "admin_revoked",
-          revokedBy: req.user.uid,
-          revokedAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp()
-        },
-        { merge: true }
-      );
+      await ref.set({
+        active: false,
+        revoked: true,
+        inactiveReason: "admin_revoked",
+        revokedBy: req.user.uid,
+        revokedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
 
       await writeLog(
         req.user.uid,
@@ -849,11 +608,6 @@ app.delete(
         `解除実行者=${req.user.email || req.user.uid}`
       );
 
-      /*
-       * LiveKit参加中なら対象identityを切断する。
-       * セッション無効化が成功していれば、
-       * LiveKit切断に失敗しても解除処理は維持する。
-       */
       try {
         const session = snap.data();
 
@@ -861,35 +615,21 @@ app.delete(
           const rooms = await roomService.listRooms();
 
           for (const room of rooms) {
-            const participants =
-              await roomService.listParticipants(room.name);
+            const participants = await roomService.listParticipants(room.name);
 
-            if (
-              participants.some(p => p.identity === uid)
-            ) {
-              await roomService.removeParticipant(
-                room.name,
-                uid
-              );
+            if (participants.some(p => p.identity === uid)) {
+              await roomService.removeParticipant(room.name, uid);
             }
           }
         }
       } catch (livekitError) {
-        console.warn(
-          "LiveKit切断処理:",
-          livekitError.message
-        );
+        console.warn("LiveKit切断処理:", livekitError.message);
       }
 
       res.json({ success: true });
     } catch (error) {
       console.error(error);
-
-      sendError(
-        res,
-        500,
-        "セッションを解除できませんでした。"
-      );
+      sendError(res, 500, "セッションを解除できませんでした。");
     }
   }
 );
@@ -907,27 +647,16 @@ app.get(
 
       res.json({
         success: true,
-
         settings: {
           maintenance: settings.maintenance === true,
-          maintenanceMessage:
-            settings.maintenanceMessage || "",
-
-          maintenanceSchedule:
-            settings.maintenanceSchedule ||
-            { enabled: false },
-
+          maintenanceMessage: settings.maintenanceMessage || "",
+          maintenanceSchedule: settings.maintenanceSchedule || { enabled: false },
           maxSessionsPerUser: MAX_SESSIONS
         }
       });
     } catch (error) {
       console.error(error);
-
-      sendError(
-        res,
-        500,
-        "設定を取得できませんでした。"
-      );
+      sendError(res, 500, "設定を取得できませんでした。");
     }
   }
 );
@@ -947,39 +676,26 @@ app.patch(
         updates.maintenance = req.body.maintenance;
       }
 
-      if (
-        typeof req.body.maintenanceMessage === "string"
-      ) {
+      if (typeof req.body.maintenanceMessage === "string") {
         updates.maintenanceMessage =
           req.body.maintenanceMessage.slice(0, 1000);
       }
 
       if (!Object.keys(updates).length) {
-        return sendError(
-          res,
-          400,
-          "変更する設定がありません。"
-        );
+        return sendError(res, 400, "変更する設定がありません。");
       }
 
       updates.updatedAt = FieldValue.serverTimestamp();
 
-      await db.collection("settings")
-        .doc("system")
+      await db.collection("settings").doc("system")
         .set(updates, { merge: true });
 
       await writeLog(
         req.user.uid,
         req.user.email,
-
         typeof updates.maintenance === "boolean"
-          ? (
-              updates.maintenance
-                ? "maintenance_started"
-                : "maintenance_ended"
-            )
+          ? (updates.maintenance ? "maintenance_started" : "maintenance_ended")
           : "settings_updated",
-
         "settings/system",
         JSON.stringify(updates)
       );
@@ -987,17 +703,11 @@ app.patch(
       res.json({ success: true });
     } catch (error) {
       console.error(error);
-
-      sendError(
-        res,
-        500,
-        "設定を更新できませんでした。"
-      );
+      sendError(res, 500, "設定を更新できませんでした。");
     }
   }
 );
-
-/* 管理者：操作ログ */
+/* 管理者：操作履歴 */
 
 app.get(
   "/api/admin/logs",
@@ -1006,11 +716,7 @@ app.get(
   requireAdminSession,
   async (req, res) => {
     try {
-      const limit = Math.min(
-        Math.max(Number(req.query.limit) || 50, 1),
-        500
-      );
-
+      const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
       const snap = await db.collection("adminLogs")
         .orderBy("createdAt", "desc")
         .limit(limit)
@@ -1018,7 +724,6 @@ app.get(
 
       const logs = snap.docs.map(d => {
         const x = d.data();
-
         return {
           id: d.id,
           adminUid: x.adminUid || "",
@@ -1026,25 +731,16 @@ app.get(
           action: x.action || "",
           target: x.target || "",
           details: x.details || "",
-
           createdAt: x.createdAt?.toDate
             ? x.createdAt.toDate().toISOString()
             : null
         };
       });
 
-      res.json({
-        success: true,
-        logs
-      });
+      res.json({ success: true, logs });
     } catch (error) {
-      console.error(error);
-
-      sendError(
-        res,
-        500,
-        "操作ログを取得できませんでした。"
-      );
+      console.error("操作履歴取得エラー:", error);
+      sendError(res, 500, "操作履歴を取得できませんでした。");
     }
   }
 );
@@ -1060,29 +756,18 @@ app.put(
     try {
       const startAt = new Date(req.body.startAt);
       const endAt = new Date(req.body.endAt);
-
-      const message = String(
-        req.body.message || ""
-      ).slice(0, 1000);
+      const message = String(req.body.message || "").trim().slice(0, 1000);
 
       if (
         !Number.isFinite(startAt.getTime()) ||
         !Number.isFinite(endAt.getTime()) ||
         endAt <= startAt
       ) {
-        return sendError(
-          res,
-          400,
-          "開始日時・終了日時が正しくありません。"
-        );
+        return sendError(res, 400, "日時の指定が正しくありません。");
       }
 
       if (startAt.getTime() <= Date.now()) {
-        return sendError(
-          res,
-          400,
-          "開始日時は現在より後にしてください。"
-        );
+        return sendError(res, 400, "開始日時は現在より後にしてください。");
       }
 
       const schedule = {
@@ -1094,12 +779,8 @@ app.put(
         updatedAt: FieldValue.serverTimestamp()
       };
 
-      await db.collection("settings")
-        .doc("system")
-        .set(
-          { maintenanceSchedule: schedule },
-          { merge: true }
-        );
+      await db.collection("settings").doc("system")
+        .set({ maintenanceSchedule: schedule }, { merge: true });
 
       await writeLog(
         req.user.uid,
@@ -1109,21 +790,10 @@ app.put(
         `${schedule.startAt} ～ ${schedule.endAt}`
       );
 
-      res.json({
-        success: true,
-        schedule
-      });
+      res.json({ success: true, schedule });
     } catch (error) {
-      console.error(
-        "メンテナンス予約登録エラー:",
-        error
-      );
-
-      sendError(
-        res,
-        500,
-        "メンテナンス予約を登録できませんでした。"
-      );
+      console.error("メンテナンス予約登録エラー:", error);
+      sendError(res, 500, "メンテナンス予約を登録できませんでした。");
     }
   }
 );
@@ -1135,19 +805,14 @@ app.delete(
   requireAdminSession,
   async (req, res) => {
     try {
-      await db.collection("settings")
-        .doc("system")
-        .set(
-          {
-            maintenanceSchedule: {
-              enabled: false,
-              cancelledBy: req.user.uid,
-              cancelledAt: new Date().toISOString()
-            },
-            updatedAt: FieldValue.serverTimestamp()
-          },
-          { merge: true }
-        );
+      await db.collection("settings").doc("system").set({
+        maintenanceSchedule: {
+          enabled: false,
+          cancelledBy: req.user.uid,
+          cancelledAt: new Date().toISOString()
+        },
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
 
       await writeLog(
         req.user.uid,
@@ -1159,16 +824,8 @@ app.delete(
 
       res.json({ success: true });
     } catch (error) {
-      console.error(
-        "メンテナンス予約解除エラー:",
-        error
-      );
-
-      sendError(
-        res,
-        500,
-        "予約を解除できませんでした。"
-      );
+      console.error("メンテナンス予約解除エラー:", error);
+      sendError(res, 500, "予約を解除できませんでした。");
     }
   }
 );
@@ -1182,11 +839,7 @@ app.get(
   requireAdminSession,
   async (req, res) => {
     try {
-      const limit = Math.min(
-        Math.max(Number(req.query.limit) || 30, 1),
-        200
-      );
-
+      const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 200);
       const snap = await db.collection("securityEvents")
         .orderBy("createdAt", "desc")
         .limit(limit)
@@ -1194,7 +847,6 @@ app.get(
 
       const events = snap.docs.map(d => {
         const x = d.data();
-
         return {
           id: d.id,
           type: x.type || "unknown",
@@ -1202,104 +854,59 @@ app.get(
           uid: x.uid || "",
           email: x.email || "",
           details: x.details || "",
-
           createdAt: x.createdAt?.toDate
             ? x.createdAt.toDate().toISOString()
             : null
         };
       });
 
-      res.json({
-        success: true,
-        events
-      });
+      res.json({ success: true, events });
     } catch (error) {
-      console.error(
-        "セキュリティ履歴取得エラー:",
-        error
-      );
-
-      sendError(
-        res,
-        500,
-        "セキュリティ履歴を取得できませんでした。"
-      );
+      console.error("セキュリティ履歴取得エラー:", error);
+      sendError(res, 500, "セキュリティ履歴を取得できませんでした。");
     }
   }
 );
 
-/* 未ログイン状態のログイン失敗記録 */
+/* 未ログイン状態のログイン失敗記録。送信頻度を制限する。 */
 
-app.post(
-  "/api/security/event",
-  async (req, res) => {
-    try {
-      const now = Date.now();
-      const address = getRequestAddress(req);
+app.post("/api/security/event", async (req, res) => {
+  try {
+    const now = Date.now();
+    const address = getRequestAddress(req);
+    const previous = securityEventAttempts.get(address) || [];
+    const recent = previous.filter(time => now - time < SECURITY_EVENT_WINDOW_MS);
 
-      const previous =
-        securityEventAttempts.get(address) || [];
-
-      const recent = previous.filter(
-        time => now - time < SECURITY_EVENT_WINDOW_MS
-      );
-
-      if (
-        recent.length >= SECURITY_EVENT_MAX_PER_WINDOW
-      ) {
-        return sendError(
-          res,
-          429,
-          "イベント送信回数が上限に達しました。"
-        );
-      }
-
-      recent.push(now);
-      securityEventAttempts.set(address, recent);
-
-      if (
-        String(req.body.type || "") !== "login_failed"
-      ) {
-        return sendError(
-          res,
-          400,
-          "イベント種別が正しくありません。"
-        );
-      }
-
-      const email = String(
-        req.body.email || ""
-      ).trim().slice(0, 254);
-
-      const errorCode = String(
-        req.body.errorCode || ""
-      ).slice(0, 100);
-
-      await writeSecurityEvent(
-        "login_failed",
-        "ログイン失敗",
-        "",
-        email,
-        `認証エラーコード=${errorCode}; address=${address}`
-      );
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error(
-        "ログイン失敗記録エラー:",
-        error
-      );
-
-      sendError(
-        res,
-        500,
-        "イベントを記録できませんでした。"
-      );
+    if (recent.length >= SECURITY_EVENT_MAX_PER_WINDOW) {
+      return sendError(res, 429, "イベント送信回数が上限に達しました。");
     }
-  }
-);
 
-/* 予約メンテナンスの自動処理 */
+    recent.push(now);
+    securityEventAttempts.set(address, recent);
+
+    if (String(req.body.type || "") !== "login_failed") {
+      return sendError(res, 400, "イベント種別が正しくありません。");
+    }
+
+    const email = String(req.body.email || "").trim().slice(0, 254);
+    const errorCode = String(req.body.errorCode || "").slice(0, 100);
+
+    await writeSecurityEvent(
+      "login_failed",
+      "ログイン失敗",
+      "",
+      email,
+      `認証エラーコード=${errorCode}; address=${address}`
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("ログイン失敗記録エラー:", error);
+    sendError(res, 500, "イベントを記録できませんでした。");
+  }
+});
+
+/* 予約メンテナンスの自動開始・終了 */
 
 async function processMaintenanceSchedule() {
   const ref = db.collection("settings").doc("system");
@@ -1324,37 +931,26 @@ async function processMaintenanceSchedule() {
   }
 
   const now = Date.now();
-
-  const shouldBeActive =
-    now >= start.getTime() &&
-    now < end.getTime();
-
+  const shouldBeActive = now >= start.getTime() && now < end.getTime();
   const current = settings.maintenance === true;
 
   if (shouldBeActive !== current) {
-    await ref.set(
-      {
-        maintenance: shouldBeActive,
-        maintenanceMessage: schedule.message || "",
-        updatedAt: FieldValue.serverTimestamp()
-      },
-      { merge: true }
-    );
+    await ref.set({
+      maintenance: shouldBeActive,
+      maintenanceMessage: schedule.message || "",
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
 
     await db.collection("adminLogs").add({
       adminUid: "system",
       adminEmail: "system",
-
       action: shouldBeActive
         ? "maintenance_schedule_started"
         : "maintenance_schedule_ended",
-
       target: "settings/system",
-
       details: shouldBeActive
         ? "予約時刻によりメンテナンスを自動開始"
         : "予約終了時刻によりメンテナンスを自動解除",
-
       createdAt: FieldValue.serverTimestamp()
     });
   }
@@ -1365,14 +961,8 @@ async function processMaintenanceSchedule() {
 function toDate(value) {
   if (!value) return null;
   if (value instanceof Date) return value;
-
-  if (typeof value.toDate === "function") {
-    return value.toDate();
-  }
-
-  if (typeof value === "number") {
-    return new Date(value);
-  }
+  if (typeof value.toDate === "function") return value.toDate();
+  if (typeof value === "number") return new Date(value);
 
   if (typeof value === "string") {
     const d = new Date(value);
@@ -1418,13 +1008,9 @@ function lessonEnd(lesson, start) {
     if (!Number.isNaN(d.getTime())) return d;
   }
 
-  if (
-    start &&
-    Number(lesson.durationMinutes) > 0
-  ) {
+  if (start && Number(lesson.durationMinutes) > 0) {
     return new Date(
-      start.getTime() +
-      Number(lesson.durationMinutes) * 60000
+      start.getTime() + Number(lesson.durationMinutes) * 60000
     );
   }
 
@@ -1439,27 +1025,17 @@ app.post(
   requireSession,
   async (req, res) => {
     try {
-      const lessonId = String(
-        req.body.lessonId || ""
-      ).trim();
+      const lessonId = String(req.body.lessonId || "").trim();
 
       if (!lessonId || lessonId.length > 150) {
-        return sendError(
-          res,
-          400,
-          "授業IDが正しくありません。"
-        );
+        return sendError(res, 400, "授業IDが正しくありません。");
       }
 
       const profile = req.user.profile;
       const uid = req.user.uid;
 
       if (profile.role === "admin") {
-        return sendError(
-          res,
-          403,
-          "管理者アカウントは授業に参加できません。"
-        );
+        return sendError(res, 403, "管理者アカウントは授業に参加できません。");
       }
 
       const lessonSnap = await db.collection("lessons")
@@ -1467,92 +1043,46 @@ app.post(
         .get();
 
       if (!lessonSnap.exists) {
-        return sendError(
-          res,
-          404,
-          "授業が見つかりません。"
-        );
+        return sendError(res, 404, "授業が見つかりません。");
       }
 
       const lesson = lessonSnap.data();
 
       const allowed =
-        (
-          profile.role === "teacher" &&
-          lesson.teacherId === uid
-        ) ||
-        (
-          profile.role === "student" &&
-          lesson.studentId === uid
-        );
+        (profile.role === "teacher" && lesson.teacherId === uid) ||
+        (profile.role === "student" && lesson.studentId === uid);
 
       if (!allowed) {
-        return sendError(
-          res,
-          403,
-          "この授業に参加する権限がありません。"
-        );
+        return sendError(res, 403, "この授業に参加する権限がありません。");
       }
 
-      if (
-        !["scheduled", "in_progress"].includes(
-          lesson.status
-        )
-      ) {
-        return sendError(
-          res,
-          403,
-          "現在この授業には入室できません。"
-        );
+      if (!["scheduled", "in_progress"].includes(lesson.status)) {
+        return sendError(res, 403, "現在この授業には入室できません。");
       }
 
       const start = lessonStart(lesson);
       const end = lessonEnd(lesson, start);
       const now = Date.now();
 
-      if (
-        start &&
-        now < start.getTime() - 5 * 60 * 1000
-      ) {
-        return sendError(
-          res,
-          403,
-          "授業開始5分前から入室できます。"
-        );
+      if (start && now < start.getTime() - 5 * 60 * 1000) {
+        return sendError(res, 403, "授業開始5分前から入室できます。");
       }
 
-      if (
-        end &&
-        now > end.getTime() + 30 * 60 * 1000
-      ) {
-        return sendError(
-          res,
-          403,
-          "この授業の入室可能時間は終了しました。"
-        );
+      if (end && now > end.getTime() + 30 * 60 * 1000) {
+        return sendError(res, 403, "この授業の入室可能時間は終了しました。");
       }
 
       const settings = await getSystemSettings();
 
       if (settings.maintenance === true) {
-        return res.status(503).json({
-          success: false,
-          code: "MAINTENANCE",
-          error: settings.maintenanceMessage ||
-            "現在メンテナンス中です。"
-        });
+        return sendError(res, 503, "現在メンテナンス中です。");
       }
 
       const roomName = `lesson-${lessonId}`;
-
       const displayName =
         profile.displayName ||
         req.user.email ||
-        (
-          profile.role === "teacher"
-            ? "先生"
-            : "生徒"
-        );
+        (profile.role === "teacher" ? "先生" : "生徒");
 
       const token = new AccessToken(
         LIVEKIT_API_KEY,
@@ -1560,13 +1090,11 @@ app.post(
         {
           identity: uid,
           name: displayName,
-
           metadata: JSON.stringify({
             uid,
             role: profile.role,
             lessonId
           }),
-
           ttl: "15m"
         }
       );
@@ -1588,16 +1116,8 @@ app.post(
         name: displayName
       });
     } catch (error) {
-      console.error(
-        "LiveKitトークン発行エラー:",
-        error
-      );
-
-      sendError(
-        res,
-        500,
-        "授業室への接続準備に失敗しました。"
-      );
+      console.error("LiveKitトークン発行エラー:", error);
+      sendError(res, 500, "授業室への接続準備に失敗しました。");
     }
   }
 );
@@ -1607,61 +1127,36 @@ app.post(
 const publicDirectory = path.join(__dirname, "public");
 
 if (fs.existsSync(publicDirectory)) {
-  app.use(
-    express.static(publicDirectory, {
-      index: false,
-      extensions: ["html"],
-      maxAge: "1h"
-    })
-  );
+  app.use(express.static(publicDirectory, {
+    index: false,
+    extensions: ["html"],
+    maxAge: "1h"
+  }));
 
   app.get("/", (req, res) => {
-    const login = path.join(
-      publicDirectory,
-      "login.html"
-    );
+    const login = path.join(publicDirectory, "login.html");
 
-    if (fs.existsSync(login)) {
-      return res.sendFile(login);
-    }
+    if (fs.existsSync(login)) return res.sendFile(login);
 
     res.status(404).send("login.html がありません。");
   });
 }
 
-/* 存在しないAPI */
-
-app.use("/api", (req, res) => {
-  sendError(
-    res,
-    404,
-    "指定されたAPIは存在しません。"
-  );
-});
-
-/* 存在しないページ */
+app.use("/api", (req, res) =>
+  sendError(res, 404, "指定されたAPIは存在しません。")
+);
 
 app.use((req, res) => {
   res.status(404).send("ページが見つかりません。");
 });
 
-/* エラーハンドラー */
-
 app.use((error, req, res, next) => {
   console.error("サーバーエラー:", error);
 
-  if (res.headersSent) {
-    return next(error);
-  }
+  if (res.headersSent) return next(error);
 
-  sendError(
-    res,
-    500,
-    "サーバー内部でエラーが発生しました。"
-  );
+  sendError(res, 500, "サーバー内部でエラーが発生しました。");
 });
-
-/* サーバー起動 */
 
 async function startServer() {
   try {
@@ -1669,11 +1164,8 @@ async function startServer() {
     await processMaintenanceSchedule();
 
     setInterval(() => {
-      processMaintenanceSchedule().catch(
-        error => console.error(
-          "予約メンテナンス処理エラー:",
-          error
-        )
+      processMaintenanceSchedule().catch(error =>
+        console.error("予約メンテナンス処理エラー:", error)
       );
     }, 15000);
 
