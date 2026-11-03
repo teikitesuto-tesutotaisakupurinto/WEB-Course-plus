@@ -1,278 +1,98 @@
+// public/assets/js/common.js
+import { auth } from "/assets/js/firebase.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
-import { auth, db } from "./firebase.js";
+const SESSION_KEY = "wcp_session_id";
+const API_BASE = "";
 
-import {
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+let heartbeatTimer = null;
 
-import {
-  doc,
-  getDoc
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
-
-// ========================================
-// 共通定数
-// ========================================
-
-export const APP_NAME = "WEB Course-plus";
-
-export const FOOTER_TEXT =
-  "© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.";
-
-// ========================================
-// HTMLエスケープ
-// ========================================
-
-export function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, character => {
-    const entities = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    };
-
-    return entities[character];
-  });
+export function getSessionId() {
+  return localStorage.getItem(SESSION_KEY) || "";
 }
 
-// ========================================
-// 日付表示
-// ========================================
-
-export function formatDate(value) {
-  const date = toDate(value);
-
-  if (!date) return "-";
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  }).format(date);
-}
-
-export function formatDateTime(value) {
-  const date = toDate(value);
-
-  if (!date) return "-";
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-export function formatTime(value) {
-  const date = toDate(value);
-
-  if (!date) return "-";
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-export function toDate(value) {
-  if (!value) return null;
-
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-
-  if (typeof value.toDate === "function") {
-    const result = value.toDate();
-
-    return Number.isNaN(result.getTime()) ? null : result;
-  }
-
-  const result = new Date(value);
-
-  return Number.isNaN(result.getTime()) ? null : result;
-}
-
-// ========================================
-// メッセージ表示
-// ========================================
-
-export function showMessage(message, type = "info", targetId = "message") {
-  const target = document.getElementById(targetId);
-
-  if (!target) {
-    console.warn(message);
+export function setSessionId(value) {
+  if (!value) {
+    localStorage.removeItem(SESSION_KEY);
     return;
   }
-
-  const allowedTypes = [
-    "info",
-    "success",
-    "danger",
-    "warning"
-  ];
-
-  const safeType = allowedTypes.includes(type) ? type : "info";
-
-  target.className = `alert alert-${safeType}`;
-  target.textContent = message;
-  target.classList.remove("hidden");
+  localStorage.setItem(SESSION_KEY, value);
 }
-
-export function clearMessage(targetId = "message") {
-  const target = document.getElementById(targetId);
-
-  if (!target) return;
-
-  target.textContent = "";
-  target.className = "hidden";
-}
-
-// ========================================
-// ローディング
-// ========================================
-
-export function setLoading(button, loading, loadingText = "処理中...") {
-  if (!button) return;
-
-  if (loading) {
-    button.dataset.originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = loadingText;
-  } else {
-    button.disabled = false;
-
-    if (button.dataset.originalText !== undefined) {
-      button.textContent = button.dataset.originalText;
-      delete button.dataset.originalText;
-    }
-  }
-}
-
-// ========================================
-// ログアウト
-// ========================================
-
-export async function logout() {
-  try {
-    await signOut(auth);
-    window.location.replace("/login.html");
-  } catch (error) {
-    console.error("[Logout]", error);
-    showMessage("ログアウトに失敗しました。", "danger");
-  }
-}
-
-export function initializeLogout() {
-  document.querySelectorAll("[data-logout]").forEach(button => {
-    button.addEventListener("click", logout);
-  });
-}
-
-// ========================================
-// サイドバー
-// ========================================
 
 export function initializeSidebar() {
-  const app = document.querySelector(".app");
-  const toggle = document.querySelector("[data-sidebar-toggle]");
+  const sidebar = document.querySelector(".app-sidebar, #appSidebar");
+  const toggleButtons = document.querySelectorAll("[data-sidebar-toggle]");
 
-  if (!app || !toggle) return;
+  if (!sidebar) return;
 
-  const collapsed = window.matchMedia("(max-width: 768px)").matches;
-
-  if (collapsed) {
-    app.classList.add("sidebar-collapsed");
-  }
-
-  toggle.addEventListener("click", () => {
-    app.classList.toggle("sidebar-collapsed");
+  toggleButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      document.body.classList.toggle("sidebar-open");
+      sidebar.classList.toggle("is-open");
+    });
   });
 
-  document.querySelectorAll(".sidebar-link").forEach(link => {
-    const linkPath = new URL(link.href, window.location.origin).pathname;
+  document.addEventListener("click", event => {
+    if (
+      window.innerWidth <= 800 &&
+      sidebar.classList.contains("is-open") &&
+      !sidebar.contains(event.target) &&
+      !event.target.closest("[data-sidebar-toggle]")
+    ) {
+      sidebar.classList.remove("is-open");
+      document.body.classList.remove("sidebar-open");
+    }
+  });
 
-    if (linkPath === window.location.pathname) {
+  document.querySelectorAll(".sidebar-link[href]").forEach(link => {
+    const current = new URL(location.href);
+    const target = new URL(link.href, location.origin);
+
+    if (current.pathname === target.pathname) {
       link.classList.add("active");
     }
   });
 }
 
-// ========================================
-// ログインユーザー取得
-// ========================================
+export function renderFooter() {
+  const footer = document.getElementById("app-footer");
+  if (!footer) return;
 
-export function waitForAuth() {
-  return new Promise(resolve => {
-    const unsubscribe = onAuthStateChanged(auth, user => {
-      unsubscribe();
-      resolve(user);
-    });
-  });
+  footer.textContent =
+    "© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.";
 }
 
-export async function getUserProfile(uid) {
-  const userRef = doc(db, "users", uid);
-  const snapshot = await getDoc(userRef);
+export function showMessage(message, type = "info", targetId = "message") {
+  const target = document.getElementById(targetId);
+  if (!target) return;
 
-  if (!snapshot.exists()) {
-    throw new Error("利用者情報が登録されていません。");
-  }
-
-  return {
-    uid,
-    ...snapshot.data()
-  };
+  target.textContent = String(message || "");
+  target.className = `message message-${type}`;
+  target.hidden = false;
 }
 
-// ========================================
-// ロール別アクセス制御
-// ========================================
+export function hideMessage(targetId = "message") {
+  const target = document.getElementById(targetId);
+  if (!target) return;
 
-export async function requireRole(allowedRoles) {
-  const user = await waitForAuth();
-
-  if (!user) {
-    window.location.replace("/login.html");
-    return null;
-  }
-
-  try {
-    const profile = await getUserProfile(user.uid);
-
-    if (profile.status !== "active") {
-      await signOut(auth);
-      window.location.replace("/login.html");
-      return null;
-    }
-
-    if (!allowedRoles.includes(profile.role)) {
-      window.location.replace("/login.html");
-      return null;
-    }
-
-    return {
-      user,
-      profile
-    };
-
-  } catch (error) {
-    console.error("[Access Control]", error);
-
-    window.location.replace("/login.html");
-    return null;
-  }
+  target.hidden = true;
+  target.textContent = "";
 }
 
-// ========================================
-// API通信
-// ========================================
+export function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
 
-export async function apiRequest(endpoint, options = {}) {
+// 既存ページとの互換用
+export const escapeHtml = escapeHTML;
+
+export async function apiFetch(path, options = {}) {
   const user = auth.currentUser;
 
   if (!user) {
@@ -281,65 +101,147 @@ export async function apiRequest(endpoint, options = {}) {
 
   const idToken = await user.getIdToken();
 
-  const response = await fetch(endpoint, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-      ...(options.headers || {})
-    }
-  });
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization", `Bearer ${idToken}`);
 
-  let result;
-
-  try {
-    result = await response.json();
-  } catch {
-    throw new Error("サーバーから正しい応答を受信できませんでした。");
+  const sessionId = getSessionId();
+  if (sessionId) {
+    headers.set("X-Session-Id", sessionId);
   }
 
+  if (
+    options.body &&
+    !(options.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    credentials: "same-origin"
+  });
+
+  const result = await response.json().catch(() => ({}));
+
   if (!response.ok || result.success === false) {
+    if (response.status === 401 || response.status === 403) {
+      if (result.code === "SESSION_REVOKED") {
+        setSessionId("");
+        await signOut(auth).catch(() => {});
+        location.replace("/login.html?reason=session");
+      }
+    }
+
     throw new Error(
-      result.message || "通信に失敗しました。"
+      result.message || `通信に失敗しました。(${response.status})`
     );
   }
 
   return result;
 }
 
-// ========================================
-// システム状態
-// ========================================
+export async function registerDeviceSession() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("ログインしてください。");
 
-export async function getSystemStatus() {
-  const response = await fetch("/api/system/status");
+  let sessionId = getSessionId();
 
-  if (!response.ok) {
-    throw new Error("システム状態を取得できません。");
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    setSessionId(sessionId);
   }
 
-  return response.json();
+  const result = await apiFetch("/api/sessions/register", {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId,
+      deviceName: navigator.userAgent.slice(0, 180)
+    })
+  });
+
+  if (!result.success) {
+    throw new Error(result.message || "端末登録に失敗しました。");
+  }
+
+  startSessionHeartbeat();
+  return result;
 }
 
-// ========================================
-// 共通フッター
-// ========================================
+export function startSessionHeartbeat() {
+  stopSessionHeartbeat();
 
-export function renderFooter(targetId = "app-footer") {
-  const footer = document.getElementById(targetId);
+  const sendHeartbeat = async () => {
+    if (!auth.currentUser || !getSessionId()) return;
 
-  if (!footer) return;
+    try {
+      await apiFetch("/api/sessions/heartbeat", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: getSessionId()
+        })
+      });
+    } catch (error) {
+      console.error("セッション確認エラー:", error);
+      if (/端末|セッション|ログイン/.test(error.message)) {
+        stopSessionHeartbeat();
+        setSessionId("");
+        await signOut(auth).catch(() => {});
+        location.replace("/login.html?reason=session");
+      }
+    }
+  };
 
-  footer.className = "app-footer";
-  footer.textContent = FOOTER_TEXT;
+  sendHeartbeat();
+  heartbeatTimer = window.setInterval(sendHeartbeat, 30000);
 }
 
-// ========================================
-// 初期化
-// ========================================
+export function stopSessionHeartbeat() {
+  if (heartbeatTimer !== null) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
 
-document.addEventListener("DOMContentLoaded", () => {
+export function initializeLogout() {
+  document.querySelectorAll("[data-logout]").forEach(button => {
+    button.addEventListener("click", async () => {
+      if (button.disabled) return;
+
+      button.disabled = true;
+      const originalText = button.textContent;
+      button.textContent = "ログアウト中...";
+
+      try {
+        const sessionId = getSessionId();
+
+        if (auth.currentUser && sessionId) {
+          await apiFetch("/api/sessions/logout", {
+            method: "POST",
+            body: JSON.stringify({ sessionId })
+          }).catch(error => {
+            console.warn("サーバー側ログアウト通知:", error);
+          });
+        }
+
+        stopSessionHeartbeat();
+        setSessionId("");
+        await signOut(auth);
+
+        location.replace("/login.html");
+      } catch (error) {
+        console.error(error);
+        button.disabled = false;
+        button.textContent = originalText;
+        showMessage("ログアウトに失敗しました。もう一度お試しください。", "error");
+      }
+    });
+  });
+}
+
+export function initializeCommonLayout() {
   initializeSidebar();
   initializeLogout();
   renderFooter();
-});
+}
