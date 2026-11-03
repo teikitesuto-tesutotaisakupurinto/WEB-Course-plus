@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>メンテナンス中 | WEB Course-plus</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      font-family: Inter, "Noto Sans JP", sans-serif;
+      color: #182334;
+      background: #f5f7fb;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --navy: #14263f;
+      --blue: #2563eb;
+      --muted: #718096;
+      --border: #e4eaf2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 50% 25%, #eaf1ff 0, transparent 42%),
+        #f5f7fb;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      height: 70px;
+      background: rgba(255,255,255,.94);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 36px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--navy);
+      letter-spacing: -.3px;
+    }
+
+    .brand-mark {
+      width: 35px;
+      height: 35px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: var(--navy);
+      border-radius: 10px;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 45px 20px 65px;
+    }
+
+    .maintenance-card {
+      width: 100%;
+      max-width: 620px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 55px 54px 45px;
+      text-align: center;
+      box-shadow: 0 20px 65px rgba(31, 52, 85, .07);
+    }
+
+    .icon-circle {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 27px;
+      display: grid;
+      place-items: center;
+      border-radius: 28px;
+      background: #edf3ff;
+      color: #315fc5;
+    }
+
+    .eyebrow {
+      color: #4169bd;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 29px;
+      line-height: 1.5;
+      font-weight: 800;
+    }
+
+    .lead {
+      margin: 15px 0 0;
+      color: #68778c;
+      font-size: 14px;
+      line-height: 1.9;
+    }
+
+    .notice {
+      margin-top: 32px;
+      padding: 22px 24px;
+      border: 1px solid #e5ebf5;
+      border-radius: 13px;
+      background: #f8faff;
+      text-align: left;
+    }
+
+    .notice-heading {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 12px;
+      color: #344766;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .notice-message {
+      margin: 0;
+      color: #526176;
+      font-size: 14px;
+      line-height: 1.9;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .notice-message.empty {
+      color: #8995a7;
+    }
+
+    .status {
+      margin-top: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #53647c;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      background: #e5a12b;
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px #fff5df;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 0 4px #fff5df;
+      }
+      50% {
+        opacity: .55;
+        box-shadow: 0 0 0 7px #fff5df;
+      }
+    }
+
+    .refresh-info {
+      margin-top: 13px;
+      color: #98a3b3;
+      font-size: 12px;
+    }
+
+    .manual-refresh {
+      margin-top: 25px;
+      padding: 12px 22px;
+      border: 1px solid #dce5f2;
+      border-radius: 9px;
+      background: white;
+      color: #344b70;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .manual-refresh:hover {
+      background: #f2f6ff;
+      border-color: #b9cbed;
+    }
+
+    .manual-refresh:disabled {
+      opacity: .5;
+      cursor: wait;
+    }
+
+    .error-message {
+      min-height: 20px;
+      margin-top: 15px;
+      color: #c24141;
+      font-size: 12px;
+    }
+
+    footer {
+      padding: 22px 15px;
+      text-align: center;
+      color: #929eae;
+      font-size: 11px;
+      border-top: 1px solid #e8edf4;
+      background: rgba(255,255,255,.65);
+    }
+
+    @media (max-width: 600px) {
+      header {
+        height: 62px;
+        padding: 0 19px;
+      }
+
+      .brand {
+        font-size: 14px;
+      }
+
+      .maintenance-card {
+        padding: 40px 23px 32px;
+        border-radius: 17px;
+      }
+
+      .icon-circle {
+        width: 84px;
+        height: 84px;
+        border-radius: 23px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .lead {
+        font-size: 13px;
+      }
+
+      .notice {
+        padding: 19px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="21" height="21" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 8v4l3 2"/>
+          <circle cx="12" cy="12" r="9"/>
+        </svg>
+      </div>
+      <span>WEB Course-plus</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="maintenance-card">
+
+      <div class="icon-circle">
+        <svg width="52" height="52" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <path d="M14.7 6.3a5 5 0 0 0-6.6 6.6L3 18l3 3 5.1-5.1a5 5 0 0 0 6.6-6.6L14 13l-3-3z"/>
+          <path d="m15 5 4-2 2 2-2 4"/>
+        </svg>
+      </div>
+
+      <div class="eyebrow">SYSTEM MAINTENANCE</div>
+
+      <h1>メンテナンス中です</h1>
+
+      <p class="lead">
+        WEB Course-plusをご利用いただきありがとうございます。<br>
+        現在、システムメンテナンスを実施しております。
+      </p>
+
+      <div class="notice">
+        <div class="notice-heading">
+          <svg width="17" height="17" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v4"/>
+            <path d="M12 16h.01"/>
+          </svg>
+          運営事務局からのお知らせ
+        </div>
+
+        <p class="notice-message" id="maintenanceMessage">
+          メンテナンス情報を取得しています。
+        </p>
+      </div>
+
+      <div class="status">
+        <span class="status-dot"></span>
+        <span id="statusText">メンテナンス状況を確認しています</span>
+      </div>
+
+      <div class="refresh-info" id="refreshInfo">
+        30秒ごとに自動で確認します。
+      </div>
+
+      <button class="manual-refresh" id="refreshButton" type="button">
+        状況を再確認する
+      </button>
+
+      <div class="error-message" id="errorMessage" role="status"></div>
+
+    </section>
+  </main>
+
+  <footer>
+    © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+  </footer>
+
+  <script type="module">
+    import { auth, db, authPersistenceReady } from "/assets/js/firebase.js";
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+    import {
+      doc,
+      getDoc
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+    const CHECK_INTERVAL = 30000;
+
+    const messageElement = document.getElementById("maintenanceMessage");
+    const statusElement = document.getElementById("statusText");
+    const refreshInfoElement = document.getElementById("refreshInfo");
+    const errorElement = document.getElementById("errorMessage");
+    const refreshButton = document.getElementById("refreshButton");
+
+    let currentUser = null;
+    let checking = false;
+    let redirecting = false;
+    let authReady = false;
+    let timer = null;
+    let nextCheckAt = Date.now() + CHECK_INTERVAL;
+
+    function showError(message) {
+      errorElement.textContent = message;
+    }
+
+    function setLoading(loading) {
+      refreshButton.disabled = loading;
+      refreshButton.textContent = loading
+        ? "確認しています..."
+        : "状況を再確認する";
+    }
+
+    function getDashboard(role) {
+      if (role === "student") return "/student/dashboard.html";
+      if (role === "teacher") return "/teacher/dashboard.html";
+      if (role === "admin") return "/admin/dashboard.html";
+      return "/login.html";
+    }
+
+    async function getUserProfile(user) {
+      const snapshot = await getDoc(doc(db, "users", user.uid));
+
+      if (!snapshot.exists()) {
+        throw new Error("ユーザー情報が見つかりません。");
+      }
+
+      return snapshot.data();
+    }
+
+    async function checkMaintenance() {
+      if (checking || redirecting || !authReady || !currentUser) return;
+
+      checking = true;
+      setLoading(true);
+      showError("");
+
+      try {
+        const response = await fetch("/api/system/status", {
+          method: "GET",
+          cache: "no-store",
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("システム状態の取得に失敗しました。");
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error("システム状態を確認できませんでした。");
+        }
+
+        const maintenance = result.maintenance === true;
+        const message = String(result.maintenanceMessage || "").trim();
+
+        if (message) {
+          messageElement.textContent = message;
+          messageElement.classList.remove("empty");
+        } else {
+          messageElement.textContent =
+            "現在、システムの保守・点検を実施しております。終了までしばらくお待ちください。";
+          messageElement.classList.add("empty");
+        }
+
+        if (!maintenance) {
+          statusElement.textContent = "メンテナンスが終了しました。移動しています。";
+          refreshInfoElement.textContent = "通常画面へ移動します。";
+
+          redirecting = true;
+
+          const profile = await getUserProfile(currentUser);
+
+          if (auth.currentUser?.uid !== currentUser.uid) {
+            redirecting = false;
+            return;
+          }
+
+          window.location.replace(getDashboard(profile.role));
+          return;
+        }
+
+        statusElement.textContent = "現在メンテナンスを実施しています";
+        refreshInfoElement.textContent = "30秒ごとに自動で確認します。";
+        nextCheckAt = Date.now() + CHECK_INTERVAL;
+
+      } catch (error) {
+        console.error("メンテナンス状態確認エラー:", error);
+        showError(error.message || "状態を確認できませんでした。");
+        statusElement.textContent = "状態を確認できません";
+        refreshInfoElement.textContent = "通信が回復すると自動で再確認します。";
+        nextCheckAt = Date.now() + CHECK_INTERVAL;
+      } finally {
+        checking = false;
+        setLoading(false);
+      }
+    }
+
+    function startPolling() {
+      if (timer) clearInterval(timer);
+
+      checkMaintenance();
+
+      timer = setInterval(() => {
+        if (Date.now() >= nextCheckAt) {
+          checkMaintenance();
+        }
+      }, 1000);
+    }
+
+    refreshButton.addEventListener("click", () => {
+      nextCheckAt = Date.now();
+      checkMaintenance();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && currentUser) {
+        nextCheckAt = Date.now();
+        checkMaintenance();
+      }
+    });
+
+    try {
+      await authPersistenceReady;
+
+      onAuthStateChanged(auth, async user => {
+        currentUser = user;
+        authReady = true;
+
+        if (!user) {
+          if (timer) clearInterval(timer);
+          window.location.replace("/login.html");
+          return;
+        }
+
+        startPolling();
+      });
+    } catch (error) {
+      console.error("認証状態の確認に失敗しました:", error);
+      showError("ログイン状態を確認できませんでした。ページを再読み込みしてください。");
+      statusElement.textContent = "認証状態を確認できません";
+    }
+  </script>
+
+</body>
+</html>
