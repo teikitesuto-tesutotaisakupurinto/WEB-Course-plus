@@ -1,10 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f4f7fb">
+
   <title>ログイン | WEB Course-plus</title>
 
   <style>
@@ -15,17 +15,17 @@
       --primary: #2563eb;
       --border: #dfe6ef;
       --muted: #64748b;
-      --navy: #14263f;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      background: #f4f7fb;
     }
 
     main {
@@ -49,7 +49,7 @@
       margin: 0;
       font-size: 29px;
       font-weight: 750;
-      color: var(--navy);
+      color: #14263f;
     }
 
     .card,
@@ -73,7 +73,9 @@
       line-height: 1.8;
     }
 
-    .field { margin-bottom: 18px; }
+    .field {
+      margin-bottom: 18px;
+    }
 
     label {
       display: block;
@@ -111,8 +113,14 @@
       cursor: pointer;
     }
 
-    button:hover:not(:disabled) { background: #1d4ed8; }
-    button:disabled { opacity: .6; cursor: not-allowed; }
+    button:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
 
     .google-button {
       display: flex;
@@ -128,9 +136,10 @@
       background: #f8faff;
     }
 
-    .google-logo {
-      display: block;
-      flex: 0 0 20px;
+    .google-mark {
+      width: 19px;
+      height: 19px;
+      flex: 0 0 19px;
     }
 
     .divider {
@@ -163,7 +172,9 @@
       font-weight: 600;
     }
 
-    a:hover { text-decoration: underline; }
+    a:hover {
+      text-decoration: underline;
+    }
 
     .message {
       display: none;
@@ -189,109 +200,19 @@
       border: 1px solid #bbf7d0;
     }
 
-    .hidden { display: none !important; }
+    .hidden {
+      display: none !important;
+    }
 
     .maintenance {
       display: none;
-      padding: 0;
-      overflow: hidden;
       text-align: center;
     }
 
-    .maintenance-header {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 17px 20px;
-      color: #fff;
-      background: #14263f;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: .04em;
-    }
-
-    .wrench-icon {
-      width: 23px;
-      height: 23px;
-      flex: 0 0 23px;
-    }
-
-    .maintenance-content {
-      padding: 35px 28px 30px;
-    }
-
-    .maintenance-symbol {
-      width: 76px;
-      height: 76px;
-      display: grid;
-      place-items: center;
-      margin: 0 auto 20px;
-      border-radius: 50%;
-      color: #b45309;
-      background: #fff7ed;
-    }
-
-    .maintenance-symbol svg {
-      width: 39px;
-      height: 39px;
-    }
-
-    .maintenance h2 {
-      margin: 0 0 13px;
-      color: #14263f;
-      font-size: 23px;
-    }
-
     .maintenance p {
-      margin: 0;
       color: var(--muted);
       font-size: 14px;
-      line-height: 1.9;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    .maintenance-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      margin-top: 23px;
-      padding: 8px 13px;
-      border-radius: 20px;
-      color: #9a3412;
-      background: #fff7ed;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .maintenance-status span {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #ea580c;
-    }
-
-    .maintenance-footer {
-      margin-top: 24px;
-      padding-top: 18px;
-      border-top: 1px solid var(--border);
-      color: #94a3b8;
-      font-size: 11px;
       line-height: 1.8;
-    }
-
-    .maintenance-actions {
-      margin-top: 22px;
-    }
-
-    .secondary-button {
-      color: #334155;
-      background: #f1f5f9;
-    }
-
-    .secondary-button:hover:not(:disabled) {
-      background: #e2e8f0;
     }
 
     footer {
@@ -302,14 +223,19 @@
     }
 
     @media (max-width: 480px) {
-      .card { padding: 23px 19px; }
-      .brand h1 { font-size: 25px; }
-      .maintenance-content { padding: 29px 20px 24px; }
+      .card {
+        padding: 23px 19px;
+      }
+
+      .brand h1 {
+        font-size: 25px;
+      }
     }
   </style>
 </head>
 
 <body>
+
 <main>
   <div class="container">
 
@@ -317,9 +243,9 @@
       <h1>WEB Course-plus</h1>
     </div>
 
-    <!-- ログイン画面 -->
     <section class="card" id="loginView">
       <h2>ログイン</h2>
+
       <p class="description">
         登録済みのアカウントでログインしてください。
       </p>
@@ -347,7 +273,9 @@
             required>
         </div>
 
-        <button id="loginButton" type="submit">ログイン</button>
+        <button id="loginButton" type="submit">
+          ログイン
+        </button>
       </form>
 
       <div class="links">
@@ -358,26 +286,23 @@
 
       <div class="divider">または</div>
 
-      <!-- Google公式Gロゴ付きログイン -->
-      <button id="googleButton" class="google-button" type="button">
-        <svg class="google-logo" width="20" height="20"
-          viewBox="0 0 48 48" aria-hidden="true">
-          <path fill="#EA4335"
-            d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-          <path fill="#4285F4"
-            d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.76 7.18l7.73 6C44.42 38.08 46.98 31.8 46.98 24.55z"/>
-          <path fill="#FBBC05"
-            d="M10.53 28.59a14.4 14.4 0 0 1 0-9.18l-7.98-6.19a24 24 0 0 0 0 21.56l7.98-6.19z"/>
-          <path fill="#34A853"
-            d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <button
+        id="googleButton"
+        class="google-button"
+        type="button">
+        <svg class="google-mark" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.9c-.58 2.96-2.25 5.48-4.73 7.18l7.62 5.91c4.45-4.11 7.19-10.16 7.19-17.56z"/>
+          <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.89l-7.62-5.91c-2.12 1.42-4.84 2.26-8.28 2.26-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
         </svg>
-        <span>Googleでログイン</span>
+        Googleでログイン
       </button>
     </section>
 
-    <!-- パスワード再設定 -->
     <section class="card hidden" id="resetView">
       <h2>パスワード再設定</h2>
+
       <p class="description">
         登録済みのメールアドレスに再設定メールを送信します。
       </p>
@@ -387,9 +312,13 @@
       <form id="resetForm">
         <div class="field">
           <label for="resetEmail">メールアドレス</label>
-          <input id="resetEmail" type="email"
-            autocomplete="email" required>
+          <input
+            id="resetEmail"
+            type="email"
+            autocomplete="email"
+            required>
         </div>
+
         <button id="resetButton" type="submit">
           再設定メールを送信
         </button>
@@ -400,51 +329,12 @@
       </div>
     </section>
 
-    <!-- ログイン後のメンテナンス画面 -->
     <section class="maintenance" id="maintenanceView">
-      <div class="maintenance-header">
-        <svg class="wrench-icon" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="1.8"
-          stroke-linecap="round" stroke-linejoin="round"
-          aria-hidden="true">
-          <path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18l3 3 5.3-5.3a5 5 0 0 0 6.4-6.4L14 13l-3-3 3.7-3.7Z"/>
-        </svg>
-        <span>SYSTEM MAINTENANCE</span>
-      </div>
-
-      <div class="maintenance-content">
-        <div class="maintenance-symbol">
-          <svg viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="1.7"
-            stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true">
-            <path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18l3 3 5.3-5.3a5 5 0 0 0 6.4-6.4L14 13l-3-3 3.7-3.7Z"/>
-          </svg>
-        </div>
-
-        <h2>システムメンテナンス中</h2>
-        <p id="maintenanceMessage">
-          現在、システムメンテナンスを実施しています。
-          メンテナンス終了までしばらくお待ちください。
-        </p>
-
-        <div class="maintenance-status">
-          <span></span>
-          メンテナンス実施中
-        </div>
-
-        <div class="maintenance-actions">
-          <button id="maintenanceRetryButton"
-            class="secondary-button" type="button">
-            状態を再確認する
-          </button>
-        </div>
-
-        <div class="maintenance-footer">
-          WEB Course-plus<br>
-          定期テスト対策プリント運営事務局
-        </div>
-      </div>
+      <h2>メンテナンス中</h2>
+      <p id="maintenanceMessage">
+        現在メンテナンスを実施しています。
+        しばらくしてから再度アクセスしてください。
+      </p>
     </section>
 
   </div>
@@ -478,13 +368,12 @@
   } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
   const $ = (id) => document.getElementById(id);
+
   const SESSION_KEY = "web-course-plus-device-session";
 
   let maintenance = false;
-  let maintenanceMessage = "";
   let routing = false;
   let initialized = false;
-  let currentMode = "login";
 
   function getSessionId() {
     let id = localStorage.getItem(SESSION_KEY);
@@ -508,45 +397,39 @@
     $(id).className = "message";
   }
 
+  async function reportLoginFailure(email, error) {
+    try {
+      await fetch("/api/security/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "login_failed",
+          email: String(email || "").trim().slice(0, 254),
+          errorCode: String(error?.code || "unknown").slice(0, 100)
+        }),
+        cache: "no-store"
+      });
+    } catch (reportError) {
+      console.warn("ログイン失敗イベントを送信できませんでした:", reportError);
+    }
+  }
+
   function setLoading(button, loading, label) {
     button.disabled = loading;
     button.textContent = loading ? "処理しています..." : label;
   }
 
-  function showLoginView() {
-    currentMode = "login";
-    $("loginView").classList.remove("hidden");
-    $("resetView").classList.add("hidden");
-    $("maintenanceView").style.display = "none";
-  }
-
-  function showResetView() {
-    currentMode = "reset";
-    $("loginView").classList.add("hidden");
-    $("resetView").classList.remove("hidden");
-    $("maintenanceView").style.display = "none";
-  }
-
-  function showMaintenanceView(message) {
-    currentMode = "maintenance";
-    $("loginView").classList.add("hidden");
-    $("resetView").classList.add("hidden");
-    $("maintenanceView").style.display = "block";
-
-    $("maintenanceMessage").textContent =
-      message ||
-      "現在、システムメンテナンスを実施しています。メンテナンス終了までしばらくお待ちください。";
-  }
-
-  async function getToken(user = auth.currentUser) {
-    if (!user) {
+  async function getToken() {
+    if (!auth.currentUser) {
       throw new Error("ログイン状態を確認できません。");
     }
-    return user.getIdToken();
+
+    return auth.currentUser.getIdToken();
   }
 
   async function apiFetch(url, options = {}) {
     const token = await getToken();
+
     const headers = new Headers(options.headers || {});
 
     headers.set("Authorization", `Bearer ${token}`);
@@ -563,18 +446,31 @@
     });
   }
 
-  async function checkMaintenance() {
-    const response = await fetch("/api/system/status", {
+  async function registerSession(user) {
+    const token = await user.getIdToken();
+
+    const response = await fetch("/api/sessions/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        sessionId: getSessionId()
+      }),
       cache: "no-store"
     });
 
-    if (!response.ok) {
-      throw new Error("システム状態を取得できませんでした。");
-    }
+    const data = await response.json().catch(() => ({}));
 
-    const data = await response.json();
-    maintenance = data.maintenance === true;
-    maintenanceMessage = data.maintenanceMessage || "";
+    if (!response.ok || !data.success) {
+      const error = new Error(
+        data.error || "端末セッションを登録できませんでした。"
+      );
+
+      error.code = response.status === 409 ? "SESSION_LIMIT" : data.code;
+      throw error;
+    }
 
     return data;
   }
@@ -603,34 +499,6 @@
     return profile;
   }
 
-  async function registerSession(user) {
-    const token = await user.getIdToken();
-
-    const response = await fetch("/api/sessions/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sessionId: getSessionId()
-      }),
-      cache: "no-store"
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok || !data.success) {
-      const error = new Error(
-        data.error || "端末セッションを登録できませんでした。"
-      );
-      error.code = data.code;
-      throw error;
-    }
-
-    return data;
-  }
-
   async function routeUser(user) {
     if (!user || routing) return;
 
@@ -639,11 +507,14 @@
     try {
       const profile = await loadProfile(user);
 
-      // 管理者はメンテナンス中でも管理画面へ入れる
       if (maintenance && profile.role !== "admin") {
         await signOut(auth);
-        localStorage.removeItem(SESSION_KEY);
-        showMaintenanceView(maintenanceMessage);
+
+        showMessage(
+          "loginMessage",
+          "現在メンテナンス中のためログインできません。"
+        );
+
         return;
       }
 
@@ -658,11 +529,9 @@
       }
 
     } catch (error) {
-      console.error("ログイン処理エラー:", error);
+      console.error(error);
 
-      if (auth.currentUser) {
-        await signOut(auth).catch(console.error);
-      }
+      await signOut(auth);
 
       if (error.code === "SESSION_LIMIT") {
         showMessage(
@@ -681,42 +550,33 @@
     }
   }
 
-  async function refreshMaintenance() {
-    const button = $("maintenanceRetryButton");
-    button.disabled = true;
-    button.textContent = "確認しています...";
+  async function checkMaintenance() {
+    const response = await fetch("/api/system/status", {
+      cache: "no-store"
+    });
 
-    try {
-      await checkMaintenance();
+    if (!response.ok) {
+      throw new Error("システム状態を取得できませんでした。");
+    }
 
-      if (!maintenance) {
-        showLoginView();
-        showMessage(
-          "loginMessage",
-          "メンテナンスが終了しました。もう一度ログインしてください。",
-          "success"
-        );
-      } else {
-        showMaintenanceView(maintenanceMessage);
-      }
-    } catch (error) {
-      console.error(error);
-      showMaintenanceView(
-        "システム状態を確認できませんでした。時間をおいて再度お試しください。"
-      );
-    } finally {
-      button.disabled = false;
-      button.textContent = "状態を再確認する";
+    const data = await response.json();
+
+    maintenance = data.maintenance === true;
+
+    if (maintenance && !auth.currentUser) {
+      $("loginView").classList.add("hidden");
+      $("resetView").classList.add("hidden");
+      $("maintenanceView").style.display = "block";
+
+      $("maintenanceMessage").textContent =
+        data.maintenanceMessage ||
+        "現在メンテナンスを実施しています。";
     }
   }
 
-  $("maintenanceRetryButton").addEventListener(
-    "click",
-    refreshMaintenance
-  );
-
   $("loginForm").addEventListener("submit", async (event) => {
     event.preventDefault();
+
     clearMessage("loginMessage");
 
     const button = $("loginButton");
@@ -724,7 +584,6 @@
 
     try {
       await authPersistenceReady;
-      await checkMaintenance();
 
       const credential = await signInWithEmailAndPassword(
         auth,
@@ -735,6 +594,9 @@
       await routeUser(credential.user);
 
     } catch (error) {
+      if (String(error.code || "").startsWith("auth/")) {
+        await reportLoginFailure($("email").value.trim(), error);
+      }
       const messages = {
         "auth/invalid-email": "メールアドレスの形式が正しくありません。",
         "auth/invalid-credential": "メールアドレスまたはパスワードが正しくありません。",
@@ -746,6 +608,7 @@
         "loginMessage",
         messages[error.code] || error.message
       );
+
     } finally {
       setLoading(button, false, "ログイン");
     }
@@ -755,11 +618,10 @@
     clearMessage("loginMessage");
 
     const button = $("googleButton");
-    button.disabled = true;
+    setLoading(button, true, "Googleでログイン");
 
     try {
       await authPersistenceReady;
-      await checkMaintenance();
 
       const credential = await signInWithPopup(
         auth,
@@ -774,21 +636,23 @@
         return;
       }
 
-      if (error.code === "auth/popup-closed-by-user") {
-        showMessage("loginMessage", "Googleログインがキャンセルされました。");
-      } else {
-        showMessage(
-          "loginMessage",
-          error.message || "Googleログインに失敗しました。"
-        );
+      if (String(error.code || "").startsWith("auth/")) {
+        await reportLoginFailure("", error);
       }
+
+      showMessage(
+        "loginMessage",
+        error.message || "Googleログインに失敗しました。"
+      );
+
     } finally {
-      button.disabled = false;
+      setLoading(button, false, "Googleでログイン");
     }
   });
 
   $("resetForm").addEventListener("submit", async (event) => {
     event.preventDefault();
+
     clearMessage("resetMessage");
 
     const button = $("resetButton");
@@ -805,11 +669,13 @@
         "再設定メールを送信しました。メールをご確認ください。",
         "success"
       );
+
     } catch (error) {
       showMessage(
         "resetMessage",
         error.message || "メールを送信できませんでした。"
       );
+
     } finally {
       setLoading(button, false, "再設定メールを送信");
     }
@@ -840,34 +706,23 @@
 
     await signOut(auth);
     localStorage.removeItem(SESSION_KEY);
+
     location.replace("/login.html");
   }
 
   window.logoutDevice = logoutDevice;
 
   onAuthStateChanged(auth, async (user) => {
-    if (!initialized || !user || routing) return;
-    if (currentMode === "reset") return;
+    if (!initialized || !user) return;
 
-    try {
-      await checkMaintenance();
-      await routeUser(user);
-    } catch (error) {
-      console.error(error);
-      showMessage(
-        "loginMessage",
-        error.message || "システム状態を確認できませんでした。"
-      );
+    if (new URLSearchParams(location.search).get("mode") === "reset") {
+      return;
     }
+
+    await routeUser(user);
   });
 
   async function initialize() {
-    const params = new URLSearchParams(location.search);
-
-    if (params.get("mode") === "reset") {
-      showResetView();
-    }
-
     try {
       await authPersistenceReady;
       await checkMaintenance();
@@ -880,26 +735,31 @@
 
       initialized = true;
 
-      if (auth.currentUser && currentMode !== "reset") {
+      if (auth.currentUser) {
         await routeUser(auth.currentUser);
-      } else if (maintenance && currentMode !== "reset") {
-        // 未ログイン時はログイン画面を表示する。
-        // ログイン後に一般ユーザーならメンテナンス画面へ切り替える。
-        showLoginView();
       }
 
     } catch (error) {
-      console.error("初期化エラー:", error);
-      initialized = true;
+      console.error(error);
 
       showMessage(
         "loginMessage",
         error.message || "システムの初期化に失敗しました。"
       );
+
+      initialized = true;
     }
+  }
+
+  if (
+    new URLSearchParams(location.search).get("mode") === "reset"
+  ) {
+    $("loginView").classList.add("hidden");
+    $("resetView").classList.remove("hidden");
   }
 
   initialize();
 </script>
+
 </body>
 </html>
