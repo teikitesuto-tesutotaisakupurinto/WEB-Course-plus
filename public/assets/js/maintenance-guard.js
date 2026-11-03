@@ -1,8 +1,4 @@
-import {
-  auth,
-  db,
-  authPersistenceReady
-} from "/assets/js/firebase.js";
+import { auth, db, authPersistenceReady } from "/assets/js/firebase.js";
 
 import {
   onAuthStateChanged
@@ -16,7 +12,6 @@ import {
 const SESSION_KEY = "web-course-plus-device-session";
 
 let started = false;
-let checking = false;
 
 function getSessionId() {
   let id = localStorage.getItem(SESSION_KEY);
@@ -29,131 +24,125 @@ function getSessionId() {
   return id;
 }
 
-async function waitForUser() {
-  await authPersistenceReady;
-
-  return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      user => {
-        unsubscribe();
-        resolve(user);
-      },
-      error => {
-        unsubscribe();
-        reject(error);
-      }
-    );
+async function getSystemStatus() {
+  const response = await fetch("/api/system/status", {
+    cache: "no-store"
   });
+
+  if (!response.ok) {
+    throw new Error("システム状態を確認できません。");
+  }
+
+  return response.json();
 }
 
-async function checkMaintenance(user) {
-  if (checking) return;
-  checking = true;
+async function sendHeartbeat(user) {
+  const response = await fetch("/api/sessions/heartbeat", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${await user.getIdToken()}`,
+      "X-Session-Id": getSessionId()
+    },
+    cache: "no-store"
+  });
 
-  try {
-    const profileSnapshot = await getDoc(
-      doc(db, "users", user.uid)
-    );
-
-    if (!profileSnapshot.exists()) {
-      location.replace("/login.html");
-      return;
-    }
-
-    const profile = profileSnapshot.data();
-
-    if (
-      profile.active === false ||
-      ["inactive", "disabled", "suspended", "deleted"].includes(
-        String(profile.status || "").toLowerCase()
-      )
-    ) {
-      location.replace("/login.html");
-      return;
-    }
-
-    // 管理者はメンテナンス中でも利用可能
-    if (profile.role === "admin") return;
-
-    const response = await fetch("/api/system/status", {
-      method: "GET",
-      cache: "no-store",
-      headers: {
-        "Accept": "application/json"
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error("メンテナンス状態を取得できませんでした。");
-    }
-
-    const data = await response.json();
-
-    if (data.success !== true) {
-      throw new Error("メンテナンス状態を確認できませんでした。");
-    }
-
-    if (data.maintenance === true) {
-      location.replace("/maintenance.html");
-      return;
-    }
-
-    // セッションの存在確認と生存確認
-    const heartbeat = await fetch("/api/sessions/heartbeat", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${await user.getIdToken()}`,
-        "X-Session-Id": getSessionId()
-      },
-      cache: "no-store"
-    });
-
-    if (!heartbeat.ok) {
-      location.replace("/login.html");
-      return;
-    }
-
-  } catch (error) {
-    console.error("メンテナンス確認エラー:", error);
-
-    // 状態を確認できない場合は通常画面の利用を止める
-    document.body.innerHTML = `
-      <main style="
-        min-height:100vh;
-        display:grid;
-        place-items:center;
-        padding:24px;
-        font-family:system-ui,sans-serif;
-        background:#f4f7fb;
-        color:#182334;
-      ">
-        <section style="
-          max-width:440px;
-          padding:32px;
-          background:#fff;
-          border:1px solid #dfe6ef;
-          border-radius:14px;
-          text-align:center;
-        ">
-          <h1 style="font-size:20px;">システム状態を確認できません</h1>
-          <p style="color:#64748b;line-height:1.8;">
-            通信状態を確認して、もう一度お試しください。
-          </p>
-          <button onclick="location.reload()" style="
-            padding:11px 20px;
-            border:0;
-            border-radius:7px;
-            background:#2563eb;
-            color:#fff;
-            cursor:pointer;
-          ">再読み込み</button>
-        </section>
-      </main>
-    `;
-  } finally {
-    checking = false;
+  if (!response.ok) {
+    throw new Error("端末セッションを確認できません。");
   }
+}
+
+function showError(message) {
+  document.body.innerHTML = `
+    <main style="
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background:#f4f7fb;
+      font-family:Inter,'Noto Sans JP',sans-serif;
+    ">
+      <section style="
+        width:100%;
+        max-width:460px;
+        padding:32px;
+        background:white;
+        border:1px solid #dfe6ef;
+        border-radius:12px;
+        text-align:center;
+      ">
+        <h1 style="font-size:20px;color:#14263f;">
+          ページを確認できません
+        </h1>
+        <p style="color:#64748b;line-height:1.8;">
+          ${message}
+        </p>
+        <button
+          onclick="location.reload()"
+          style="
+            padding:10px 20px;
+            border:0;
+            border-radius:6px;
+            background:#2563eb;
+            color:white;
+            cursor:pointer;
+          "
+        >
+          再試行
+        </button>
+      </section>
+    </main>
+  `;
+}
+
+async function checkUser(user) {
+  const snapshot = await getDoc(doc(db, "users", user.uid));
+
+  if (!snapshot.exists()) {
+    throw new Error("ユーザー情報が登録されていません。");
+  }
+
+  const profile = snapshot.data();
+
+  if (
+    profile.active === false ||
+    ["inactive", "disabled", "suspended", "deleted"]
+      .includes(String(profile.status || "").toLowerCase())
+  ) {
+    throw new Error("このアカウントは利用停止中です。");
+  }
+
+  const path = location.pathname;
+
+  const isStudentPage = path.startsWith("/student/");
+  const isTeacherPage = path.startsWith("/teacher/");
+
+  if (isStudentPage && profile.role !== "student") {
+    location.replace("/login.html");
+    return;
+  }
+
+  if (isTeacherPage && profile.role !== "teacher") {
+    location.replace("/login.html");
+    return;
+  }
+
+  if (!["student", "teacher"].includes(profile.role)) {
+    location.replace("/login.html");
+    return;
+  }
+
+  const status = await getSystemStatus();
+
+  if (
+    status.maintenance === true ||
+    status.maintenanceMode === true
+  ) {
+    location.replace("/maintenance.html");
+    return;
+  }
+
+  await sendHeartbeat(user);
 }
 
 async function startMaintenanceGuard() {
@@ -161,18 +150,24 @@ async function startMaintenanceGuard() {
   started = true;
 
   try {
-    const user = await waitForUser();
+    await authPersistenceReady;
 
-    if (!user) {
-      location.replace("/login.html");
-      return;
-    }
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        location.replace("/login.html");
+        return;
+      }
 
-    await checkMaintenance(user);
-
+      try {
+        await checkUser(user);
+      } catch (error) {
+        console.error("[Maintenance Guard]", error);
+        showError(error.message || "認証情報を確認できません。");
+      }
+    });
   } catch (error) {
-    console.error("ログイン状態確認エラー:", error);
-    location.replace("/login.html");
+    console.error(error);
+    showError("認証システムを初期化できませんでした。");
   }
 }
 
