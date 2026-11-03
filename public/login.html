@@ -198,6 +198,7 @@
       line-height: 1.7;
       margin-bottom: 17px;
       overflow-wrap: anywhere;
+      white-space: pre-wrap;
     }
 
     .message.error {
@@ -403,6 +404,11 @@
   </footer>
 
   <script type="module">
+    // ======================================
+    // Firebase SDK 12.5.0
+    // firebase.js とバージョンを統一
+    // ======================================
+
     import {
       auth,
       db,
@@ -418,12 +424,12 @@
       sendPasswordResetEmail,
       signOut,
       onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
     import {
       doc,
       getDoc
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
     const $ = (id) => document.getElementById(id);
 
@@ -435,6 +441,11 @@
     let maintenanceEnabled = false;
     let initializationFinished = false;
     let redirectProcessing = false;
+    let authObserverRegistered = false;
+
+    // ======================================
+    // メッセージ表示
+    // ======================================
 
     function showMessage(id, message, type = "error") {
       const element = $(id);
@@ -450,8 +461,14 @@
 
     function setButtonLoading(button, loading, normalText) {
       button.disabled = loading;
-      button.textContent = loading ? "処理しています..." : normalText;
+      button.textContent = loading
+        ? "処理しています..."
+        : normalText;
     }
+
+    // ======================================
+    // 画面切り替え
+    // ======================================
 
     function isResetMode() {
       return new URLSearchParams(location.search).get("mode") === "reset";
@@ -503,10 +520,13 @@
         });
 
         if (!response.ok) {
-          throw new Error("システム状態を確認できませんでした。");
+          throw new Error(
+            `システム状態の取得に失敗しました: ${response.status}`
+          );
         }
 
         const data = await response.json();
+
         maintenanceEnabled = data.maintenance === true;
 
         if (maintenanceEnabled) {
@@ -520,6 +540,7 @@
         }
 
         return !maintenanceEnabled;
+
       } catch (error) {
         console.error("メンテナンス確認エラー:", error);
 
@@ -550,6 +571,7 @@
           "loginMessage",
           "ユーザー情報が登録されていません。管理者にお問い合わせください。"
         );
+
         return;
       }
 
@@ -566,6 +588,7 @@
           "loginMessage",
           "このアカウントは現在利用できません。"
         );
+
         return;
       }
 
@@ -650,11 +673,14 @@
     });
 
     // ======================================
-    // Googleログイン
+    // Googleログインのエラー表示
     // ======================================
 
     function getGoogleErrorMessage(error) {
       const messages = {
+        "auth/argument-error":
+          "Googleログインの設定に問題があります。Firebase SDKと認証プロバイダの設定を確認してください。",
+
         "auth/popup-closed-by-user":
           "Googleログイン画面が閉じられました。もう一度お試しください。",
 
@@ -693,6 +719,10 @@
         `Googleログインに失敗しました。\nエラーコード：${error.code || "不明"}\n${error.message || ""}`;
     }
 
+    // ======================================
+    // Googleログイン
+    // ======================================
+
     $("googleButton").addEventListener("click", async () => {
       clearMessage("loginMessage");
 
@@ -704,7 +734,7 @@
       try {
         await authPersistenceReady;
 
-        // まずポップアップ方式を試す
+        // Firebase 12.5.0で初期化されたauthとproviderを使用
         const credential = await signInWithPopup(
           auth,
           googleProvider
@@ -715,16 +745,19 @@
       } catch (error) {
         console.error("Googleログインエラー:", {
           code: error.code,
-          message: error.message
+          message: error.message,
+          stack: error.stack
         });
 
         if (error.code === "auth/popup-blocked") {
           try {
-            // ポップアップがブロックされた場合はリダイレクト方式へ
             await signInWithRedirect(auth, googleProvider);
             return;
           } catch (redirectError) {
-            console.error("Googleリダイレクトエラー:", redirectError);
+            console.error(
+              "Googleリダイレクトエラー:",
+              redirectError
+            );
 
             showMessage(
               "loginMessage",
@@ -739,17 +772,21 @@
         }
 
       } finally {
-        // リダイレクト中はページ遷移するので表示状態の復元は不要
-        setButtonLoading(button, false, "Googleでログイン");
+        setButtonLoading(
+          button,
+          false,
+          "Googleでログイン"
+        );
       }
     });
 
     // ======================================
-    // Googleリダイレクトログイン結果
+    // Googleリダイレクトログイン
     // ======================================
 
     async function processGoogleRedirect() {
       if (redirectProcessing) return;
+
       redirectProcessing = true;
 
       try {
@@ -758,20 +795,25 @@
         if (result && result.user) {
           await routeUser(result.user);
         }
+
       } catch (error) {
-        console.error("Googleリダイレクト結果エラー:", error);
+        console.error(
+          "Googleリダイレクト結果エラー:",
+          error
+        );
 
         showMessage(
           "loginMessage",
           getGoogleErrorMessage(error)
         );
+
       } finally {
         redirectProcessing = false;
       }
     }
 
     // ======================================
-    // パスワード再設定メール
+    // パスワード再設定
     // ======================================
 
     $("resetForm").addEventListener("submit", async (event) => {
@@ -787,6 +829,7 @@
           "resetMessage",
           "メールアドレスを入力してください。"
         );
+
         return;
       }
 
@@ -839,24 +882,13 @@
     });
 
     // ======================================
-    // 初期化
+    // 認証状態の監視
     // ======================================
 
-    async function initialize() {
-      renderMode();
+    function registerAuthObserver() {
+      if (authObserverRegistered) return;
 
-      const systemAvailable = await checkMaintenance();
-
-      initialLoading.classList.add("hidden");
-
-      if (!systemAvailable) return;
-
-      initializationFinished = true;
-
-      await authPersistenceReady;
-
-      // Googleリダイレクトで戻ってきた場合の処理
-      await processGoogleRedirect();
+      authObserverRegistered = true;
 
       onAuthStateChanged(auth, async (user) => {
         if (!initializationFinished || maintenanceEnabled) return;
@@ -864,19 +896,55 @@
         // パスワード再設定画面では自動遷移しない
         if (isResetMode()) return;
 
-        if (user) {
-          try {
-            await routeUser(user);
-          } catch (error) {
-            console.error("ユーザー情報確認エラー:", error);
+        if (!user) return;
 
-            showMessage(
-              "loginMessage",
-              "アカウント情報を確認できませんでした。"
-            );
-          }
+        try {
+          await routeUser(user);
+
+        } catch (error) {
+          console.error("ユーザー情報確認エラー:", error);
+
+          showMessage(
+            "loginMessage",
+            "アカウント情報を確認できませんでした。"
+          );
         }
       });
+    }
+
+    // ======================================
+    // 初期化
+    // ======================================
+
+    async function initialize() {
+      renderMode();
+
+      try {
+        await authPersistenceReady;
+
+        const systemAvailable = await checkMaintenance();
+
+        initialLoading.classList.add("hidden");
+
+        if (!systemAvailable) return;
+
+        initializationFinished = true;
+
+        // リダイレクト方式で戻ってきた場合の結果を確認
+        await processGoogleRedirect();
+
+        registerAuthObserver();
+
+      } catch (error) {
+        console.error("初期化エラー:", error);
+
+        initialLoading.classList.add("hidden");
+
+        showMessage(
+          "loginMessage",
+          "システムの初期化に失敗しました。ページを再読み込みしてください。"
+        );
+      }
     }
 
     initialize();
