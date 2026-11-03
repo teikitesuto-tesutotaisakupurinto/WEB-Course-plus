@@ -3,21 +3,250 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>生徒ダッシュボード | WEB Course-plus</title>
+  <title>ダッシュボード | WEB Course-plus</title>
+
   <link rel="stylesheet" href="/assets/css/common.css">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f7fb;
+      color: #182334;
+      font-family: Inter, "Noto Sans JP", sans-serif;
+    }
+
+    .app {
+      min-height: 100vh;
+    }
+
+    .app-main {
+      min-width: 0;
+    }
+
+    .page-container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px;
+    }
+
+    .page-heading {
+      margin-bottom: 28px;
+    }
+
+    .page-title {
+      margin: 0 0 8px;
+      font-size: 27px;
+      font-weight: 700;
+    }
+
+    .page-description {
+      color: #64748b;
+      margin: 0;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 25px;
+    }
+
+    .stat-card,
+    .content-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+    }
+
+    .stat-label {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .stat-value {
+      margin: 10px 0 5px;
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    .stat-note {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    .content-card {
+      margin-bottom: 22px;
+    }
+
+    .card-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .card-heading h2 {
+      margin: 0;
+      font-size: 19px;
+    }
+
+    .card-description {
+      margin: 6px 0 0;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .lesson-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .lesson-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 18px;
+      background: #fff;
+    }
+
+    .lesson-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .lesson-title {
+      margin: 13px 0 8px;
+      font-size: 18px;
+    }
+
+    .lesson-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+
+    .muted {
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .badge-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-gray {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 15px;
+      border-radius: 7px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      text-decoration: none;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      padding: 35px 15px;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .error-message {
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      margin-bottom: 18px;
+      white-space: pre-wrap;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .account-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    footer {
+      padding: 25px 0;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .page-container {
+        padding: 20px 15px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .account-grid,
+      .lesson-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .page-title {
+        font-size: 23px;
+      }
+    }
+  </style>
 </head>
 
 <body>
-
 <div class="app">
 
-  <!-- Header -->
   <header class="app-header">
-
     <div class="header-left">
-      <button class="menu-toggle" data-sidebar-toggle aria-label="メニュー">
-
-      </button>
+      <button class="menu-toggle"
+              data-sidebar-toggle
+              aria-label="メニュー"></button>
 
       <a href="/student/dashboard.html" class="brand">
         <span class="brand-mark">W</span>
@@ -35,15 +264,13 @@
         ログアウト
       </button>
     </div>
-
   </header>
 
-  <!-- Sidebar -->
   <aside class="app-sidebar">
-
     <div class="sidebar-section">生徒メニュー</div>
 
-    <a href="/student/dashboard.html" class="sidebar-link active">
+    <a href="/student/dashboard.html"
+       class="sidebar-link active">
       <span class="sidebar-icon"></span>
       ダッシュボード
     </a>
@@ -60,36 +287,28 @@
 
     <div class="sidebar-section">アカウント</div>
 
-    <button
-      class="sidebar-link"
-      data-logout
-      style="width:100%;border:0;background:transparent;text-align:left"
-    >
-      <span class="sidebar-icon"></span>
+    <button class="sidebar-link"
+            data-logout
+            style="width:100%;border:0;background:transparent;text-align:left">
       ログアウト
     </button>
-
   </aside>
 
-  <!-- Main -->
   <main class="app-main">
-
     <div class="page-container">
 
       <div class="page-heading">
-        <div>
-          <h1 class="page-title">ダッシュボード</h1>
-          <p class="page-description" id="welcome-message">
-            あなたの授業予定を確認できます。
-          </p>
-        </div>
+        <h1 class="page-title">ダッシュボード</h1>
+        <p class="page-description" id="welcome-message">
+          あなたの授業予定を確認できます。
+        </p>
       </div>
 
-      <div id="message" class="hidden mb-2" role="alert"></div>
+      <div id="error-message"
+           class="error-message hidden"
+           role="alert"></div>
 
-      <!-- Statistics -->
-      <section class="grid grid-3 mb-3">
-
+      <section class="stats">
         <div class="stat-card">
           <div class="stat-label">予定されている授業</div>
           <div class="stat-value" id="upcoming-count">-</div>
@@ -107,78 +326,64 @@
           <div class="stat-value" id="completed-count">-</div>
           <div class="stat-note">授業履歴</div>
         </div>
-
       </section>
 
-      <!-- Upcoming lessons -->
-      <section class="card">
-
-        <div class="card-header">
+      <section class="content-card">
+        <div class="card-heading">
           <div>
-            <h2 class="card-title">授業予定</h2>
+            <h2>授業予定</h2>
             <p class="card-description">
               講師から設定されたあなたの授業です。
             </p>
           </div>
 
-          <a href="/student/history.html" class="btn btn-secondary btn-sm">
+          <a href="/student/history.html" class="btn">
             授業履歴を見る
           </a>
         </div>
 
-        <div id="lesson-loading" class="loading">
-          <span class="spinner"></span>
+        <div id="lesson-loading" class="empty-state">
           授業情報を読み込んでいます...
         </div>
 
-        <div id="lesson-list" class="grid" style="gap:14px"></div>
+        <div id="lesson-list" class="lesson-list"></div>
 
         <div id="lesson-empty" class="empty-state hidden">
-          <div class="empty-state-title">授業はまだ設定されていません</div>
-          <p>
-            講師が授業を設定すると、ここに表示されます。
-          </p>
+          授業はまだ設定されていません。
         </div>
-
       </section>
 
-      <!-- Account information -->
-      <section class="card mt-3">
-
-        <div class="card-header">
-          <h2 class="card-title">アカウント情報</h2>
-
-          <a href="/student/profile.html" class="btn btn-secondary btn-sm">
+      <section class="content-card">
+        <div class="card-heading">
+          <h2>アカウント情報</h2>
+          <a href="/student/profile.html" class="btn">
             詳細を見る
           </a>
         </div>
 
-        <div class="grid grid-2">
-
+        <div class="account-grid">
           <div>
-            <div class="text-muted">氏名</div>
+            <div class="muted">氏名</div>
             <strong id="profile-name">-</strong>
           </div>
 
           <div>
-            <div class="text-muted">メールアドレス</div>
+            <div class="muted">メールアドレス</div>
             <strong id="profile-email">-</strong>
           </div>
-
         </div>
-
       </section>
 
-      <footer id="app-footer"></footer>
+      <footer>
+        © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+      </footer>
 
     </div>
-
   </main>
-
 </div>
 
 <script type="module">
-  import { auth, db } from "/assets/js/firebase.js";
+  import { auth } from "/assets/js/firebase.js";
 
   import {
     requireRole
@@ -186,46 +391,52 @@
 
   import {
     initializeSidebar,
-    initializeLogout,
-    formatDateTime,
-    toDate,
-    escapeHTML,
-    showMessage,
-    renderFooter
+    initializeLogout
   } from "/assets/js/common.js";
 
-  import {
-    collection,
-    query,
-    where,
-    getDocs,
-    doc,
-    getDoc
-  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
-
-  // ========================================
-  // DOM
-  // ========================================
-
-  const lessonList = document.getElementById("lesson-list");
-  const lessonLoading = document.getElementById("lesson-loading");
-  const lessonEmpty = document.getElementById("lesson-empty");
-
-  let currentProfile = null;
-
-  // ========================================
-  // 初期化
-  // ========================================
+  const $ = id => document.getElementById(id);
 
   initializeSidebar();
   initializeLogout();
-  renderFooter();
 
-  // ========================================
-  // 日付処理
-  // ========================================
+  function showError(message) {
+    $("error-message").textContent = message;
+    $("error-message").classList.remove("hidden");
+  }
+
+  function toDate(value) {
+    if (!value) return null;
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function formatDate(date) {
+    if (!date) return "日時未設定";
+
+    return date.toLocaleString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[char]);
+  }
 
   function isToday(date) {
+    if (!date) return false;
+
     const now = new Date();
 
     return date.getFullYear() === now.getFullYear() &&
@@ -233,320 +444,203 @@
       date.getDate() === now.getDate();
   }
 
-  function canJoinLesson(lesson) {
+  function canJoin(lesson) {
     if (!["scheduled", "in_progress"].includes(lesson.status)) {
       return false;
     }
 
-    const startAt = toDate(lesson.startAt);
-    const endAt = toDate(lesson.endAt);
+    const start = toDate(lesson.startAt);
+    const end = toDate(lesson.endAt);
 
-    if (!startAt || !endAt) return false;
+    if (!start || !end) return false;
 
     const now = new Date();
 
-    const allowedStart = new Date(
-      startAt.getTime() - 5 * 60 * 1000
-    );
-
-    const allowedEnd = new Date(
-      endAt.getTime() + 30 * 60 * 1000
-    );
-
-    return now >= allowedStart && now <= allowedEnd;
+    return now >= new Date(start.getTime() - 5 * 60000) &&
+      now <= new Date(end.getTime() + 30 * 60000);
   }
 
-  function getStatusLabel(status) {
-    const labels = {
-      scheduled: ["予定", "badge-primary"],
-      in_progress: ["授業中", "badge-success"],
-      completed: ["終了", "badge-gray"],
-      cancelled: ["キャンセル", "badge-danger"]
+  function createLessonCard(lesson) {
+    const start = toDate(lesson.startAt);
+    const end = toDate(lesson.endAt);
+
+    const statusLabels = {
+      scheduled: "予定",
+      in_progress: "授業中",
+      completed: "終了",
+      cancelled: "キャンセル"
     };
 
-    return labels[status] || ["不明", "badge-gray"];
-  }
-
-  // ========================================
-  // 講師名取得
-  // ========================================
-
-  const teacherCache = new Map();
-
-  async function getTeacherName(teacherId) {
-    if (!teacherId) return "未設定";
-
-    if (teacherCache.has(teacherId)) {
-      return teacherCache.get(teacherId);
-    }
-
-    try {
-      const snapshot = await getDoc(
-        doc(db, "users", teacherId)
-      );
-
-      const name = snapshot.exists()
-        ? (
-            snapshot.data().displayName ||
-            snapshot.data().name ||
-            "講師"
-          )
-        : "講師";
-
-      teacherCache.set(teacherId, name);
-
-      return name;
-
-    } catch (error) {
-      console.error("[Teacher]", error);
-      return "講師";
-    }
-  }
-
-  // ========================================
-  // 授業カード
-  // ========================================
-
-  async function createLessonCard(lesson) {
-    const teacherName = await getTeacherName(lesson.teacherId);
-
-    const status = getStatusLabel(lesson.status);
-
-    const startAt = toDate(lesson.startAt);
-    const endAt = toDate(lesson.endAt);
+    const status = statusLabels[lesson.status] || "不明";
+    const joinEnabled = canJoin(lesson);
 
     const card = document.createElement("article");
-
-    card.className = "card";
-    card.style.padding = "18px";
-
-    const title = escapeHTML(lesson.title || "個別指導");
-
-    const subject = escapeHTML(lesson.subject || "教科未設定");
-
-    const description = escapeHTML(
-      lesson.description || "授業内容は設定されていません。"
-    );
-
-    const safeTeacher = escapeHTML(teacherName);
-
-    const dateText = startAt
-      ? formatDateTime(startAt)
-      : "日時未設定";
-
-    const timeText = startAt && endAt
-      ? `${startAt.toLocaleTimeString("ja-JP", {
-          hour: "2-digit",
-          minute: "2-digit"
-        })} ～ ${endAt.toLocaleTimeString("ja-JP", {
-          hour: "2-digit",
-          minute: "2-digit"
-        })}`
-      : "";
-
-    const joinEnabled = canJoinLesson(lesson);
+    card.className = "lesson-card";
 
     card.innerHTML = `
-      <div class="flex items-center justify-between gap-2"
-           style="flex-wrap:wrap">
-
+      <div class="lesson-top">
         <div>
-          <span class="badge badge-primary">${subject}</span>
-          <span class="badge ${status[1]}">${status[0]}</span>
+          <span class="badge">
+            ${escapeHTML(lesson.subject || "教科未設定")}
+          </span>
+          <span class="badge ${lesson.status === "in_progress" ? "badge-green" : "badge-gray"}">
+            ${escapeHTML(status)}
+          </span>
         </div>
-
-        <span class="text-muted" style="font-size:12px">
-          ${escapeHTML(dateText)}
-        </span>
-
+        <span class="muted">${escapeHTML(formatDate(start))}</span>
       </div>
 
-      <h3 style="font-size:17px;margin:14px 0 8px">
-        ${title}
+      <h3 class="lesson-title">
+        ${escapeHTML(lesson.title || "個別指導")}
       </h3>
 
-      <p class="text-muted" style="line-height:1.8;margin:0 0 14px">
-        ${description}
+      <p class="muted">
+        ${escapeHTML(lesson.description || "授業内容は設定されていません。")}
       </p>
 
-      <div class="grid grid-2" style="margin-bottom:15px">
-
+      <div class="lesson-meta">
         <div>
-          <div class="text-muted" style="font-size:12px">担当講師</div>
-          <strong>${safeTeacher}</strong>
+          <div class="muted">講師</div>
+          <strong>${escapeHTML(lesson.teacherName || "講師")}</strong>
         </div>
 
         <div>
-          <div class="text-muted" style="font-size:12px">授業時間</div>
-          <strong>${escapeHTML(timeText || "-")}</strong>
+          <div class="muted">授業時間</div>
+          <strong>
+            ${start && end
+              ? `${start.toLocaleTimeString("ja-JP", {hour:"2-digit",minute:"2-digit"})} ～ ${end.toLocaleTimeString("ja-JP", {hour:"2-digit",minute:"2-digit"})}`
+              : "未設定"}
+          </strong>
         </div>
-
       </div>
 
-      <div class="flex items-center justify-between gap-2"
-           style="flex-wrap:wrap">
-
-        <span class="text-muted" style="font-size:12px">
-          ${joinEnabled
-            ? "オンライン授業に参加できます。"
-            : "参加可能時間になると入室できます。"}
-        </span>
-
-        <button
-          type="button"
-          class="btn ${joinEnabled ? "btn-primary" : "btn-secondary"}"
-          data-join="${escapeHTML(lesson.id)}"
-          ${joinEnabled ? "" : "disabled"}
-        >
-          ${joinEnabled ? "授業に参加する" : "入室時間外"}
-        </button>
-
-      </div>
+      <button type="button"
+              class="btn ${joinEnabled ? "btn-primary" : ""}"
+              ${joinEnabled ? "" : "disabled"}>
+        ${joinEnabled ? "授業に参加する" : "入室時間外"}
+      </button>
     `;
 
-    const joinButton = card.querySelector("[data-join]");
+    const button = card.querySelector("button");
 
-    joinButton.addEventListener("click", () => {
-      const lessonId = joinButton.dataset.join;
-
-      window.location.href =
-        `/lesson/room.html?lessonId=${encodeURIComponent(lessonId)}`;
-    });
+    if (joinEnabled) {
+      button.addEventListener("click", () => {
+        location.href =
+          `/lesson/room.html?lessonId=${encodeURIComponent(lesson.id)}`;
+      });
+    }
 
     return card;
   }
 
-  // ========================================
-  // 授業読み込み
-  // ========================================
-
   async function loadLessons(uid) {
-    lessonLoading.classList.remove("hidden");
-    lessonEmpty.classList.add("hidden");
-    lessonList.innerHTML = "";
+    $("lesson-loading").classList.remove("hidden");
+    $("lesson-empty").classList.add("hidden");
+    $("lesson-list").replaceChildren();
 
     try {
-      const lessonsQuery = query(
-        collection(db, "lessons"),
-        where("studentId", "==", uid)
-      );
+      const user = auth.currentUser;
 
-      const snapshot = await getDocs(lessonsQuery);
+      if (!user || user.uid !== uid) {
+        throw new Error("ログイン状態を確認できません。再ログインしてください。");
+      }
 
-      const lessons = snapshot.docs.map(document => ({
-        id: document.id,
-        ...document.data()
-      }));
+      const token = await user.getIdToken();
+      const sessionId =
+        localStorage.getItem("web-course-plus-device-session");
 
-      lessons.sort((a, b) => {
-        const dateA = toDate(a.startAt)?.getTime() || 0;
-        const dateB = toDate(b.startAt)?.getTime() || 0;
+      if (!sessionId) {
+        throw new Error("端末セッションが見つかりません。再ログインしてください。");
+      }
 
-        return dateA - dateB;
+      const response = await fetch("/api/student/lessons", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Session-Id": sessionId
+        },
+        cache: "no-store"
       });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error || `授業情報の取得に失敗しました（${response.status}）。`
+        );
+      }
+
+      const lessons = Array.isArray(result.lessons)
+        ? result.lessons
+        : [];
 
       const now = new Date();
 
       const upcoming = lessons.filter(lesson => {
-        return (
-          ["scheduled", "in_progress"].includes(lesson.status) &&
-          toDate(lesson.endAt) &&
-          toDate(lesson.endAt) >= now
-        );
+        const end = toDate(lesson.endAt);
+
+        return ["scheduled", "in_progress"].includes(lesson.status) &&
+          end && end >= now;
       });
 
       const completed = lessons.filter(
         lesson => lesson.status === "completed"
       );
 
-      const todayLessons = upcoming.filter(lesson => {
-        const date = toDate(lesson.startAt);
-        return date && isToday(date);
-      });
+      const today = upcoming.filter(lesson =>
+        isToday(toDate(lesson.startAt))
+      );
 
-      document.getElementById("upcoming-count").textContent =
-        upcoming.length;
-
-      document.getElementById("today-count").textContent =
-        todayLessons.length;
-
-      document.getElementById("completed-count").textContent =
-        completed.length;
+      $("upcoming-count").textContent = upcoming.length;
+      $("today-count").textContent = today.length;
+      $("completed-count").textContent = completed.length;
 
       if (upcoming.length === 0) {
-        lessonEmpty.classList.remove("hidden");
+        $("lesson-empty").classList.remove("hidden");
         return;
       }
 
-      for (const lesson of upcoming) {
-        const card = await createLessonCard(lesson);
-        lessonList.appendChild(card);
-      }
+      upcoming.forEach(lesson => {
+        $("lesson-list").appendChild(createLessonCard(lesson));
+      });
 
     } catch (error) {
-      console.error("[Lessons]", error);
-
-      showMessage(
-        "授業情報を取得できませんでした。Firestoreのアクセス権限を確認してください。",
-        "danger"
-      );
-
+      console.error("[Dashboard lessons]", error);
+      showError(error.message || "授業情報を取得できませんでした。");
     } finally {
-      lessonLoading.classList.add("hidden");
+      $("lesson-loading").classList.add("hidden");
     }
   }
-
-  // ========================================
-  // 起動
-  // ========================================
 
   async function initializeDashboard() {
     try {
       const result = await requireRole("student");
-
       if (!result) return;
 
       const { user, profile } = result;
 
-      currentProfile = profile;
-
-      const displayName =
+      const name =
         profile.displayName ||
         profile.name ||
         "生徒";
 
-      document.getElementById("header-name").textContent =
-        displayName;
+      $("header-name").textContent = name;
+      $("header-avatar").textContent = name.charAt(0);
+      $("welcome-message").textContent =
+        `${name}さん、お疲れさまです。授業予定を確認しましょう。`;
 
-      document.getElementById("header-avatar").textContent =
-        displayName.charAt(0);
-
-      document.getElementById("welcome-message").textContent =
-        `${displayName}さん、お疲れさまです。授業予定を確認しましょう。`;
-
-      document.getElementById("profile-name").textContent =
-        displayName;
-
-      document.getElementById("profile-email").textContent =
-        user.email || "-";
+      $("profile-name").textContent = name;
+      $("profile-email").textContent = user.email || "-";
 
       await loadLessons(user.uid);
 
     } catch (error) {
       console.error("[Dashboard]", error);
-
-      showMessage(
-        error.message || "画面の読み込みに失敗しました。",
-        "danger"
-      );
+      showError(error.message || "画面の読み込みに失敗しました。");
     }
   }
 
   initializeDashboard();
 </script>
-
-<!-- メンテナンス状態・ログイン状態の確認 -->
-<script type="module" src="/assets/js/maintenance-guard.js"></script>
-
 </body>
 </html>
