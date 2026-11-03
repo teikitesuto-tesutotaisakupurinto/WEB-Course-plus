@@ -1,343 +1,246 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f4f7fb">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f4f7fb">
+<title>ログイン | WEB Course-plus</title>
 
-  <title>ログイン | WEB Course-plus</title>
+<style>
+:root{
+  font-family:Inter,"Noto Sans JP",system-ui,sans-serif;
+  color:#182334;
+  background:#f4f7fb;
+  --primary:#2563eb;
+  --border:#dfe6ef;
+  --muted:#64748b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;
+  display:flex;flex-direction:column;
+}
+main{
+  flex:1;display:grid;place-items:center;
+  padding:30px 16px;
+}
+.container{width:100%;max-width:440px}
+.brand{text-align:center;margin-bottom:25px}
+.brand h1{
+  margin:0;font-size:29px;font-weight:750;
+  color:#14263f;
+}
+.card,.maintenance{
+  padding:30px;background:white;
+  border:1px solid var(--border);
+  border-radius:15px;
+  box-shadow:0 8px 30px rgba(20,38,63,.06);
+}
+h2{margin:0 0 9px;font-size:21px}
+.description{
+  margin:0 0 24px;color:var(--muted);
+  font-size:13px;line-height:1.8;
+}
+.field{margin-bottom:18px}
+label{
+  display:block;margin-bottom:8px;
+  font-size:13px;font-weight:650;
+}
+input{
+  width:100%;height:46px;padding:0 13px;
+  border:1px solid #cbd5e1;border-radius:8px;
+  outline:none;font:inherit;font-size:14px;
+}
+input:focus{
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+button{
+  width:100%;min-height:46px;border:0;
+  border-radius:8px;background:var(--primary);
+  color:white;font:inherit;font-size:14px;
+  font-weight:650;cursor:pointer;
+}
+button:hover:not(:disabled){background:#1d4ed8}
+button:disabled{opacity:.6;cursor:not-allowed}
+.google-button{
+  display:flex;align-items:center;
+  justify-content:center;gap:12px;
+  background:white;color:#1f1f1f;
+  border:1px solid #747775;
+}
+.google-button:hover:not(:disabled){background:#f8faff}
+.google-mark{width:19px;height:19px;flex:0 0 19px}
+.divider{
+  display:flex;align-items:center;gap:12px;
+  margin:21px 0;color:#94a3b8;font-size:12px;
+}
+.divider::before,.divider::after{
+  content:"";height:1px;flex:1;background:var(--border);
+}
+.links{
+  display:flex;justify-content:center;
+  margin-top:19px;font-size:13px;
+}
+a{color:var(--primary);text-decoration:none;font-weight:600}
+a:hover{text-decoration:underline}
+.message{
+  display:none;margin-bottom:17px;padding:12px 14px;
+  border-radius:8px;font-size:13px;line-height:1.7;
+  overflow-wrap:anywhere;
+}
+.message.error{
+  display:block;color:#b91c1c;background:#fef2f2;
+  border:1px solid #fecaca;
+}
+.message.success{
+  display:block;color:#166534;background:#f0fdf4;
+  border:1px solid #bbf7d0;
+}
+.hidden{display:none!important}
 
-  <style>
-    :root {
-      font-family: Inter, "Noto Sans JP", system-ui, sans-serif;
-      color: #182334;
-      background: #f4f7fb;
-      --primary: #2563eb;
-      --border: #dfe6ef;
-      --muted: #64748b;
-    }
+/* メンテナンス画面 */
+.maintenance{
+  display:none;text-align:center;
+  padding:35px 30px;
+}
+.maintenance-icon{
+  display:block;width:54px;height:54px;
+  margin:0 auto 20px;color:#64748b;
+}
+.maintenance h2{font-size:22px;margin-bottom:15px}
+.maintenance-message{
+  color:#475569;font-size:14px;
+  line-height:1.9;white-space:pre-wrap;
+  overflow-wrap:anywhere;margin:0 0 25px;
+}
+.maintenance-note{
+  color:#94a3b8;font-size:12px;
+  line-height:1.7;margin:18px 0 0;
+}
+.maintenance-admin{
+  background:#14263f;color:white;
+}
+.maintenance-admin:hover:not(:disabled){background:#203b5e}
 
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    main {
-      flex: 1;
-      display: grid;
-      place-items: center;
-      padding: 30px 16px;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 440px;
-    }
-
-    .brand {
-      text-align: center;
-      margin-bottom: 25px;
-    }
-
-    .brand h1 {
-      margin: 0;
-      font-size: 29px;
-      font-weight: 750;
-      color: #14263f;
-    }
-
-    .card,
-    .maintenance {
-      padding: 30px;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 15px;
-      box-shadow: 0 8px 30px rgba(20, 38, 63, .06);
-    }
-
-    h2 {
-      margin: 0 0 9px;
-      font-size: 21px;
-    }
-
-    .description {
-      margin: 0 0 24px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.8;
-    }
-
-    .field {
-      margin-bottom: 18px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 13px;
-      font-weight: 650;
-    }
-
-    input {
-      width: 100%;
-      height: 46px;
-      padding: 0 13px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      outline: none;
-      font: inherit;
-      font-size: 14px;
-    }
-
-    input:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
-    }
-
-    button {
-      width: 100%;
-      min-height: 46px;
-      border: 0;
-      border-radius: 8px;
-      background: var(--primary);
-      color: #fff;
-      font: inherit;
-      font-size: 14px;
-      font-weight: 650;
-      cursor: pointer;
-    }
-
-    button:hover:not(:disabled) {
-      background: #1d4ed8;
-    }
-
-    button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
-
-    .google-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      background: #fff;
-      color: #1f1f1f;
-      border: 1px solid #747775;
-    }
-
-    .google-button:hover:not(:disabled) {
-      background: #f8faff;
-    }
-
-    .google-mark {
-      width: 19px;
-      height: 19px;
-      flex: 0 0 19px;
-    }
-
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 21px 0;
-      color: #94a3b8;
-      font-size: 12px;
-    }
-
-    .divider::before,
-    .divider::after {
-      content: "";
-      height: 1px;
-      flex: 1;
-      background: var(--border);
-    }
-
-    .links {
-      display: flex;
-      justify-content: center;
-      margin-top: 19px;
-      font-size: 13px;
-    }
-
-    a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
-
-    .message {
-      display: none;
-      margin-bottom: 17px;
-      padding: 12px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      line-height: 1.7;
-      overflow-wrap: anywhere;
-    }
-
-    .message.error {
-      display: block;
-      color: #b91c1c;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-    }
-
-    .message.success {
-      display: block;
-      color: #166534;
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .maintenance {
-      display: none;
-      text-align: center;
-    }
-
-    .maintenance p {
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.8;
-    }
-
-    footer {
-      padding: 20px 12px;
-      color: #94a3b8;
-      text-align: center;
-      font-size: 11px;
-    }
-
-    @media (max-width: 480px) {
-      .card {
-        padding: 23px 19px;
-      }
-
-      .brand h1 {
-        font-size: 25px;
-      }
-    }
-  </style>
+footer{
+  padding:20px 12px;color:#94a3b8;
+  text-align:center;font-size:11px;
+}
+@media(max-width:480px){
+  .card,.maintenance{padding:23px 19px}
+  .brand h1{font-size:25px}
+}
+</style>
 </head>
 
 <body>
-
 <main>
-  <div class="container">
+<div class="container">
 
-    <div class="brand">
-      <h1>WEB Course-plus</h1>
+  <div class="brand">
+    <h1>WEB Course-plus</h1>
+  </div>
+
+  <!-- 通常ログイン -->
+  <section class="card" id="loginView">
+    <h2>ログイン</h2>
+    <p class="description">
+      登録済みのアカウントでログインしてください。
+    </p>
+
+    <div id="loginMessage" class="message" role="alert"></div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="email">メールアドレス</label>
+        <input id="email" type="email"
+          autocomplete="username"
+          placeholder="example@email.com" required>
+      </div>
+
+      <div class="field">
+        <label for="password">パスワード</label>
+        <input id="password" type="password"
+          autocomplete="current-password"
+          placeholder="パスワードを入力" required>
+      </div>
+
+      <button id="loginButton" type="submit">ログイン</button>
+    </form>
+
+    <div class="links">
+      <a href="/login.html?mode=reset" id="resetLink">
+        パスワードを忘れた方
+      </a>
     </div>
 
-    <section class="card" id="loginView">
-      <h2>ログイン</h2>
+    <div class="divider">または</div>
 
-      <p class="description">
-        登録済みのアカウントでログインしてください。
-      </p>
+    <button id="googleButton" class="google-button" type="button">
+      <svg class="google-mark" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.9c-.58 2.96-2.25 5.48-4.73 7.18l7.62 5.91c4.45-4.11 7.19-10.16 7.19-17.56z"/>
+        <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.89l-7.62-5.91c-2.12 1.42-4.84 2.26-8.28 2.26-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Googleでログイン
+    </button>
+  </section>
 
-      <div id="loginMessage" class="message" role="alert"></div>
+  <!-- パスワード再設定 -->
+  <section class="card hidden" id="resetView">
+    <h2>パスワード再設定</h2>
+    <p class="description">
+      登録済みのメールアドレスに再設定メールを送信します。
+    </p>
 
-      <form id="loginForm">
-        <div class="field">
-          <label for="email">メールアドレス</label>
-          <input
-            id="email"
-            type="email"
-            autocomplete="username"
-            placeholder="example@email.com"
-            required>
-        </div>
+    <div id="resetMessage" class="message" role="alert"></div>
 
-        <div class="field">
-          <label for="password">パスワード</label>
-          <input
-            id="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="パスワードを入力"
-            required>
-        </div>
-
-        <button id="loginButton" type="submit">
-          ログイン
-        </button>
-      </form>
-
-      <div class="links">
-        <a href="/login.html?mode=reset" id="resetLink">
-          パスワードを忘れた方
-        </a>
+    <form id="resetForm">
+      <div class="field">
+        <label for="resetEmail">メールアドレス</label>
+        <input id="resetEmail" type="email"
+          autocomplete="email" required>
       </div>
-
-      <div class="divider">または</div>
-
-      <button
-        id="googleButton"
-        class="google-button"
-        type="button">
-        <svg class="google-mark" viewBox="0 0 48 48" aria-hidden="true">
-          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.9c-.58 2.96-2.25 5.48-4.73 7.18l7.62 5.91c4.45-4.11 7.19-10.16 7.19-17.56z"/>
-          <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"/>
-          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.89l-7.62-5.91c-2.12 1.42-4.84 2.26-8.28 2.26-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-        </svg>
-        Googleでログイン
+      <button id="resetButton" type="submit">
+        再設定メールを送信
       </button>
-    </section>
+    </form>
 
-    <section class="card hidden" id="resetView">
-      <h2>パスワード再設定</h2>
+    <div class="links">
+      <a href="/login.html">ログイン画面に戻る</a>
+    </div>
+  </section>
 
-      <p class="description">
-        登録済みのメールアドレスに再設定メールを送信します。
-      </p>
+  <!-- 一般利用者向けメンテナンス画面 -->
+  <section class="maintenance" id="maintenanceView">
+    <svg class="maintenance-icon"
+      viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="1.7"
+      stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">
+      <path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18a2.1 2.1 0 0 0 3 3l5.3-5.3a5 5 0 0 0 6.4-6.4l-3 3-3-3 3-3Z"/>
+    </svg>
 
-      <div id="resetMessage" class="message" role="alert"></div>
+    <h2>メンテナンス中</h2>
 
-      <form id="resetForm">
-        <div class="field">
-          <label for="resetEmail">メールアドレス</label>
-          <input
-            id="resetEmail"
-            type="email"
-            autocomplete="email"
-            required>
-        </div>
+    <p class="maintenance-message" id="maintenanceMessage">
+      現在メンテナンスを実施しています。
+    </p>
 
-        <button id="resetButton" type="submit">
-          再設定メールを送信
-        </button>
-      </form>
+    <button class="maintenance-admin"
+      id="adminLoginOpen" type="button">
+      管理者ログイン
+    </button>
 
-      <div class="links">
-        <a href="/login.html">ログイン画面に戻る</a>
-      </div>
-    </section>
+    <p class="maintenance-note">
+      メンテナンス終了までしばらくお待ちください。
+    </p>
+  </section>
 
-    <section class="maintenance" id="maintenanceView">
-      <h2>メンテナンス中</h2>
-      <p id="maintenanceMessage">
-        現在メンテナンスを実施しています。
-        しばらくしてから再度アクセスしてください。
-      </p>
-    </section>
-
-  </div>
+</div>
 </main>
 
 <footer>
@@ -345,421 +248,407 @@
 </footer>
 
 <script type="module">
-  import {
-    auth,
-    db,
-    googleProvider,
-    authPersistenceReady
-  } from "/assets/js/firebase.js";
+import {
+  auth,
+  db,
+  googleProvider,
+  authPersistenceReady
+} from "/assets/js/firebase.js";
 
-  import {
-    signInWithEmailAndPassword,
-    signInWithPopup,
-    signInWithRedirect,
-    getRedirectResult,
-    sendPasswordResetEmail,
-    signOut,
-    onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  sendPasswordResetEmail,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
-  import {
-    doc,
-    getDoc
-  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+import {
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-  const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
+const SESSION_KEY = "web-course-plus-device-session";
 
-  const SESSION_KEY = "web-course-plus-device-session";
+let maintenance = false;
+let routing = false;
+let initialized = false;
+let maintenanceMessage = "現在メンテナンスを実施しています。";
 
-  let maintenance = false;
-  let routing = false;
-  let initialized = false;
+function getSessionId(){
+  let id = localStorage.getItem(SESSION_KEY);
 
-  function getSessionId() {
-    let id = localStorage.getItem(SESSION_KEY);
-
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(SESSION_KEY, id);
-    }
-
-    return id;
+  if(!id){
+    id = crypto.randomUUID();
+    localStorage.setItem(SESSION_KEY,id);
   }
 
-  function showMessage(id, message, type = "error") {
-    const element = $(id);
-    element.textContent = message;
-    element.className = `message ${type}`;
-  }
+  return id;
+}
 
-  function clearMessage(id) {
-    $(id).textContent = "";
-    $(id).className = "message";
-  }
+function showMessage(id,message,type="error"){
+  const element = $(id);
+  element.textContent = message;
+  element.className = `message ${type}`;
+}
 
-  async function reportLoginFailure(email, error) {
-    try {
-      await fetch("/api/security/event", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "login_failed",
-          email: String(email || "").trim().slice(0, 254),
-          errorCode: String(error?.code || "unknown").slice(0, 100)
-        }),
-        cache: "no-store"
-      });
-    } catch (reportError) {
-      console.warn("ログイン失敗イベントを送信できませんでした:", reportError);
-    }
-  }
+function clearMessage(id){
+  $(id).textContent = "";
+  $(id).className = "message";
+}
 
-  function setLoading(button, loading, label) {
-    button.disabled = loading;
-    button.textContent = loading ? "処理しています..." : label;
-  }
+function setLoading(button,loading,label){
+  button.disabled = loading;
+  button.textContent = loading ? "処理しています..." : label;
+}
 
-  async function getToken() {
-    if (!auth.currentUser) {
-      throw new Error("ログイン状態を確認できません。");
-    }
+function showMaintenance(){
+  $("loginView").classList.add("hidden");
+  $("resetView").classList.add("hidden");
+  $("maintenanceView").style.display = "block";
+  $("maintenanceMessage").textContent = maintenanceMessage;
+}
 
-    return auth.currentUser.getIdToken();
-  }
+function showLogin(){
+  $("maintenanceView").style.display = "none";
+  $("resetView").classList.add("hidden");
+  $("loginView").classList.remove("hidden");
+}
 
-  async function apiFetch(url, options = {}) {
-    const token = await getToken();
-
-    const headers = new Headers(options.headers || {});
-
-    headers.set("Authorization", `Bearer ${token}`);
-    headers.set("X-Session-Id", getSessionId());
-
-    if (options.body) {
-      headers.set("Content-Type", "application/json");
-    }
-
-    return fetch(url, {
-      ...options,
-      headers,
-      cache: "no-store"
-    });
-  }
-
-  async function registerSession(user) {
-    const token = await user.getIdToken();
-
-    const response = await fetch("/api/sessions/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        sessionId: getSessionId()
+async function reportLoginFailure(email,error){
+  try{
+    await fetch("/api/security/event",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        type:"login_failed",
+        email:String(email||"").trim().slice(0,254),
+        errorCode:String(error?.code||"unknown").slice(0,100)
       }),
-      cache: "no-store"
+      cache:"no-store"
     });
+  }catch(reportError){
+    console.warn("ログイン失敗イベントを送信できませんでした:",reportError);
+  }
+}
 
-    const data = await response.json().catch(() => ({}));
+async function registerSession(user){
+  const token = await user.getIdToken();
 
-    if (!response.ok || !data.success) {
-      const error = new Error(
-        data.error || "端末セッションを登録できませんでした。"
-      );
+  const response = await fetch("/api/sessions/register",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":`Bearer ${token}`
+    },
+    body:JSON.stringify({sessionId:getSessionId()}),
+    cache:"no-store"
+  });
 
-      error.code = response.status === 409 ? "SESSION_LIMIT" : data.code;
-      throw error;
-    }
+  const data = await response.json().catch(()=>({}));
 
-    return data;
+  if(!response.ok || !data.success){
+    const error = new Error(
+      data.error || "端末セッションを登録できませんでした。"
+    );
+    error.code = response.status === 409 ? "SESSION_LIMIT" : data.code;
+    throw error;
   }
 
-  async function loadProfile(user) {
-    const snapshot = await getDoc(doc(db, "users", user.uid));
+  return data;
+}
 
-    if (!snapshot.exists()) {
-      throw new Error("ユーザー情報が登録されていません。");
-    }
+async function loadProfile(user){
+  const snapshot = await getDoc(doc(db,"users",user.uid));
 
-    const profile = snapshot.data();
-
-    if (
-      profile.active === false ||
-      ["inactive", "disabled", "suspended", "deleted"]
-        .includes(String(profile.status || "").toLowerCase())
-    ) {
-      throw new Error("このアカウントは利用停止中です。");
-    }
-
-    if (!["admin", "teacher", "student"].includes(profile.role)) {
-      throw new Error("アカウントの権限が正しくありません。");
-    }
-
-    return profile;
+  if(!snapshot.exists()){
+    throw new Error("ユーザー情報が登録されていません。");
   }
 
-  async function routeUser(user) {
-    if (!user || routing) return;
+  const profile = snapshot.data();
 
-    routing = true;
+  if(
+    profile.active === false ||
+    ["inactive","disabled","suspended","deleted"]
+      .includes(String(profile.status||"").toLowerCase())
+  ){
+    throw new Error("このアカウントは利用停止中です。");
+  }
 
-    try {
-      const profile = await loadProfile(user);
+  if(!["admin","teacher","student"].includes(profile.role)){
+    throw new Error("アカウントの権限が正しくありません。");
+  }
 
-      if (maintenance && profile.role !== "admin") {
-        await signOut(auth);
+  return profile;
+}
 
-        showMessage(
-          "loginMessage",
-          "現在メンテナンス中のためログインできません。"
-        );
+async function routeUser(user){
+  if(!user || routing) return;
 
-        return;
-      }
+  routing = true;
 
-      await registerSession(user);
+  try{
+    const profile = await loadProfile(user);
 
-      if (profile.role === "admin") {
-        location.replace("/admin/dashboard.html");
-      } else if (profile.role === "teacher") {
-        location.replace("/teacher/dashboard.html");
-      } else {
-        location.replace("/student/dashboard.html");
-      }
-
-    } catch (error) {
-      console.error(error);
-
+    /*
+      管理者はメンテナンス中でもログイン可能。
+      一般利用者だけメンテナンス画面に留める。
+    */
+    if(maintenance && profile.role !== "admin"){
       await signOut(auth);
-
-      if (error.code === "SESSION_LIMIT") {
-        showMessage(
-          "loginMessage",
-          "同時ログイン上限の4端末に達しています。管理者に端末セッションの解除を依頼してください。"
-        );
-      } else {
-        showMessage(
-          "loginMessage",
-          error.message || "ログインに失敗しました。"
-        );
-      }
-
-    } finally {
-      routing = false;
-    }
-  }
-
-  async function checkMaintenance() {
-    const response = await fetch("/api/system/status", {
-      cache: "no-store"
-    });
-
-    if (!response.ok) {
-      throw new Error("システム状態を取得できませんでした。");
-    }
-
-    const data = await response.json();
-
-    maintenance = data.maintenance === true;
-
-    if (maintenance && !auth.currentUser) {
-      $("loginView").classList.add("hidden");
-      $("resetView").classList.add("hidden");
-      $("maintenanceView").style.display = "block";
-
-      $("maintenanceMessage").textContent =
-        data.maintenanceMessage ||
-        "現在メンテナンスを実施しています。";
-    }
-  }
-
-  $("loginForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    clearMessage("loginMessage");
-
-    const button = $("loginButton");
-    setLoading(button, true, "ログイン");
-
-    try {
-      await authPersistenceReady;
-
-      const credential = await signInWithEmailAndPassword(
-        auth,
-        $("email").value.trim(),
-        $("password").value
-      );
-
-      await routeUser(credential.user);
-
-    } catch (error) {
-      if (String(error.code || "").startsWith("auth/")) {
-        await reportLoginFailure($("email").value.trim(), error);
-      }
-      const messages = {
-        "auth/invalid-email": "メールアドレスの形式が正しくありません。",
-        "auth/invalid-credential": "メールアドレスまたはパスワードが正しくありません。",
-        "auth/too-many-requests": "試行回数が多すぎます。しばらくしてからお試しください。",
-        "auth/network-request-failed": "ネットワーク接続に失敗しました。"
-      };
-
-      showMessage(
-        "loginMessage",
-        messages[error.code] || error.message
-      );
-
-    } finally {
-      setLoading(button, false, "ログイン");
-    }
-  });
-
-  $("googleButton").addEventListener("click", async () => {
-    clearMessage("loginMessage");
-
-    const button = $("googleButton");
-    setLoading(button, true, "Googleでログイン");
-
-    try {
-      await authPersistenceReady;
-
-      const credential = await signInWithPopup(
-        auth,
-        googleProvider
-      );
-
-      await routeUser(credential.user);
-
-    } catch (error) {
-      if (error.code === "auth/popup-blocked") {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-
-      if (String(error.code || "").startsWith("auth/")) {
-        await reportLoginFailure("", error);
-      }
-
-      showMessage(
-        "loginMessage",
-        error.message || "Googleログインに失敗しました。"
-      );
-
-    } finally {
-      setLoading(button, false, "Googleでログイン");
-    }
-  });
-
-  $("resetForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    clearMessage("resetMessage");
-
-    const button = $("resetButton");
-    setLoading(button, true, "再設定メールを送信");
-
-    try {
-      await sendPasswordResetEmail(
-        auth,
-        $("resetEmail").value.trim()
-      );
-
-      showMessage(
-        "resetMessage",
-        "再設定メールを送信しました。メールをご確認ください。",
-        "success"
-      );
-
-    } catch (error) {
-      showMessage(
-        "resetMessage",
-        error.message || "メールを送信できませんでした。"
-      );
-
-    } finally {
-      setLoading(button, false, "再設定メールを送信");
-    }
-  });
-
-  async function logoutDevice() {
-    const user = auth.currentUser;
-
-    if (user) {
-      try {
-        const token = await user.getIdToken();
-
-        await fetch("/api/sessions/logout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            sessionId: getSessionId()
-          }),
-          cache: "no-store"
-        });
-      } catch (error) {
-        console.error("セッション終了エラー:", error);
-      }
-    }
-
-    await signOut(auth);
-    localStorage.removeItem(SESSION_KEY);
-
-    location.replace("/login.html");
-  }
-
-  window.logoutDevice = logoutDevice;
-
-  onAuthStateChanged(auth, async (user) => {
-    if (!initialized || !user) return;
-
-    if (new URLSearchParams(location.search).get("mode") === "reset") {
+      showMaintenance();
       return;
     }
 
-    await routeUser(user);
-  });
+    await registerSession(user);
 
-  async function initialize() {
-    try {
-      await authPersistenceReady;
-      await checkMaintenance();
+    if(profile.role === "admin"){
+      location.replace("/admin/dashboard.html");
+    }else if(profile.role === "teacher"){
+      location.replace("/teacher/dashboard.html");
+    }else{
+      location.replace("/student/dashboard.html");
+    }
 
-      const result = await getRedirectResult(auth);
+  }catch(error){
+    console.error(error);
+    await signOut(auth);
 
-      if (result?.user) {
-        await routeUser(result.user);
-      }
-
-      initialized = true;
-
-      if (auth.currentUser) {
-        await routeUser(auth.currentUser);
-      }
-
-    } catch (error) {
-      console.error(error);
-
+    if(error.code === "SESSION_LIMIT"){
+      showLogin();
       showMessage(
         "loginMessage",
-        error.message || "システムの初期化に失敗しました。"
+        "同時ログイン上限の4端末に達しています。管理者に端末セッションの解除を依頼してください。"
       );
+    }else{
+      showLogin();
+      showMessage(
+        "loginMessage",
+        error.message || "ログインに失敗しました。"
+      );
+    }
+  }finally{
+    routing = false;
+  }
+}
 
-      initialized = true;
+async function checkMaintenance(){
+  const response = await fetch("/api/system/status",{
+    cache:"no-store"
+  });
+
+  if(!response.ok){
+    throw new Error("システム状態を取得できませんでした。");
+  }
+
+  const data = await response.json();
+
+  maintenance = data.maintenance === true;
+
+  maintenanceMessage =
+    typeof data.maintenanceMessage === "string" &&
+    data.maintenanceMessage.trim()
+      ? data.maintenanceMessage
+      : "現在メンテナンスを実施しています。";
+
+  $("maintenanceMessage").textContent = maintenanceMessage;
+
+  if(maintenance){
+    showMaintenance();
+  }else{
+    showLogin();
+  }
+}
+
+/*
+  メンテナンス画面から管理者ログイン画面へ切り替える。
+  ログイン後はroleを判定し、adminなら管理画面へ遷移する。
+*/
+$("adminLoginOpen").addEventListener("click",()=>{
+  showLogin();
+  $("email").focus();
+});
+
+$("loginForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  clearMessage("loginMessage");
+
+  const button = $("loginButton");
+  setLoading(button,true,"ログイン");
+
+  try{
+    await authPersistenceReady;
+
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      $("email").value.trim(),
+      $("password").value
+    );
+
+    await routeUser(credential.user);
+
+  }catch(error){
+    if(String(error.code||"").startsWith("auth/")){
+      await reportLoginFailure($("email").value.trim(),error);
+    }
+
+    const messages = {
+      "auth/invalid-email":"メールアドレスの形式が正しくありません。",
+      "auth/invalid-credential":"メールアドレスまたはパスワードが正しくありません。",
+      "auth/too-many-requests":"試行回数が多すぎます。しばらくしてからお試しください。",
+      "auth/network-request-failed":"ネットワーク接続に失敗しました。"
+    };
+
+    showMessage(
+      "loginMessage",
+      messages[error.code] || error.message
+    );
+  }finally{
+    setLoading(button,false,"ログイン");
+  }
+});
+
+$("googleButton").addEventListener("click",async()=>{
+  clearMessage("loginMessage");
+
+  const button = $("googleButton");
+  setLoading(button,true,"Googleでログイン");
+
+  try{
+    await authPersistenceReady;
+
+    const credential = await signInWithPopup(auth,googleProvider);
+    await routeUser(credential.user);
+
+  }catch(error){
+    if(error.code === "auth/popup-blocked"){
+      await signInWithRedirect(auth,googleProvider);
+      return;
+    }
+
+    if(String(error.code||"").startsWith("auth/")){
+      await reportLoginFailure("",error);
+    }
+
+    showMessage(
+      "loginMessage",
+      error.message || "Googleログインに失敗しました。"
+    );
+  }finally{
+    setLoading(button,false,"Googleでログイン");
+  }
+});
+
+$("resetForm").addEventListener("submit",async event=>{
+  event.preventDefault();
+  clearMessage("resetMessage");
+
+  const button = $("resetButton");
+  setLoading(button,true,"再設定メールを送信");
+
+  try{
+    await sendPasswordResetEmail(
+      auth,
+      $("resetEmail").value.trim()
+    );
+
+    showMessage(
+      "resetMessage",
+      "再設定メールを送信しました。メールをご確認ください。",
+      "success"
+    );
+  }catch(error){
+    showMessage(
+      "resetMessage",
+      error.message || "メールを送信できませんでした。"
+    );
+  }finally{
+    setLoading(button,false,"再設定メールを送信");
+  }
+});
+
+async function logoutDevice(){
+  const user = auth.currentUser;
+
+  if(user){
+    try{
+      const token = await user.getIdToken();
+
+      await fetch("/api/sessions/logout",{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Authorization":`Bearer ${token}`
+        },
+        body:JSON.stringify({sessionId:getSessionId()}),
+        cache:"no-store"
+      });
+    }catch(error){
+      console.error("セッション終了エラー:",error);
     }
   }
 
-  if (
-    new URLSearchParams(location.search).get("mode") === "reset"
-  ) {
-    $("loginView").classList.add("hidden");
-    $("resetView").classList.remove("hidden");
+  await signOut(auth);
+  localStorage.removeItem(SESSION_KEY);
+  location.replace("/login.html");
+}
+
+window.logoutDevice = logoutDevice;
+
+onAuthStateChanged(auth,async user=>{
+  if(!initialized || !user) return;
+
+  if(new URLSearchParams(location.search).get("mode")==="reset"){
+    return;
   }
 
-  initialize();
-</script>
+  await routeUser(user);
+});
 
+async function initialize(){
+  try{
+    await authPersistenceReady;
+
+    /*
+      先にメンテナンス状態を取得する。
+      その後、既存ログイン状態やGoogleリダイレクトを処理する。
+    */
+    await checkMaintenance();
+
+    const result = await getRedirectResult(auth);
+
+    if(result?.user){
+      await routeUser(result.user);
+    }
+
+    initialized = true;
+
+    if(auth.currentUser){
+      await routeUser(auth.currentUser);
+    }
+
+  }catch(error){
+    console.error(error);
+
+    showLogin();
+    showMessage(
+      "loginMessage",
+      error.message || "システムの初期化に失敗しました。"
+    );
+
+    initialized = true;
+  }
+}
+
+if(new URLSearchParams(location.search).get("mode")==="reset"){
+  $("loginView").classList.add("hidden");
+  $("resetView").classList.remove("hidden");
+}
+
+initialize();
+</script>
 </body>
 </html>
