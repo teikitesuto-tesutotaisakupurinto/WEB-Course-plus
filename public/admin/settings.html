@@ -1,48 +1,560 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#14263f">
 <title>システム設定 | WEB Course-plus</title>
+
 <style>
-:root{font-family:Inter,"Noto Sans JP",sans-serif;color:#182334;background:#f4f7fb;--navy:#14263f;--blue:#2563eb;--border:#dfe6ef;--muted:#64748b}*{box-sizing:border-box}body{margin:0}.topbar{height:66px;position:fixed;z-index:5;inset:0 0 auto;background:var(--navy);color:white;display:flex;align-items:center;padding:0 22px;gap:16px}.toggle{background:none;border:1px solid #ffffff55;color:white;border-radius:7px;padding:8px 12px;cursor:pointer}.brand{font-weight:750}.right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:13px}.logout{background:transparent;color:white;border:1px solid #ffffff55;border-radius:7px;padding:8px 12px;cursor:pointer}.sidebar{position:fixed;top:66px;bottom:0;width:250px;background:white;border-right:1px solid var(--border);padding:22px 14px;z-index:4;transition:.2s}.navhead{font-size:11px;color:#94a3b8;font-weight:bold;padding:9px 12px}.nav{display:block;padding:12px;border-radius:7px;text-decoration:none;color:#475569;font-size:13px;font-weight:600;margin:3px 0}.nav:hover{background:#f1f5f9}.active{background:#eff6ff;color:#1d4ed8}main{margin-left:250px;padding:96px 30px 30px;transition:.2s}body.closed .sidebar{transform:translateX(-100%)}body.closed main{margin-left:0}h1{font-size:25px;color:var(--navy);margin:0 0 7px}.sub{font-size:13px;color:var(--muted);margin:0 0 24px}.panel{background:white;border:1px solid var(--border);border-radius:10px;margin-bottom:18px;overflow:hidden}.head{padding:17px 19px;border-bottom:1px solid var(--border)}.head h2{font-size:14px;margin:0}.body{padding:20px;max-width:760px}.field{margin-bottom:20px}.field label{display:block;font-size:13px;font-weight:650;margin-bottom:8px}.field p{font-size:12px;color:var(--muted);line-height:1.7;margin:6px 0}.field textarea,.field input{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:7px;font:inherit;font-size:13px}.field textarea{min-height:105px;resize:vertical}.field input:disabled{background:#f8fafc;color:#64748b}.switchrow{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:14px 0;border-bottom:1px solid #edf1f5}.switchrow:last-child{border:0}.switchrow strong{font-size:13px}.switchrow small{display:block;color:#64748b;font-size:11px;margin-top:5px}.switch{width:46px;height:25px;appearance:none;background:#cbd5e1;border-radius:20px;position:relative;cursor:pointer;flex-shrink:0}.switch:before{content:"";position:absolute;width:19px;height:19px;top:3px;left:3px;background:white;border-radius:50%;transition:.2s}.switch:checked{background:#2563eb}.switch:checked:before{left:24px}.btn{padding:10px 15px;border:0;border-radius:7px;background:var(--blue);color:white;font-size:12px;font-weight:650;cursor:pointer}.btn:disabled{opacity:.5;cursor:not-allowed}.secondary{background:#e2e8f0;color:#334155}.notice{display:none;padding:12px;border-radius:7px;font-size:12px;margin-bottom:14px}.notice.show{display:block}.error{background:#fef2f2;color:#991b1b}.success{background:#f0fdf4;color:#166534}.pill{display:inline-block;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:700}.ok{background:#dcfce7;color:#166534}.warn{background:#ffedd5;color:#9a3412}.muted{font-size:11px;color:#94a3b8}footer{text-align:center;border-top:1px solid var(--border);padding:20px;color:#94a3b8;font-size:11px;margin-top:30px}@media(max-width:700px){.sidebar{box-shadow:8px 0 20px #14263f12}main{margin-left:0;padding:88px 14px 25px}.topbar{padding:0 13px}.brand{font-size:14px}.right span{display:none}}
+:root{
+  font-family:Inter,"Noto Sans JP",system-ui,sans-serif;
+  color:#182334;background:#f4f7fb;
+  --navy:#14263f;--blue:#2563eb;
+  --border:#dfe6ef;--muted:#64748b;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.topbar{
+  height:66px;position:fixed;z-index:5;inset:0 0 auto;
+  background:var(--navy);color:white;
+  display:flex;align-items:center;padding:0 22px;gap:16px
+}
+.toggle{
+  background:none;border:1px solid #ffffff55;color:white;
+  border-radius:7px;padding:8px 12px
+}
+.brand{font-weight:750}
+.right{
+  margin-left:auto;display:flex;align-items:center;
+  gap:14px;font-size:13px
+}
+.logout{
+  background:transparent;color:white;
+  border:1px solid #ffffff55;border-radius:7px;
+  padding:8px 12px
+}
+.sidebar{
+  position:fixed;top:66px;bottom:0;width:250px;
+  background:white;border-right:1px solid var(--border);
+  padding:22px 14px;z-index:4;transition:.2s
+}
+.navhead{
+  font-size:11px;color:#94a3b8;font-weight:bold;
+  padding:9px 12px
+}
+.nav{
+  display:block;padding:12px;border-radius:7px;
+  text-decoration:none;color:#475569;
+  font-size:13px;font-weight:600;margin:3px 0
+}
+.nav:hover{background:#f1f5f9}
+.nav.active{background:#eff6ff;color:#1d4ed8}
+main{
+  margin-left:250px;padding:96px 30px 30px;
+  max-width:1400px;transition:.2s
+}
+body.closed .sidebar{transform:translateX(-100%)}
+body.closed main{margin-left:0}
+h1{font-size:25px;color:var(--navy);margin:0 0 7px}
+.sub{font-size:13px;color:var(--muted);margin:0 0 24px}
+.panel{
+  background:white;border:1px solid var(--border);
+  border-radius:10px;margin-bottom:18px;overflow:hidden
+}
+.panel-head{
+  padding:17px 19px;border-bottom:1px solid var(--border)
+}
+.panel-head h2{font-size:14px;margin:0;color:var(--navy)}
+.panel-body{padding:20px;max-width:800px}
+.field{margin-bottom:20px}
+.field:last-child{margin-bottom:0}
+.field label{
+  display:block;font-size:13px;font-weight:650;
+  margin-bottom:8px
+}
+.field p{
+  font-size:12px;color:var(--muted);
+  line-height:1.7;margin:7px 0 0
+}
+textarea,input[type="text"],input[type="number"]{
+  width:100%;padding:11px;
+  border:1px solid #cbd5e1;border-radius:7px;
+  font-size:13px;background:white;color:#182334
+}
+textarea{min-height:125px;resize:vertical;line-height:1.7}
+input:disabled{
+  background:#f8fafc;color:#64748b
+}
+.switch-row{
+  display:flex;justify-content:space-between;
+  align-items:center;gap:20px;padding:14px 0;
+  border-bottom:1px solid #edf1f5
+}
+.switch-row:last-child{border-bottom:0}
+.switch-row strong{font-size:13px}
+.switch-row small{
+  display:block;color:var(--muted);
+  font-size:11px;margin-top:5px;line-height:1.6
+}
+.switch{
+  width:46px;height:25px;appearance:none;
+  background:#cbd5e1;border-radius:20px;
+  position:relative;cursor:pointer;flex-shrink:0;
+  transition:.2s
+}
+.switch:before{
+  content:"";position:absolute;width:19px;height:19px;
+  top:3px;left:3px;background:white;
+  border-radius:50%;transition:.2s
+}
+.switch:checked{background:#2563eb}
+.switch:checked:before{left:24px}
+.btn{
+  padding:11px 17px;border:0;border-radius:7px;
+  background:var(--blue);color:white;
+  font-size:12px;font-weight:650
+}
+.btn:hover:not(:disabled){background:#1d4ed8}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.secondary{background:#e2e8f0;color:#334155}
+.secondary:hover:not(:disabled){background:#cbd5e1}
+.notice{
+  display:none;padding:12px 14px;border-radius:7px;
+  font-size:12px;line-height:1.7;margin-bottom:15px
+}
+.notice.show{display:block}
+.notice.error{background:#fef2f2;color:#991b1b}
+.notice.success{background:#f0fdf4;color:#166534}
+.pill{
+  display:inline-block;padding:5px 9px;
+  border-radius:20px;font-size:11px;font-weight:700
+}
+.pill.ok{background:#dcfce7;color:#166534}
+.pill.warn{background:#ffedd5;color:#9a3412}
+.pill.neutral{background:#e2e8f0;color:#475569}
+.preview{
+  background:#f8fafc;border:1px solid var(--border);
+  border-radius:8px;padding:15px;margin:14px 0 18px
+}
+.preview-title{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:700;color:#334155;
+  margin-bottom:9px
+}
+.preview svg{width:19px;height:19px;color:#64748b}
+.preview-text{
+  white-space:pre-wrap;overflow-wrap:anywhere;
+  font-size:13px;color:#475569;line-height:1.8;
+  min-height:25px
+}
+.button-row{display:flex;gap:9px;flex-wrap:wrap}
+.muted{font-size:11px;color:#94a3b8;line-height:1.7}
+footer{
+  text-align:center;border-top:1px solid var(--border);
+  padding:20px;color:#94a3b8;font-size:11px;margin-top:30px
+}
+@media(max-width:700px){
+  .sidebar{box-shadow:8px 0 20px #14263f12}
+  main{margin-left:0;padding:88px 14px 25px}
+  .topbar{padding:0 13px}
+  .brand{font-size:14px}
+  .right span{display:none}
+}
 </style>
 </head>
+
 <body>
-<header class="topbar"><button class="toggle" id="menuToggle">☰</button><div class="brand">WEB Course-plus</div><div class="right"><span>システム管理者</span><span id="adminName">確認中</span><button class="logout" id="logout">ログアウト</button></div></header>
-<aside class="sidebar"><div class="navhead">ADMINISTRATION</div><a class="nav" href="/admin/dashboard.html">ダッシュボード</a><a class="nav" href="/admin/sessions.html">端末セッション管理</a><a class="nav active" href="/admin/settings.html">システム設定</a><a class="nav" href="/admin/logs.html">操作ログ</a></aside>
+<header class="topbar">
+  <button class="toggle" id="menuToggle" type="button">メニュー</button>
+  <div class="brand">WEB Course-plus</div>
+  <div class="right">
+    <span>システム管理者</span>
+    <span id="adminName">管理者</span>
+    <button class="logout" id="logout" type="button">ログアウト</button>
+  </div>
+</header>
+
+<aside class="sidebar">
+  <div class="navhead">ADMINISTRATION</div>
+  <a class="nav" href="/admin/dashboard.html">ダッシュボード</a>
+  <a class="nav" href="/admin/sessions.html">端末セッション管理</a>
+  <a class="nav active" href="/admin/settings.html">システム設定</a>
+  <a class="nav" href="/admin/logs.html">操作ログ・監査ログ</a>
+</aside>
+
 <main>
-<h1>システム設定</h1><p class="sub">サービス全体の稼働状態と利用者向け表示を設定します。</p>
-<div id="notice" class="notice"></div>
-<section class="panel"><div class="head"><h2>メンテナンス設定</h2></div><div class="body">
-<div class="switchrow"><div><strong>メンテナンスモード</strong><small>有効にすると、一般ユーザーの利用を停止します。</small></div><input class="switch" type="checkbox" id="maintenance"></div>
-<div class="field" style="margin-top:20px"><label for="maintenanceMessage">メンテナンス中の表示メッセージ</label><textarea id="maintenanceMessage" maxlength="1000" placeholder="現在メンテナンスを実施しています。しばらくしてから再度アクセスしてください。"></textarea><p>ログイン画面などで利用者に表示するメッセージです（最大1,000文字）。</p></div>
-<button class="btn" id="saveMaintenance">メンテナンス設定を保存</button>
-</div></section>
-<section class="panel"><div class="head"><h2>セッション設定</h2></div><div class="body">
-<div class="field"><label for="sessionLimit">1アカウントあたりの最大同時ログイン端末数</label><input id="sessionLimit" type="number" disabled value="4"><p>現在の設定値です。変更する場合はサーバー側のセッション制限設定を変更してください。</p></div>
-<div class="field"><label>セッション確認間隔</label><input type="text" disabled value="30秒（クライアント側設定）"></div>
-</div></section>
-<section class="panel"><div class="head"><h2>システム情報</h2></div><div class="body">
-<div class="switchrow"><div><strong>システム状態</strong><small>サーバーから取得した状態</small></div><span id="serverStatus" class="pill ok">確認中</span></div>
-<div class="switchrow"><div><strong>LiveKit</strong><small>ビデオ通話機能の接続設定</small></div><span class="pill ok">サーバー設定で管理</span></div>
-<p class="muted">APIキーや秘密鍵などの機密情報は、この画面やブラウザに表示しません。</p>
-</div></section>
-<footer>© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.</footer>
+  <h1>システム設定</h1>
+  <p class="sub">サービスの利用状態と一般利用者向けの表示を管理します。</p>
+
+  <div id="notice" class="notice" role="status"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>メンテナンス設定</h2>
+    </div>
+
+    <div class="panel-body">
+      <div class="switch-row">
+        <div>
+          <strong>メンテナンスモード</strong>
+          <small>有効にすると一般利用者のサービス利用を停止します。管理者は引き続き管理画面を利用できます。</small>
+        </div>
+        <input class="switch" type="checkbox" id="maintenance">
+      </div>
+
+      <div class="field" style="margin-top:20px">
+        <label for="maintenanceMessage">一般利用者向け告知文</label>
+        <textarea
+          id="maintenanceMessage"
+          maxlength="1000"
+          placeholder="メンテナンスの内容や終了予定時刻を入力してください。"
+        ></textarea>
+        <p>メンテナンス画面に表示する文章です。入力した文章がそのまま一般利用者に表示されます（最大1,000文字）。</p>
+      </div>
+
+      <div class="preview">
+        <div class="preview-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18a2.1 2.1 0 0 0 3 3l5.3-5.3a5 5 0 0 0 6.4-6.4l-3 3-3-3 3-3Z"/>
+          </svg>
+          一般利用者向け表示プレビュー
+        </div>
+        <div class="preview-text" id="messagePreview">告知文がここに表示されます。</div>
+      </div>
+
+      <div class="button-row">
+        <button class="btn" id="saveMaintenance" type="button">
+          設定を保存
+        </button>
+        <button class="btn secondary" id="reloadSettings" type="button">
+          保存済み設定を再読み込み
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>セッション設定</h2>
+    </div>
+    <div class="panel-body">
+      <div class="field">
+        <label for="sessionLimit">1アカウントあたりの最大同時ログイン端末数</label>
+        <input id="sessionLimit" type="number" disabled value="4">
+        <p>現在のサーバー設定値です。変更にはサーバー側の設定変更が必要です。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>システム情報</h2>
+    </div>
+    <div class="panel-body">
+      <div class="switch-row">
+        <div>
+          <strong>サーバー状態</strong>
+          <small>APIから取得した応答状態</small>
+        </div>
+        <span id="serverStatus" class="pill neutral">確認中</span>
+      </div>
+
+      <div class="switch-row">
+        <div>
+          <strong>メンテナンス状態</strong>
+          <small>一般利用者に対するサービス提供状態</small>
+        </div>
+        <span id="maintenanceStatus" class="pill neutral">確認中</span>
+      </div>
+
+      <div class="switch-row">
+        <div>
+          <strong>LiveKit</strong>
+          <small>ビデオ通話機能の接続設定</small>
+        </div>
+        <span class="pill neutral">サーバー設定で管理</span>
+      </div>
+
+      <p class="muted">
+        APIキーや秘密鍵などの機密情報は、この画面やブラウザに表示しません。
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+  </footer>
 </main>
+
 <script type="module">
-import{auth,db,authPersistenceReady}from"/assets/js/firebase.js";
-import{onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
-import{doc,getDoc}from"https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
-const $=id=>document.getElementById(id),KEY="web-course-plus-device-session";let user=null;
-function sid(){let x=localStorage.getItem(KEY);if(!x){x=crypto.randomUUID();localStorage.setItem(KEY,x)}return x}
-async function api(url,opt={}){const h=new Headers(opt.headers||{});h.set("Authorization","Bearer "+await user.getIdToken());h.set("X-Session-Id",sid());if(opt.body)h.set("Content-Type","application/json");const r=await fetch(url,{...opt,headers:h,cache:"no-store"});if(r.status===401){await signOut(auth);location.replace("/login.html");throw Error("セッションが無効です。再ログインしてください。")}return r}
-function notice(msg,type="error"){$("notice").textContent=msg;$("notice").className="notice show "+type}
-async function load(){try{const r=await api("/api/admin/settings"),d=await r.json();if(!r.ok||!d.success)throw Error(d.error||"設定を読み込めません。");$("maintenance").checked=!!d.settings.maintenance;$("maintenanceMessage").value=d.settings.maintenanceMessage||"";if(d.settings.maxSessionsPerUser)$("sessionLimit").value=d.settings.maxSessionsPerUser;const s=await api("/api/system/status"),sd=await s.json();$("serverStatus").textContent=sd.status==="ok"||sd.success?"正常":"要確認";$("serverStatus").className="pill "+(sd.status==="ok"||sd.success?"ok":"warn")}catch(e){notice(e.message)}}
-$("saveMaintenance").onclick=async()=>{const b=$("saveMaintenance");b.disabled=true;try{const r=await api("/api/admin/settings",{method:"PATCH",body:JSON.stringify({maintenance:$("maintenance").checked,maintenanceMessage:$("maintenanceMessage").value.trim()})});const d=await r.json();if(!r.ok||!d.success)throw Error(d.error||"設定を保存できませんでした。");notice("設定を保存しました。","success");await load()}catch(e){notice(e.message)}finally{b.disabled=false}};
-$("menuToggle").onclick=()=>document.body.classList.toggle("closed");
-$("logout").onclick=async()=>{if(!confirm("ログアウトしますか？"))return;try{await api("/api/sessions/logout",{method:"POST",body:JSON.stringify({sessionId:sid()})})}catch(e){}await signOut(auth);localStorage.removeItem(KEY);location.replace("/login.html")};
-await authPersistenceReady;onAuthStateChanged(auth,async u=>{if(!u){location.replace("/login.html");return}user=u;try{const p=await getDoc(doc(db,"users",u.uid));if(!p.exists()||p.data().role!=="admin")throw Error("管理者権限がありません。");$("adminName").textContent=p.data().displayName||u.email;const h=await api("/api/sessions/heartbeat",{method:"POST",body:JSON.stringify({sessionId:sid()})});if(!h.ok)throw Error("端末セッションを確認できません。");await load()}catch(e){alert(e.message);await signOut(auth);location.replace("/login.html")}});
+import {
+  auth,
+  db,
+  authPersistenceReady
+} from "/assets/js/firebase.js";
+
+import {
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+import {
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const SESSION_KEY = "web-course-plus-device-session";
+
+let user = null;
+let loadedSettings = null;
+let saving = false;
+
+function getSessionId(){
+  let id = localStorage.getItem(SESSION_KEY);
+
+  if(!id){
+    id = crypto.randomUUID();
+    localStorage.setItem(SESSION_KEY,id);
+  }
+
+  return id;
+}
+
+function showNotice(message,type="error"){
+  $("notice").textContent = message;
+  $("notice").className = "notice show " + type;
+}
+
+function clearNotice(){
+  $("notice").textContent = "";
+  $("notice").className = "notice";
+}
+
+async function api(url,options={}){
+  if(!user) throw new Error("ログインが必要です。");
+
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization","Bearer "+await user.getIdToken());
+  headers.set("X-Session-Id",getSessionId());
+
+  if(options.body){
+    headers.set("Content-Type","application/json");
+  }
+
+  const response = await fetch(url,{
+    ...options,
+    headers,
+    cache:"no-store"
+  });
+
+  const data = await response.json().catch(()=>({}));
+
+  if(response.status === 401 || response.status === 403){
+    localStorage.removeItem(SESSION_KEY);
+    await signOut(auth);
+    location.replace("/login.html");
+    throw new Error("認証または管理者権限を確認できません。");
+  }
+
+  if(!response.ok || data.success === false){
+    throw new Error(data.error || "処理に失敗しました。");
+  }
+
+  return data;
+}
+
+function renderPreview(){
+  const text = $("maintenanceMessage").value.trim();
+
+  $("messagePreview").textContent =
+    text || "告知文がここに表示されます。";
+}
+
+function renderMaintenanceStatus(enabled){
+  const element = $("maintenanceStatus");
+
+  if(enabled){
+    element.textContent = "実施中";
+    element.className = "pill warn";
+  }else{
+    element.textContent = "停止中";
+    element.className = "pill ok";
+  }
+}
+
+async function loadSettings(){
+  clearNotice();
+
+  const data = await api("/api/admin/settings");
+  const settings = data.settings || {};
+
+  loadedSettings = settings;
+
+  $("maintenance").checked =
+    settings.maintenance === true;
+
+  $("maintenanceMessage").value =
+    settings.maintenanceMessage || "";
+
+  $("sessionLimit").value =
+    settings.maxSessionsPerUser || 4;
+
+  renderPreview();
+  renderMaintenanceStatus(settings.maintenance === true);
+
+  const system = await api("/api/system/status");
+
+  $("serverStatus").textContent =
+    system.success ? "正常" : "要確認";
+
+  $("serverStatus").className =
+    "pill " + (system.success ? "ok" : "warn");
+}
+
+async function saveMaintenance(){
+  if(saving) return;
+
+  const enabled = $("maintenance").checked;
+  const message = $("maintenanceMessage").value;
+
+  if(enabled && !message.trim()){
+    showNotice(
+      "メンテナンスを開始する場合は、一般利用者向け告知文を入力してください。"
+    );
+    $("maintenanceMessage").focus();
+    return;
+  }
+
+  const confirmed = confirm(
+    enabled
+      ? "メンテナンスを開始します。一般利用者はサービスを利用できなくなります。よろしいですか？"
+      : "メンテナンスを解除します。一般利用者が再びサービスを利用できるようになります。よろしいですか？"
+  );
+
+  if(!confirmed) return;
+
+  saving = true;
+  const button = $("saveMaintenance");
+  button.disabled = true;
+  button.textContent = "保存しています...";
+
+  try{
+    await api("/api/admin/settings",{
+      method:"PATCH",
+      body:JSON.stringify({
+        maintenance:enabled,
+        maintenanceMessage:message
+      })
+    });
+
+    renderMaintenanceStatus(enabled);
+
+    showNotice(
+      enabled
+        ? "メンテナンスを開始しました。一般利用者には設定した告知文が表示されます。"
+        : "メンテナンスを解除しました。",
+      "success"
+    );
+
+    await loadSettings();
+
+  }catch(error){
+    showNotice(error.message);
+  }finally{
+    saving = false;
+    button.disabled = false;
+    button.textContent = "設定を保存";
+  }
+}
+
+$("maintenanceMessage").addEventListener(
+  "input",
+  renderPreview
+);
+
+$("saveMaintenance").addEventListener(
+  "click",
+  saveMaintenance
+);
+
+$("reloadSettings").addEventListener(
+  "click",
+  async()=>{
+    try{
+      await loadSettings();
+      showNotice("保存済み設定を読み込みました。","success");
+    }catch(error){
+      showNotice(error.message);
+    }
+  }
+);
+
+$("menuToggle").addEventListener("click",()=>{
+  document.body.classList.toggle("closed");
+});
+
+$("logout").addEventListener("click",async()=>{
+  if(!confirm("ログアウトしますか？")) return;
+
+  try{
+    await api("/api/sessions/logout",{
+      method:"POST",
+      body:JSON.stringify({
+        sessionId:getSessionId()
+      })
+    });
+  }catch(error){
+    console.warn(error);
+  }
+
+  localStorage.removeItem(SESSION_KEY);
+  await signOut(auth);
+  location.replace("/login.html");
+});
+
+await authPersistenceReady;
+
+onAuthStateChanged(auth,async currentUser=>{
+  if(!currentUser){
+    location.replace("/login.html");
+    return;
+  }
+
+  user = currentUser;
+
+  try{
+    const profile = await getDoc(
+      doc(db,"users",currentUser.uid)
+    );
+
+    if(!profile.exists() || profile.data().role !== "admin"){
+      throw new Error("管理者権限が必要です。");
+    }
+
+    $("adminName").textContent =
+      profile.data().displayName ||
+      currentUser.email ||
+      "管理者";
+
+    await api("/api/sessions/heartbeat",{
+      method:"POST",
+      body:JSON.stringify({
+        sessionId:getSessionId()
+      })
+    });
+
+    await loadSettings();
+
+  }catch(error){
+    showNotice(error.message);
+  }
+});
 </script>
 </body>
 </html>
