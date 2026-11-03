@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#f4f7fb">
 
   <title>ログイン | WEB Course-plus</title>
 
@@ -12,9 +12,6 @@
       font-family: Inter, "Noto Sans JP", system-ui, sans-serif;
       color: #182334;
       background: #f4f7fb;
-      font-synthesis: none;
-      text-rendering: optimizeLegibility;
-
       --primary: #2563eb;
       --border: #dfe6ef;
       --muted: #64748b;
@@ -35,7 +32,7 @@
       flex: 1;
       display: grid;
       place-items: center;
-      padding: 36px 16px;
+      padding: 30px 16px;
     }
 
     .container {
@@ -45,38 +42,35 @@
 
     .brand {
       text-align: center;
-      margin-bottom: 27px;
+      margin-bottom: 25px;
     }
 
     .brand h1 {
       margin: 0;
       font-size: 29px;
       font-weight: 750;
-      letter-spacing: -.8px;
       color: #14263f;
     }
 
     .card,
     .maintenance {
+      padding: 30px;
       background: #fff;
       border: 1px solid var(--border);
       border-radius: 15px;
-      padding: 30px;
       box-shadow: 0 8px 30px rgba(20, 38, 63, .06);
     }
 
-    .card h2,
-    .maintenance h2 {
+    h2 {
+      margin: 0 0 9px;
       font-size: 21px;
-      margin: 0 0 8px;
-      color: #182334;
     }
 
     .description {
+      margin: 0 0 24px;
       color: var(--muted);
       font-size: 13px;
       line-height: 1.8;
-      margin: 0 0 25px;
     }
 
     .field {
@@ -85,9 +79,9 @@
 
     label {
       display: block;
+      margin-bottom: 8px;
       font-size: 13px;
       font-weight: 650;
-      margin-bottom: 8px;
     }
 
     input {
@@ -96,11 +90,9 @@
       padding: 0 13px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
+      outline: none;
       font: inherit;
       font-size: 14px;
-      outline: none;
-      background: #fff;
-      color: #182334;
     }
 
     input:focus {
@@ -119,7 +111,6 @@
       font-size: 14px;
       font-weight: 650;
       cursor: pointer;
-      transition: background .15s, opacity .15s;
     }
 
     button:hover:not(:disabled) {
@@ -132,52 +123,36 @@
     }
 
     .google-button {
-      height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
       background: #fff;
       color: #1f1f1f;
       border: 1px solid #747775;
-      font-family: Roboto, Arial, sans-serif;
-      font-size: 14px;
-      font-weight: 500;
     }
 
     .google-button:hover:not(:disabled) {
       background: #f8faff;
-      border-color: #5f6368;
-    }
-
-    .google-logo {
-      width: 20px;
-      height: 20px;
-      flex-shrink: 0;
-      display: block;
     }
 
     .divider {
       display: flex;
       align-items: center;
       gap: 12px;
+      margin: 21px 0;
       color: #94a3b8;
       font-size: 12px;
-      margin: 21px 0;
     }
 
     .divider::before,
     .divider::after {
       content: "";
       height: 1px;
-      background: var(--border);
       flex: 1;
+      background: var(--border);
     }
 
     .links {
       display: flex;
       justify-content: center;
-      margin-top: 20px;
+      margin-top: 19px;
       font-size: 13px;
     }
 
@@ -193,56 +168,47 @@
 
     .message {
       display: none;
+      margin-bottom: 17px;
       padding: 12px 14px;
       border-radius: 8px;
       font-size: 13px;
       line-height: 1.7;
-      margin-bottom: 17px;
       overflow-wrap: anywhere;
-      white-space: pre-wrap;
     }
 
     .message.error {
       display: block;
-      background: #fef2f2;
       color: #b91c1c;
+      background: #fef2f2;
       border: 1px solid #fecaca;
     }
 
     .message.success {
       display: block;
-      background: #f0fdf4;
       color: #166534;
+      background: #f0fdf4;
       border: 1px solid #bbf7d0;
-    }
-
-    .maintenance {
-      display: none;
-      text-align: center;
-      padding: 35px 25px;
-    }
-
-    .maintenance p {
-      color: var(--muted);
-      line-height: 1.8;
-      font-size: 14px;
     }
 
     .hidden {
       display: none !important;
     }
 
-    .loading {
+    .maintenance {
+      display: none;
       text-align: center;
+    }
+
+    .maintenance p {
       color: var(--muted);
-      font-size: 13px;
-      padding: 12px;
+      font-size: 14px;
+      line-height: 1.8;
     }
 
     footer {
-      text-align: center;
       padding: 20px 12px;
       color: #94a3b8;
+      text-align: center;
       font-size: 11px;
     }
 
@@ -260,973 +226,500 @@
 
 <body>
 
-  <main>
-    <div class="container">
+<main>
+  <div class="container">
 
-      <div class="brand">
-        <h1>WEB Course-plus</h1>
-      </div>
-
-      <!-- ログイン画面 -->
-      <section id="loginView" class="card">
-
-        <h2>ログイン</h2>
-
-        <p class="description">
-          登録済みのアカウントでログインしてください。
-        </p>
-
-        <div
-          id="loginMessage"
-          class="message"
-          role="alert">
-        </div>
-
-        <form id="loginForm">
-
-          <div class="field">
-            <label for="loginEmail">
-              メールアドレス
-            </label>
-
-            <input
-              id="loginEmail"
-              type="email"
-              autocomplete="username"
-              placeholder="example@email.com"
-              required>
-          </div>
-
-          <div class="field">
-            <label for="loginPassword">
-              パスワード
-            </label>
-
-            <input
-              id="loginPassword"
-              type="password"
-              autocomplete="current-password"
-              placeholder="パスワードを入力"
-              required>
-          </div>
-
-          <button id="loginButton" type="submit">
-            ログイン
-          </button>
-
-        </form>
-
-        <div class="links">
-          <a href="/login.html?mode=reset" id="forgotPasswordLink">
-            パスワードを忘れた方はこちら
-          </a>
-        </div>
-
-        <div class="divider">
-          または
-        </div>
-
-        <button
-          id="googleButton"
-          class="google-button"
-          type="button">
-
-          <svg
-            class="google-logo"
-            viewBox="0 0 48 48"
-            aria-hidden="true">
-
-            <path
-              fill="#4285F4"
-              d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.9 6.1-15z"/>
-
-            <path
-              fill="#34A853"
-              d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5.1c-1.8 1.2-4.1 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44z"/>
-
-            <path
-              fill="#FBBC05"
-              d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.3H5.8a20 20 0 0 0 0 17.8l6.8-5.3z"/>
-
-            <path
-              fill="#EA4335"
-              d="M24 12.1c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 6.1 29.5 4 24 4A20 20 0 0 0 5.8 15.1l6.8 5.3c1.6-4.8 6.1-8.3 11.4-8.3z"/>
-
-          </svg>
-
-          <span>Googleでログイン</span>
-        </button>
-
-      </section>
-
-      <!-- パスワード再設定 -->
-      <section id="resetView" class="card hidden">
-
-        <h2>パスワード再設定</h2>
-
-        <p class="description">
-          登録済みのメールアドレスを入力してください。
-          パスワード再設定用のメールを送信します。
-        </p>
-
-        <div
-          id="resetMessage"
-          class="message"
-          role="alert">
-        </div>
-
-        <form id="resetForm">
-
-          <div class="field">
-            <label for="resetEmail">
-              メールアドレス
-            </label>
-
-            <input
-              id="resetEmail"
-              type="email"
-              autocomplete="email"
-              placeholder="example@email.com"
-              required>
-          </div>
-
-          <button id="resetButton" type="submit">
-            再設定メールを送信
-          </button>
-
-        </form>
-
-        <div class="links">
-          <a href="/login.html" id="backToLogin">
-            ログイン画面に戻る
-          </a>
-        </div>
-
-      </section>
-
-      <!-- メンテナンス画面 -->
-      <section id="maintenanceView" class="maintenance">
-
-        <h2>メンテナンス中</h2>
-
-        <p id="maintenanceMessage">
-          現在、メンテナンスを実施しています。
-          しばらくしてから再度アクセスしてください。
-        </p>
-
-      </section>
-
-      <div id="initialLoading" class="loading">
-        システムを確認しています...
-      </div>
-
+    <div class="brand">
+      <h1>WEB Course-plus</h1>
     </div>
-  </main>
 
-  <footer>
-    © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
-  </footer>
+    <section class="card" id="loginView">
+      <h2>ログイン</h2>
 
-  <script type="module">
+      <p class="description">
+        登録済みのアカウントでログインしてください。
+      </p>
 
-    // ======================================
-    // Firebase
-    // ======================================
+      <div id="loginMessage" class="message" role="alert"></div>
 
-    import {
-      auth,
-      db,
-      googleProvider,
-      authPersistenceReady
-    } from "/assets/js/firebase.js";
+      <form id="loginForm">
+        <div class="field">
+          <label for="email">メールアドレス</label>
+          <input
+            id="email"
+            type="email"
+            autocomplete="username"
+            placeholder="example@email.com"
+            required>
+        </div>
 
-    import {
-      signInWithEmailAndPassword,
-      signInWithPopup,
-      signInWithRedirect,
-      getRedirectResult,
-      sendPasswordResetEmail,
-      signOut,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+        <div class="field">
+          <label for="password">パスワード</label>
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="パスワードを入力"
+            required>
+        </div>
 
-    import {
-      doc,
-      getDoc
-    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+        <button id="loginButton" type="submit">
+          ログイン
+        </button>
+      </form>
 
+      <div class="links">
+        <a href="/login.html?mode=reset" id="resetLink">
+          パスワードを忘れた方
+        </a>
+      </div>
 
-    // ======================================
-    // 共通設定
-    // ======================================
+      <div class="divider">または</div>
 
-    const $ = (id) => document.getElementById(id);
+      <button
+        id="googleButton"
+        class="google-button"
+        type="button">
+        Googleでログイン
+      </button>
+    </section>
 
-    const SESSION_KEY =
-      "web-course-plus-device-session";
+    <section class="card hidden" id="resetView">
+      <h2>パスワード再設定</h2>
 
-    let initialized = false;
-    let processingLogin = false;
-    let redirectHandled = false;
+      <p class="description">
+        登録済みのメールアドレスに再設定メールを送信します。
+      </p>
 
+      <div id="resetMessage" class="message" role="alert"></div>
 
-    // ======================================
-    // メッセージ
-    // ======================================
+      <form id="resetForm">
+        <div class="field">
+          <label for="resetEmail">メールアドレス</label>
+          <input
+            id="resetEmail"
+            type="email"
+            autocomplete="email"
+            required>
+        </div>
 
-    function showMessage(id, message, type = "error") {
-      const element = $(id);
+        <button id="resetButton" type="submit">
+          再設定メールを送信
+        </button>
+      </form>
 
-      element.textContent = message;
-      element.className = `message ${type}`;
+      <div class="links">
+        <a href="/login.html">ログイン画面に戻る</a>
+      </div>
+    </section>
+
+    <section class="maintenance" id="maintenanceView">
+      <h2>メンテナンス中</h2>
+      <p id="maintenanceMessage">
+        現在メンテナンスを実施しています。
+        しばらくしてから再度アクセスしてください。
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+</footer>
+
+<script type="module">
+  import {
+    auth,
+    db,
+    googleProvider,
+    authPersistenceReady
+  } from "/assets/js/firebase.js";
+
+  import {
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
+    sendPasswordResetEmail,
+    signOut,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+  import {
+    doc,
+    getDoc
+  } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+
+  const $ = (id) => document.getElementById(id);
+
+  const SESSION_KEY = "web-course-plus-device-session";
+
+  let maintenance = false;
+  let routing = false;
+  let initialized = false;
+
+  function getSessionId() {
+    let id = localStorage.getItem(SESSION_KEY);
+
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(SESSION_KEY, id);
     }
 
-    function clearMessage(id) {
-      $(id).textContent = "";
-      $(id).className = "message";
+    return id;
+  }
+
+  function showMessage(id, message, type = "error") {
+    const element = $(id);
+    element.textContent = message;
+    element.className = `message ${type}`;
+  }
+
+  function clearMessage(id) {
+    $(id).textContent = "";
+    $(id).className = "message";
+  }
+
+  function setLoading(button, loading, label) {
+    button.disabled = loading;
+    button.textContent = loading ? "処理しています..." : label;
+  }
+
+  async function getToken() {
+    if (!auth.currentUser) {
+      throw new Error("ログイン状態を確認できません。");
     }
 
+    return auth.currentUser.getIdToken();
+  }
 
-    // ======================================
-    // ボタン状態
-    // ======================================
+  async function apiFetch(url, options = {}) {
+    const token = await getToken();
 
-    function setLoading(button, loading, originalText) {
-      button.disabled = loading;
+    const headers = new Headers(options.headers || {});
 
-      button.textContent = loading
-        ? "処理しています..."
-        : originalText;
+    headers.set("Authorization", `Bearer ${token}`);
+    headers.set("X-Session-Id", getSessionId());
+
+    if (options.body) {
+      headers.set("Content-Type", "application/json");
     }
 
+    return fetch(url, {
+      ...options,
+      headers,
+      cache: "no-store"
+    });
+  }
 
-    // ======================================
-    // 画面切り替え
-    // ======================================
+  async function registerSession(user) {
+    const token = await user.getIdToken();
 
-    function isResetMode() {
-      return (
-        new URLSearchParams(location.search)
-          .get("mode") === "reset"
+    const response = await fetch("/api/sessions/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        sessionId: getSessionId()
+      }),
+      cache: "no-store"
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.success) {
+      const error = new Error(
+        data.error || "端末セッションを登録できませんでした。"
       );
+
+      error.code = data.code;
+      throw error;
     }
 
-    function renderMode() {
-      const reset = isResetMode();
+    return data;
+  }
 
-      $("loginView").classList.toggle(
-        "hidden",
-        reset
-      );
+  async function loadProfile(user) {
+    const snapshot = await getDoc(doc(db, "users", user.uid));
 
-      $("resetView").classList.toggle(
-        "hidden",
-        !reset
-      );
-
-      $("maintenanceView").style.display = "none";
-
-      document.title = reset
-        ? "パスワード再設定 | WEB Course-plus"
-        : "ログイン | WEB Course-plus";
-
-      clearMessage("loginMessage");
-      clearMessage("resetMessage");
+    if (!snapshot.exists()) {
+      throw new Error("ユーザー情報が登録されていません。");
     }
 
-    function navigateMode(mode) {
-      history.pushState(
-        {},
-        "",
-        mode === "reset"
-          ? "/login.html?mode=reset"
-          : "/login.html"
-      );
+    const profile = snapshot.data();
 
-      renderMode();
+    if (
+      profile.active === false ||
+      ["inactive", "disabled", "suspended", "deleted"]
+        .includes(String(profile.status || "").toLowerCase())
+    ) {
+      throw new Error("このアカウントは利用停止中です。");
     }
 
-    $("forgotPasswordLink").addEventListener(
-      "click",
-      (event) => {
-        event.preventDefault();
-        navigateMode("reset");
+    if (!["admin", "teacher", "student"].includes(profile.role)) {
+      throw new Error("アカウントの権限が正しくありません。");
+    }
+
+    return profile;
+  }
+
+  async function routeUser(user) {
+    if (!user || routing) return;
+
+    routing = true;
+
+    try {
+      const profile = await loadProfile(user);
+
+      if (maintenance && profile.role !== "admin") {
+        await signOut(auth);
+
+        showMessage(
+          "loginMessage",
+          "現在メンテナンス中のためログインできません。"
+        );
+
+        return;
       }
-    );
 
-    $("backToLogin").addEventListener(
-      "click",
-      (event) => {
-        event.preventDefault();
-        navigateMode("login");
+      await registerSession(user);
+
+      if (profile.role === "admin") {
+        location.replace("/admin/dashboard.html");
+      } else if (profile.role === "teacher") {
+        location.replace("/teacher/dashboard.html");
+      } else {
+        location.replace("/student/dashboard.html");
       }
-    );
 
-    window.addEventListener(
-      "popstate",
-      renderMode
-    );
+    } catch (error) {
+      console.error(error);
 
+      await signOut(auth);
 
-    // ======================================
-    // 端末ID
-    // ======================================
-
-    // 同一ブラウザの複数タブは同じ端末IDを使用する。
-    // ブラウザデータを削除すると新しい端末として扱われる。
-
-    function getDeviceSessionId() {
-      let id = localStorage.getItem(SESSION_KEY);
-
-      if (!id) {
-        id = crypto.randomUUID();
-
-        localStorage.setItem(
-          SESSION_KEY,
-          id
+      if (error.code === "SESSION_LIMIT") {
+        showMessage(
+          "loginMessage",
+          "同時ログイン上限の4端末に達しています。管理者に端末セッションの解除を依頼してください。"
+        );
+      } else {
+        showMessage(
+          "loginMessage",
+          error.message || "ログインに失敗しました。"
         );
       }
 
-      return id;
+    } finally {
+      routing = false;
+    }
+  }
+
+  async function checkMaintenance() {
+    const response = await fetch("/api/system/status", {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("システム状態を取得できませんでした。");
     }
 
+    const data = await response.json();
 
-    // ======================================
-    // API通信
-    // ======================================
+    maintenance = data.maintenance === true;
 
-    async function apiFetch(url, options = {}) {
-      const user = auth.currentUser;
+    if (maintenance && !auth.currentUser) {
+      $("loginView").classList.add("hidden");
+      $("resetView").classList.add("hidden");
+      $("maintenanceView").style.display = "block";
 
-      if (!user) {
-        throw new Error("ログイン状態を確認できません。");
-      }
-
-      const token = await user.getIdToken();
-
-      const headers = new Headers(
-        options.headers || {}
-      );
-
-      headers.set(
-        "Authorization",
-        `Bearer ${token}`
-      );
-
-      headers.set(
-        "X-Session-Id",
-        getDeviceSessionId()
-      );
-
-      if (
-        options.body &&
-        !headers.has("Content-Type")
-      ) {
-        headers.set(
-          "Content-Type",
-          "application/json"
-        );
-      }
-
-      return fetch(url, {
-        ...options,
-        headers,
-        cache: "no-store"
-      });
+      $("maintenanceMessage").textContent =
+        data.maintenanceMessage ||
+        "現在メンテナンスを実施しています。";
     }
+  }
 
+  $("loginForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-    // ======================================
-    // セッション登録
-    // ======================================
+    clearMessage("loginMessage");
 
-    async function registerDeviceSession(user) {
-      const token = await user.getIdToken();
+    const button = $("loginButton");
+    setLoading(button, true, "ログイン");
 
-      const response = await fetch(
-        "/api/sessions/register",
-        {
+    try {
+      await authPersistenceReady;
+
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        $("email").value.trim(),
+        $("password").value
+      );
+
+      await routeUser(credential.user);
+
+    } catch (error) {
+      const messages = {
+        "auth/invalid-email": "メールアドレスの形式が正しくありません。",
+        "auth/invalid-credential": "メールアドレスまたはパスワードが正しくありません。",
+        "auth/too-many-requests": "試行回数が多すぎます。しばらくしてからお試しください。",
+        "auth/network-request-failed": "ネットワーク接続に失敗しました。"
+      };
+
+      showMessage(
+        "loginMessage",
+        messages[error.code] || error.message
+      );
+
+    } finally {
+      setLoading(button, false, "ログイン");
+    }
+  });
+
+  $("googleButton").addEventListener("click", async () => {
+    clearMessage("loginMessage");
+
+    const button = $("googleButton");
+    setLoading(button, true, "Googleでログイン");
+
+    try {
+      await authPersistenceReady;
+
+      const credential = await signInWithPopup(
+        auth,
+        googleProvider
+      );
+
+      await routeUser(credential.user);
+
+    } catch (error) {
+      if (error.code === "auth/popup-blocked") {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
+      showMessage(
+        "loginMessage",
+        error.message || "Googleログインに失敗しました。"
+      );
+
+    } finally {
+      setLoading(button, false, "Googleでログイン");
+    }
+  });
+
+  $("resetForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    clearMessage("resetMessage");
+
+    const button = $("resetButton");
+    setLoading(button, true, "再設定メールを送信");
+
+    try {
+      await sendPasswordResetEmail(
+        auth,
+        $("resetEmail").value.trim()
+      );
+
+      showMessage(
+        "resetMessage",
+        "再設定メールを送信しました。メールをご確認ください。",
+        "success"
+      );
+
+    } catch (error) {
+      showMessage(
+        "resetMessage",
+        error.message || "メールを送信できませんでした。"
+      );
+
+    } finally {
+      setLoading(button, false, "再設定メールを送信");
+    }
+  });
+
+  async function logoutDevice() {
+    const user = auth.currentUser;
+
+    if (user) {
+      try {
+        const token = await user.getIdToken();
+
+        await fetch("/api/sessions/logout", {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
           },
-
           body: JSON.stringify({
-            sessionId: getDeviceSessionId()
+            sessionId: getSessionId()
           }),
-
           cache: "no-store"
-        }
+        });
+      } catch (error) {
+        console.error("セッション終了エラー:", error);
+      }
+    }
+
+    await signOut(auth);
+    localStorage.removeItem(SESSION_KEY);
+
+    location.replace("/login.html");
+  }
+
+  window.logoutDevice = logoutDevice;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!initialized || !user) return;
+
+    if (new URLSearchParams(location.search).get("mode") === "reset") {
+      return;
+    }
+
+    await routeUser(user);
+  });
+
+  async function initialize() {
+    try {
+      await authPersistenceReady;
+      await checkMaintenance();
+
+      const result = await getRedirectResult(auth);
+
+      if (result?.user) {
+        await routeUser(result.user);
+      }
+
+      initialized = true;
+
+      if (auth.currentUser) {
+        await routeUser(auth.currentUser);
+      }
+
+    } catch (error) {
+      console.error(error);
+
+      showMessage(
+        "loginMessage",
+        error.message || "システムの初期化に失敗しました。"
       );
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        const error = new Error(
-          data.error ||
-          "端末セッションを登録できませんでした。"
-        );
-
-        error.code = data.code ||
-          "SESSION_REGISTER_FAILED";
-
-        throw error;
-      }
-
-      return data;
+      initialized = true;
     }
-
-
-    // ======================================
-    // メンテナンス確認
-    // ======================================
-
-    async function checkMaintenance() {
-      const response = await fetch(
-        "/api/system/status",
-        { cache: "no-store" }
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          "システム状態を取得できませんでした。"
-        );
-      }
-
-      return response.json();
-    }
-
-
-    // ======================================
-    // ユーザー情報確認・画面遷移
-    // ======================================
-
-    async function routeUser(user) {
-      if (!user || processingLogin) {
-        return;
-      }
-
-      processingLogin = true;
-
-      try {
-        const profileSnap = await getDoc(
-          doc(db, "users", user.uid)
-        );
-
-        if (!profileSnap.exists()) {
-          await signOut(auth);
-
-          showMessage(
-            "loginMessage",
-            "ユーザー情報が登録されていません。管理者にお問い合わせください。"
-          );
-
-          return;
-        }
-
-        const profile = profileSnap.data();
-
-        if (
-          profile.active === false ||
-          [
-            "inactive",
-            "disabled",
-            "suspended",
-            "deleted"
-          ].includes(
-            String(profile.status || "").toLowerCase()
-          )
-        ) {
-          await signOut(auth);
-
-          showMessage(
-            "loginMessage",
-            "このアカウントは現在利用できません。"
-          );
-
-          return;
-        }
-
-        if (
-          !["admin", "teacher", "student"].includes(
-            profile.role
-          )
-        ) {
-          await signOut(auth);
-
-          showMessage(
-            "loginMessage",
-            "アカウントの権限が正しくありません。"
-          );
-
-          return;
-        }
-
-        // 端末セッション登録
-        try {
-          await registerDeviceSession(user);
-
-        } catch (error) {
-          await signOut(auth);
-
-          if (error.code === "SESSION_LIMIT") {
-            showMessage(
-              "loginMessage",
-              "同時ログイン上限の4台に達しています。管理者にセッション解除を依頼してください。"
-            );
-          } else {
-            showMessage(
-              "loginMessage",
-              error.message
-            );
-          }
-
-          return;
-        }
-
-        // メンテナンス中は管理者以外ログイン不可
-        if (
-          window.systemMaintenance === true &&
-          profile.role !== "admin"
-        ) {
-          showMessage(
-            "loginMessage",
-            "現在メンテナンス中のためログインできません。"
-          );
-
-          await signOut(auth);
-          return;
-        }
-
-        if (profile.role === "admin") {
-          location.replace(
-            "/admin/dashboard.html"
-          );
-
-        } else if (profile.role === "teacher") {
-          location.replace(
-            "/teacher/dashboard.html"
-          );
-
-        } else {
-          location.replace(
-            "/student/dashboard.html"
-          );
-        }
-
-      } finally {
-        processingLogin = false;
-      }
-    }
-
-
-    // ======================================
-    // メールアドレス・パスワードログイン
-    // ======================================
-
-    $("loginForm").addEventListener(
-      "submit",
-      async (event) => {
-        event.preventDefault();
-
-        clearMessage("loginMessage");
-
-        const button = $("loginButton");
-
-        setLoading(
-          button,
-          true,
-          "ログイン"
-        );
-
-        try {
-          await authPersistenceReady;
-
-          const credential =
-            await signInWithEmailAndPassword(
-              auth,
-              $("loginEmail").value.trim(),
-              $("loginPassword").value
-            );
-
-          await routeUser(credential.user);
-
-        } catch (error) {
-          console.error(
-            "メールログインエラー:",
-            error
-          );
-
-          const messages = {
-            "auth/invalid-email":
-              "メールアドレスの形式が正しくありません。",
-
-            "auth/user-not-found":
-              "アカウントが見つかりません。",
-
-            "auth/wrong-password":
-              "パスワードが正しくありません。",
-
-            "auth/invalid-credential":
-              "メールアドレスまたはパスワードが正しくありません。",
-
-            "auth/too-many-requests":
-              "ログイン試行回数が多すぎます。しばらくしてからお試しください。",
-
-            "auth/network-request-failed":
-              "ネットワーク接続に失敗しました。"
-          };
-
-          showMessage(
-            "loginMessage",
-            messages[error.code] ||
-              `ログインに失敗しました。（${error.code || "不明なエラー"}）`
-          );
-
-        } finally {
-          setLoading(
-            button,
-            false,
-            "ログイン"
-          );
-        }
-      }
-    );
-
-
-    // ======================================
-    // Googleログイン
-    // ======================================
-
-    function googleErrorMessage(error) {
-      const messages = {
-        "auth/popup-closed-by-user":
-          "Googleログイン画面が閉じられました。もう一度お試しください。",
-
-        "auth/popup-blocked":
-          "ポップアップがブロックされました。ブラウザ設定を確認してください。",
-
-        "auth/unauthorized-domain":
-          "Firebase Consoleの承認済みドメインを確認してください。",
-
-        "auth/operation-not-allowed":
-          "Firebase AuthenticationでGoogleログインを有効にしてください。",
-
-        "auth/network-request-failed":
-          "ネットワーク接続に失敗しました。",
-
-        "auth/invalid-api-key":
-          "FirebaseのAPIキーが正しくありません。"
-      };
-
-      return messages[error.code] ||
-        `Googleログインに失敗しました。（${error.code || "不明なエラー"}）`;
-    }
-
-    $("googleButton").addEventListener(
-      "click",
-      async () => {
-        clearMessage("loginMessage");
-
-        const button = $("googleButton");
-
-        setLoading(
-          button,
-          true,
-          "Googleでログイン"
-        );
-
-        try {
-          await authPersistenceReady;
-
-          const credential =
-            await signInWithPopup(
-              auth,
-              googleProvider
-            );
-
-          await routeUser(credential.user);
-
-        } catch (error) {
-          console.error(
-            "Googleログインエラー:",
-            error
-          );
-
-          if (error.code === "auth/popup-blocked") {
-            try {
-              await signInWithRedirect(
-                auth,
-                googleProvider
-              );
-
-              return;
-
-            } catch (redirectError) {
-              showMessage(
-                "loginMessage",
-                googleErrorMessage(redirectError)
-              );
-            }
-
-          } else {
-            showMessage(
-              "loginMessage",
-              googleErrorMessage(error)
-            );
-          }
-
-        } finally {
-          setLoading(
-            button,
-            false,
-            "Googleでログイン"
-          );
-        }
-      }
-    );
-
-
-    // ======================================
-    // Googleリダイレクトログイン結果
-    // ======================================
-
-    async function processRedirectResult() {
-      if (redirectHandled) {
-        return;
-      }
-
-      redirectHandled = true;
-
-      try {
-        const result = await getRedirectResult(auth);
-
-        if (result && result.user) {
-          await routeUser(result.user);
-        }
-
-      } catch (error) {
-        console.error(
-          "Googleリダイレクトエラー:",
-          error
-        );
-
-        showMessage(
-          "loginMessage",
-          googleErrorMessage(error)
-        );
-      }
-    }
-
-
-    // ======================================
-    // パスワード再設定
-    // ======================================
-
-    $("resetForm").addEventListener(
-      "submit",
-      async (event) => {
-        event.preventDefault();
-
-        clearMessage("resetMessage");
-
-        const button = $("resetButton");
-
-        setLoading(
-          button,
-          true,
-          "再設定メールを送信"
-        );
-
-        try {
-          await authPersistenceReady;
-
-          await sendPasswordResetEmail(
-            auth,
-            $("resetEmail").value.trim()
-          );
-
-          showMessage(
-            "resetMessage",
-            "再設定メールを送信しました。メールをご確認ください。迷惑メールフォルダもご確認ください。",
-            "success"
-          );
-
-          $("resetEmail").value = "";
-
-        } catch (error) {
-          console.error(
-            "パスワード再設定エラー:",
-            error
-          );
-
-          const messages = {
-            "auth/invalid-email":
-              "メールアドレスの形式が正しくありません。",
-
-            "auth/user-not-found":
-              "このメールアドレスのアカウントが見つかりません。",
-
-            "auth/too-many-requests":
-              "送信回数が多すぎます。しばらくしてからお試しください。",
-
-            "auth/network-request-failed":
-              "ネットワーク接続に失敗しました。"
-          };
-
-          showMessage(
-            "resetMessage",
-            messages[error.code] ||
-              `メールを送信できませんでした。（${error.code || "不明なエラー"}）`
-          );
-
-        } finally {
-          setLoading(
-            button,
-            false,
-            "再設定メールを送信"
-          );
-        }
-      }
-    );
-
-
-    // ======================================
-    // ログアウト処理
-    // ======================================
-
-    async function logoutDevice() {
-      const user = auth.currentUser;
-
-      if (user) {
-        try {
-          const token = await user.getIdToken();
-
-          await fetch(
-            "/api/sessions/logout",
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-              },
-
-              body: JSON.stringify({
-                sessionId: getDeviceSessionId()
-              }),
-
-              cache: "no-store"
-            }
-          );
-
-        } catch (error) {
-          console.error(
-            "セッション終了エラー:",
-            error
-          );
-        }
-      }
-
-      await signOut(auth);
-
-      localStorage.removeItem(SESSION_KEY);
-
-      location.replace("/login.html");
-    }
-
-    // 他の画面からも呼び出せるようにする
-    window.logoutDevice = logoutDevice;
-
-
-    // ======================================
-    // ログイン状態監視
-    // ======================================
-
-    onAuthStateChanged(
-      auth,
-      async (user) => {
-        if (!initialized) {
-          return;
-        }
-
-        if (!user) {
-          return;
-        }
-
-        if (isResetMode()) {
-          return;
-        }
-
-        await routeUser(user);
-      }
-    );
-
-
-    // ======================================
-    // 初期化
-    // ======================================
-
-    async function initialize() {
-      renderMode();
-
-      try {
-        await authPersistenceReady;
-
-        const status = await checkMaintenance();
-
-        window.systemMaintenance =
-          status.maintenance === true;
-
-        $("initialLoading").classList.add("hidden");
-
-        if (window.systemMaintenance) {
-          $("maintenanceMessage").textContent =
-            status.maintenanceMessage ||
-            "現在、メンテナンスを実施しています。しばらくしてから再度アクセスしてください。";
-        }
-
-        await processRedirectResult();
-
-        initialized = true;
-
-        // メンテナンス中、未ログインの場合
-        if (
-          window.systemMaintenance &&
-          !auth.currentUser
-        ) {
-          $("loginView").classList.add("hidden");
-          $("resetView").classList.add("hidden");
-
-          $("maintenanceView").style.display =
-            "block";
-        }
-
-        // すでにログイン済みの場合
-        if (auth.currentUser) {
-          await routeUser(auth.currentUser);
-        }
-
-      } catch (error) {
-        console.error(
-          "初期化エラー:",
-          error
-        );
-
-        $("initialLoading").classList.add("hidden");
-
-        showMessage(
-          "loginMessage",
-          "システムの初期化に失敗しました。ページを再読み込みしてください。"
-        );
-      }
-    }
-
-    initialize();
-
-  </script>
+  }
+
+  if (
+    new URLSearchParams(location.search).get("mode") === "reset"
+  ) {
+    $("loginView").classList.add("hidden");
+    $("resetView").classList.remove("hidden");
+  }
+
+  initialize();
+</script>
 
 </body>
 </html>
