@@ -15,12 +15,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
+  apiKey: "AIzaSyDp2DSKd6bNGChI24pTjK3wR_iuw2cP-bY",
   authDomain: "viewr-3a9f1.firebaseapp.com",
   projectId: "viewr-3a9f1",
   storageBucket: "viewr-3a9f1.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_FIREBASE_APP_ID"
+  messagingSenderId: "152244813389",
+  appId: "1:152244813389:web:148327467918012825e604"
 };
 
 const app = initializeApp(firebaseConfig);
