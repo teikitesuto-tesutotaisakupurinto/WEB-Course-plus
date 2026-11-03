@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -6,216 +5,29 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f4f7fb">
 <title>管理者ダッシュボード | WEB Course-plus</title>
-
 <style>
-:root{
-  font-family:Inter,"Noto Sans JP",system-ui,sans-serif;
-  color:#182334;
-  background:#f4f7fb;
-  --navy:#14263f;
-  --blue:#2563eb;
-  --border:#dfe6ef;
-  --muted:#64748b;
-  --sidebar-width:250px;
-}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh}
-button,input,textarea{font:inherit}
-button{cursor:pointer}
-.topbar{
-  position:fixed;z-index:20;inset:0 0 auto 0;height:66px;
-  display:flex;align-items:center;gap:18px;padding:0 23px;
-  color:#fff;background:var(--navy);
-  box-shadow:0 2px 8px #14263f22
-}
-.menu-toggle{
-  width:38px;height:38px;border:1px solid #ffffff40;
-  border-radius:8px;background:transparent;color:#fff;
-  font-size:13px
-}
-.brand{font-size:18px;font-weight:750}
-.topbar-right{
-  margin-left:auto;display:flex;align-items:center;gap:16px;
-  font-size:13px
-}
-.role-label{padding:6px 10px;border:1px solid #ffffff40;border-radius:20px}
-.logout-button{
-  border:1px solid #ffffff55;border-radius:7px;padding:8px 13px;
-  color:#fff;background:transparent
-}
-.sidebar{
-  position:fixed;z-index:15;top:66px;bottom:0;left:0;
-  width:var(--sidebar-width);padding:22px 14px;
-  background:#fff;border-right:1px solid var(--border);
-  transition:transform .2s ease;overflow-y:auto
-}
-.nav-heading{
-  padding:9px 12px;color:#94a3b8;font-size:11px;
-  font-weight:700;letter-spacing:.08em
-}
-.nav-link{
-  display:block;margin:3px 0;padding:12px 13px;
-  color:#475569;border-radius:7px;text-decoration:none;
-  font-size:13px;font-weight:600
-}
-.nav-link:hover{background:#f1f5f9;color:var(--navy)}
-.nav-link.active{color:#1d4ed8;background:#eff6ff}
-.main{
-  min-height:100vh;margin-left:var(--sidebar-width);
-  padding:96px 30px 30px;transition:margin .2s ease
-}
-.page-heading{
-  display:flex;justify-content:space-between;align-items:flex-start;
-  gap:20px;margin-bottom:25px
-}
-h1{margin:0 0 7px;color:var(--navy);font-size:25px}
-h2{margin:0;color:var(--navy);font-size:14px}
-.subheading{margin:0;color:var(--muted);font-size:13px}
-.updated{color:var(--muted);font-size:12px}
-.heading-actions{display:flex;gap:9px;flex-wrap:wrap}
-.button{
-  min-height:37px;padding:8px 13px;border:0;border-radius:7px;
-  color:#fff;background:var(--blue);font-size:12px;font-weight:650
-}
-.button.secondary{color:#334155;background:#e2e8f0}
-.button.danger{background:#dc2626}
-.button:disabled{opacity:.55;cursor:not-allowed}
-.status-banner{
-  display:flex;align-items:center;gap:12px;margin-bottom:22px;
-  padding:15px 18px;border:1px solid #bbf7d0;border-radius:10px;
-  background:#f0fdf4;color:#166534;font-size:13px
-}
-.status-banner.warning{
-  border-color:#fed7aa;background:#fff7ed;color:#9a3412
-}
-.status-banner svg{flex-shrink:0}
-.status-dot{
-  width:9px;height:9px;flex:0 0 9px;border-radius:50%;
-  background:#16a34a
-}
-.warning .status-dot{background:#ea580c}
-.stats{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:17px;margin-bottom:22px
-}
-.stat-card,.panel{
-  background:#fff;border:1px solid var(--border);
-  border-radius:11px;box-shadow:0 2px 8px #14263f08
-}
-.stat-card{padding:21px}
-.stat-label{color:var(--muted);font-size:12px;font-weight:600}
-.stat-value{
-  margin-top:12px;color:var(--navy);font-size:31px;
-  font-weight:750;letter-spacing:-.5px
-}
-.stat-description{margin-top:7px;color:#94a3b8;font-size:11px}
-.content-grid{
-  display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);
-  gap:18px;align-items:start
-}
-.panel{margin-bottom:18px;overflow:hidden}
-.panel-header{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:12px;padding:17px 19px;border-bottom:1px solid var(--border)
-}
-.panel-body{padding:19px}
-.text-link{color:var(--blue);font-size:12px;font-weight:650;text-decoration:none}
-.text-link:hover{text-decoration:underline}
-.system-row{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:15px;padding:13px 0;border-bottom:1px solid #edf1f5;
-  font-size:13px
-}
-.system-row:last-child{border-bottom:0}
-.system-value{color:#475569;font-weight:650;text-align:right}
-.pill{
-  display:inline-block;padding:5px 9px;border-radius:20px;
-  font-size:11px;font-weight:700
-}
-.pill.ok{color:#166534;background:#dcfce7}
-.pill.off{color:#475569;background:#e2e8f0}
-.pill.warning{color:#9a3412;background:#ffedd5}
-.notice{
-  display:none;margin-bottom:16px;padding:11px 13px;
-  border-radius:7px;font-size:12px;line-height:1.6
-}
-.notice.show{display:block}
-.notice.error{color:#991b1b;background:#fef2f2;border:1px solid #fecaca}
-.notice.success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}
-.form-grid{
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px
-}
-.form-field{margin-bottom:13px}
-.form-field.full{grid-column:1/-1}
-.form-field label{
-  display:block;margin-bottom:7px;font-size:12px;font-weight:650
-}
-.form-field input,.form-field textarea,.form-field select{
-  width:100%;min-height:40px;padding:9px 11px;
-  border:1px solid #cbd5e1;border-radius:7px;
-  background:#fff;color:#182334;font-size:13px
-}
-.form-field textarea{min-height:78px;resize:vertical}
-.form-field input:focus,.form-field textarea:focus{
-  outline:none;border-color:var(--blue);
-  box-shadow:0 0 0 3px #2563eb18
-}
-.form-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
-.log-list{display:flex;flex-direction:column}
-.log-item{padding:12px 0;border-bottom:1px solid #edf1f5}
-.log-item:last-child{border-bottom:0}
-.log-action{color:#334155;font-size:12px;font-weight:650;overflow-wrap:anywhere}
-.log-meta{margin-top:5px;color:#94a3b8;font-size:11px;overflow-wrap:anywhere}
-.empty{padding:20px 0;color:#94a3b8;text-align:center;font-size:12px}
-.quick-links{display:grid;gap:9px}
-.quick-link{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:13px 14px;border:1px solid var(--border);
-  border-radius:8px;color:#334155;text-decoration:none;
-  font-size:12px;font-weight:650
-}
-.quick-link:hover{border-color:#93c5fd;background:#f8fbff}
-.quick-link span:last-child{color:#94a3b8}
-.table-wrap{width:100%;overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:12px;min-width:500px}
-th,td{padding:11px 9px;border-bottom:1px solid #edf1f5;text-align:left}
-th{color:#64748b;background:#f8fafc;font-weight:650}
-td{color:#334155;overflow-wrap:anywhere}
-footer{
-  margin-top:30px;padding:20px 0 5px;border-top:1px solid var(--border);
-  color:#94a3b8;text-align:center;font-size:11px
-}
-body.sidebar-closed .sidebar{transform:translateX(-100%)}
-body.sidebar-closed .main{margin-left:0}
-@media(max-width:950px){.content-grid{grid-template-columns:1fr}}
-@media(max-width:700px){
-  .sidebar{box-shadow:8px 0 20px #14263f12}
-  .main{margin-left:0;padding:88px 15px 25px}
-  .stats{grid-template-columns:1fr;gap:10px}
-  .stat-card{padding:16px}
-  .stat-value{font-size:26px}
-  .topbar{padding:0 14px}
-  .brand{font-size:15px}
-  .topbar-right{gap:8px}
-  .role-label{display:none}
-  .page-heading{flex-direction:column}
-  .form-grid{grid-template-columns:1fr}
-  .form-field.full{grid-column:auto}
-}
+:root{font-family:Inter,"Noto Sans JP",system-ui,sans-serif;color:#182334;background:#f4f7fb;--navy:#14263f;--blue:#2563eb;--border:#dfe6ef;--muted:#64748b;--sidebar-width:235px}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}button,input,textarea{font:inherit}button{cursor:pointer}
+.topbar{position:fixed;z-index:20;inset:0 0 auto;height:64px;display:flex;align-items:center;gap:15px;padding:0 20px;color:#fff;background:var(--navy)}
+.menu-toggle{width:36px;height:36px;border:1px solid #ffffff55;border-radius:7px;background:transparent;color:#fff;font-size:12px}.brand{font-weight:750;font-size:17px}.topbar-right{margin-left:auto;display:flex;align-items:center;gap:13px;font-size:12px}.role{padding:5px 9px;border:1px solid #ffffff55;border-radius:20px}.logout{padding:7px 11px;border:1px solid #ffffff55;border-radius:6px;color:#fff;background:transparent}
+.sidebar{position:fixed;z-index:15;top:64px;bottom:0;left:0;width:var(--sidebar-width);padding:18px 13px;background:#fff;border-right:1px solid var(--border);overflow:auto;transition:transform .2s}.nav-heading{padding:9px 11px;color:#94a3b8;font-size:10px;font-weight:750;letter-spacing:.08em}.nav-link{display:block;margin:3px 0;padding:11px;border-radius:7px;color:#475569;text-decoration:none;font-size:12px;font-weight:650}.nav-link:hover,.nav-link.active{background:#eff6ff;color:#1d4ed8}
+.main{margin-left:var(--sidebar-width);padding:91px 28px 24px;max-width:1100px;transition:margin .2s}.page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}h1{margin:0;color:var(--navy);font-size:22px}.sub{margin:5px 0 0;color:var(--muted);font-size:12px}.btn{min-height:34px;padding:7px 12px;border:0;border-radius:6px;background:var(--blue);color:#fff;font-size:12px;font-weight:650}.btn.secondary{background:#e2e8f0;color:#334155}.btn.danger{background:#dc2626}.btn:disabled{opacity:.55;cursor:not-allowed}
+.banner{display:flex;align-items:center;gap:10px;margin-bottom:17px;padding:12px 14px;border:1px solid #bbf7d0;border-radius:8px;background:#f0fdf4;color:#166534;font-size:13px}.banner.warning{border-color:#fed7aa;background:#fff7ed;color:#9a3412}.banner svg{width:19px;height:19px;flex:none}.status-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;flex:none}.warning .status-dot{background:#ea580c}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:17px}.stat,.panel{background:#fff;border:1px solid var(--border);border-radius:9px}.stat{padding:15px 17px}.stat-label{color:var(--muted);font-size:11px;font-weight:650}.stat-value{margin-top:6px;color:var(--navy);font-size:26px;font-weight:750}
+.panel{margin-bottom:15px;overflow:hidden}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border)}h2{margin:0;color:var(--navy);font-size:13px}.panel-body{padding:15px 16px}.state-line{display:flex;align-items:center;gap:10px;margin-bottom:13px;font-size:12px}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#e2e8f0;color:#475569;font-size:10px;font-weight:700}.pill.ok{background:#dcfce7;color:#166534}.pill.warn{background:#ffedd5;color:#9a3412}
+.field{min-width:0}.field label{display:block;margin-bottom:5px;font-size:11px;font-weight:650}.field input,.field textarea{width:100%;padding:8px 9px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px}.field textarea{min-height:42px;resize:vertical}.maintenance-message{margin-bottom:10px}.button-row{display:flex;gap:8px;flex-wrap:wrap}
+.schedule{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}.schedule .wide{grid-column:1/-1}.notice{display:none;margin:0 0 10px;padding:9px 10px;border-radius:6px;font-size:11px}.notice.show{display:block}.notice.error{background:#fef2f2;color:#991b1b}.notice.success{background:#f0fdf4;color:#166534}
+.bottom-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}.bottom-links a{padding:9px 12px;border:1px solid var(--border);border-radius:7px;background:#fff;color:#334155;text-decoration:none;font-size:11px;font-weight:650}.bottom-links a:hover{background:#f8fbff;border-color:#93c5fd}.updated{margin-top:12px;color:#94a3b8;font-size:10px}footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--border);color:#94a3b8;text-align:center;font-size:10px}
+body.sidebar-closed .sidebar{transform:translateX(-100%)}body.sidebar-closed .main{margin-left:0}
+@media(max-width:700px){.sidebar{box-shadow:8px 0 20px #14263f12}.main{margin-left:0;padding:82px 14px 20px}.topbar{padding:0 12px}.brand{font-size:14px}.role{display:none}.stats{gap:8px}.stat{padding:12px}.stat-value{font-size:22px}.schedule{grid-template-columns:1fr}.schedule .wide{grid-column:auto}.page-head{align-items:flex-start}}
 </style>
 </head>
-
 <body>
 <header class="topbar">
   <button class="menu-toggle" id="menuToggle" type="button">メニュー</button>
   <div class="brand">WEB Course-plus</div>
-  <div class="topbar-right">
-    <span class="role-label">システム管理者</span>
-    <span id="adminName">確認中</span>
-    <button class="logout-button" id="logoutButton" type="button">ログアウト</button>
-  </div>
+  <div class="topbar-right"><span class="role">システム管理者</span><span id="adminName">確認中</span><button class="logout" id="logoutButton" type="button">ログアウト</button></div>
 </header>
-
 <aside class="sidebar">
   <div class="nav-heading">ADMINISTRATION</div>
   <a class="nav-link active" href="/admin/dashboard.html">ダッシュボード</a>
@@ -224,182 +36,64 @@ body.sidebar-closed .main{margin-left:0}
   <a class="nav-link" href="/admin/logs.html">操作ログ・監査ログ</a>
   <a class="nav-link" href="/service.html">サービス稼働状況</a>
 </aside>
-
 <main class="main">
-  <div class="page-heading">
-    <div>
-      <h1>システム管理ダッシュボード</h1>
-      <p class="subheading">WEB Course-plusの稼働状況・利用状況・セキュリティを管理します。</p>
-    </div>
-    <div class="heading-actions">
-      <button class="button secondary" id="refreshButton" type="button">情報を更新</button>
-      <a class="button" href="/service.html" style="text-decoration:none">稼働状況ページ</a>
-    </div>
+  <div class="page-head">
+    <div><h1>ダッシュボード</h1><p class="sub">システムの概要</p></div>
+    <button class="btn secondary" id="refreshButton" type="button">更新</button>
   </div>
 
-  <div class="updated" id="updatedAt">最終更新：読み込み中</div>
-  <div id="notice" class="notice" role="alert"></div>
-
-  <div class="status-banner" id="statusBanner">
+  <div class="notice" id="pageNotice" role="alert"></div>
+  <div class="banner" id="statusBanner">
     <span class="status-dot"></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a5 5 0 0 0-6.4 6.4L3 18l3-3 3-3a5 5 0 0 0 6.4-6.4L14 13l-3-3 3.7-3.7Z"/></svg>
     <span id="statusText">システム状態を確認しています。</span>
   </div>
 
   <section class="stats">
-    <div class="stat-card">
-      <div class="stat-label">登録生徒数</div>
-      <div class="stat-value" id="studentCount">--</div>
-      <div class="stat-description">有効な生徒アカウント</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">登録講師数</div>
-      <div class="stat-value" id="teacherCount">--</div>
-      <div class="stat-description">有効な講師アカウント</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">登録授業数</div>
-      <div class="stat-value" id="lessonCount">--</div>
-      <div class="stat-description">Firestoreに登録された授業</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">有効端末セッション</div>
-      <div class="stat-value" id="activeSessions">--</div>
-      <div class="stat-description">全ユーザーの有効な端末</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">端末上限</div>
-      <div class="stat-value" id="sessionLimit">4</div>
-      <div class="stat-description">1アカウントあたり</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">API応答時間</div>
-      <div class="stat-value" id="apiLatency">--</div>
-      <div class="stat-description">/api/healthへの応答</div>
+    <div class="stat"><div class="stat-label">生徒数</div><div class="stat-value" id="studentCount">--</div></div>
+    <div class="stat"><div class="stat-label">講師数</div><div class="stat-value" id="teacherCount">--</div></div>
+    <div class="stat"><div class="stat-label">授業数</div><div class="stat-value" id="lessonCount">--</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>メンテナンス</h2><span class="pill" id="maintenanceBadge">確認中</span></div>
+    <div class="panel-body">
+      <div class="state-line"><span>現在の状態</span><strong id="maintenanceStatus">確認中</strong></div>
+      <div class="field maintenance-message">
+        <label for="maintenanceMessage">利用者向けメッセージ</label>
+        <textarea id="maintenanceMessage" maxlength="1000" placeholder="現在メンテナンスを実施しています。"></textarea>
+      </div>
+      <div class="button-row">
+        <button class="btn danger" id="enableMaintenance" type="button">開始</button>
+        <button class="btn secondary" id="disableMaintenance" type="button">解除</button>
+      </div>
+      <div class="notice" id="maintenanceNotice"></div>
     </div>
   </section>
 
-  <div class="content-grid">
-    <div>
-      <section class="panel">
-        <div class="panel-header">
-          <h2>システム状態</h2>
-          <span class="pill ok" id="serverStatus">確認中</span>
-        </div>
-        <div class="panel-body">
-          <div class="system-row"><span>サーバー</span><span class="system-value" id="serverDetail">確認中</span></div>
-          <div class="system-row"><span>メンテナンス状態</span><span class="system-value" id="maintenanceStatus">確認中</span></div>
-          <div class="system-row"><span>予約メンテナンス</span><span class="system-value" id="scheduleStatus">未設定</span></div>
-          <div class="system-row"><span>LiveKit</span><span class="system-value">サーバー設定を使用</span></div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header">
-          <h2>メンテナンス管理</h2>
-          <span class="pill off" id="maintenanceBadge">停止中</span>
-        </div>
-        <div class="panel-body">
-          <div id="maintenanceNotice" class="notice"></div>
-          <div class="form-field">
-            <label for="maintenanceMessage">利用者に表示するメッセージ</label>
-            <textarea id="maintenanceMessage" maxlength="1000"
-              placeholder="現在システムメンテナンスを実施しています。しばらくしてから再度アクセスしてください。"></textarea>
-          </div>
-          <div class="form-actions">
-            <button class="button danger" id="enableMaintenance" type="button">今すぐメンテナンス開始</button>
-            <button class="button secondary" id="disableMaintenance" type="button">メンテナンス解除</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header"><h2>メンテナンス予約</h2></div>
-        <div class="panel-body">
-          <div id="scheduleNotice" class="notice"></div>
-          <form id="scheduleForm">
-            <div class="form-grid">
-              <div class="form-field">
-                <label for="scheduleStart">開始日時</label>
-                <input id="scheduleStart" type="datetime-local" required>
-              </div>
-              <div class="form-field">
-                <label for="scheduleEnd">終了日時</label>
-                <input id="scheduleEnd" type="datetime-local" required>
-              </div>
-              <div class="form-field full">
-                <label for="scheduleMessage">予約時の利用者向けメッセージ</label>
-                <textarea id="scheduleMessage" maxlength="1000"
-                  placeholder="予定されたメンテナンスを実施しています。"></textarea>
-              </div>
-            </div>
-            <div class="form-actions">
-              <button class="button" type="submit" id="saveSchedule">予約を登録</button>
-              <button class="button secondary" type="button" id="cancelSchedule">予約を解除</button>
-            </div>
-          </form>
-          <p class="subheading" style="line-height:1.8;margin-top:13px">
-            予約時刻は日本時間として入力します。サーバーが定期的に予約状態を確認し、開始・終了を自動反映します。
-          </p>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header">
-          <h2>監査ログ：管理者操作</h2>
-          <a class="text-link" href="/admin/logs.html">すべて表示</a>
-        </div>
-        <div class="panel-body">
-          <div id="auditLogs" class="log-list"><div class="empty">読み込み中</div></div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header">
-          <h2>セキュリティ監視</h2>
-          <span class="pill warning" id="securityCount">-- 件</span>
-        </div>
-        <div class="panel-body">
-          <div id="securityEvents" class="log-list"><div class="empty">読み込み中</div></div>
-        </div>
-      </section>
+  <section class="panel">
+    <div class="panel-head"><h2>メンテナンス予約</h2><span class="pill" id="scheduleStatus">未設定</span></div>
+    <div class="panel-body">
+      <div class="schedule">
+        <div class="field"><label for="scheduleStart">開始日時</label><input id="scheduleStart" type="datetime-local"></div>
+        <div class="field"><label for="scheduleEnd">終了日時</label><input id="scheduleEnd" type="datetime-local"></div>
+        <div class="field wide"><label for="scheduleMessage">利用者向けメッセージ</label><textarea id="scheduleMessage" maxlength="1000" placeholder="予定されたメンテナンスを実施しています。"></textarea></div>
+      </div>
+      <div class="button-row">
+        <button class="btn" id="saveSchedule" type="button">予約を登録</button>
+        <button class="btn secondary" id="cancelSchedule" type="button">予約を解除</button>
+      </div>
+      <div class="notice" id="scheduleNotice"></div>
     </div>
+  </section>
 
-    <div>
-      <section class="panel">
-        <div class="panel-header"><h2>管理メニュー</h2></div>
-        <div class="panel-body">
-          <div class="quick-links">
-            <a class="quick-link" href="/admin/sessions.html"><span>端末セッション管理</span><span>開く</span></a>
-            <a class="quick-link" href="/admin/settings.html"><span>システム設定</span><span>開く</span></a>
-            <a class="quick-link" href="/admin/logs.html"><span>監査ログ</span><span>開く</span></a>
-            <a class="quick-link" href="/service.html"><span>サービス稼働状況</span><span>開く</span></a>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header"><h2>管理者アカウント</h2></div>
-        <div class="panel-body">
-          <div class="system-row"><span>表示名</span><span class="system-value" id="profileName">--</span></div>
-          <div class="system-row"><span>メールアドレス</span><span class="system-value" id="profileEmail">--</span></div>
-          <div class="system-row"><span>権限</span><span class="system-value"><span class="pill ok">管理者</span></span></div>
-          <p class="subheading" style="line-height:1.8;margin-top:14px">
-            管理者アカウントはシステムの保守・設定・端末管理を行います。授業の担当や生徒管理は行いません。
-          </p>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header"><h2>セキュリティイベントの内訳</h2></div>
-        <div class="panel-body">
-          <div class="system-row"><span>ログイン失敗</span><span class="system-value" id="failedLoginCount">--</span></div>
-          <div class="system-row"><span>端末上限超過</span><span class="system-value" id="sessionLimitCount">--</span></div>
-          <div class="system-row"><span>強制ログアウト</span><span class="system-value" id="revokedCount">--</span></div>
-        </div>
-      </section>
-    </div>
-  </div>
-
+  <nav class="bottom-links" aria-label="管理メニュー">
+    <a href="/admin/sessions.html">端末管理</a>
+    <a href="/admin/settings.html">システム設定</a>
+    <a href="/admin/logs.html">監査ログ・セキュリティ履歴</a>
+    <a href="/service.html">稼働状況</a>
+  </nav>
+  <div class="updated" id="updatedAt">最終更新：読み込み中</div>
   <footer>© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.</footer>
 </main>
 
@@ -408,262 +102,141 @@ import {auth,db,authPersistenceReady} from "/assets/js/firebase.js";
 import {onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 import {doc,getDoc} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-const SESSION_KEY="web-course-plus-device-session";
 const $=id=>document.getElementById(id);
-let currentUser=null;
-let currentProfile=null;
-let refreshTimer=null;
-let busy=false;
+const SESSION_KEY="web-course-plus-device-session";
+let currentUser=null,refreshBusy=false,refreshTimer=null;
 
-function sessionId(){
+function getSessionId(){
   let id=localStorage.getItem(SESSION_KEY);
   if(!id){id=crypto.randomUUID();localStorage.setItem(SESSION_KEY,id);}
   return id;
 }
-
-function notice(message,type="error",target="notice"){
-  const el=$(target);
-  el.textContent=message;
-  el.className=`notice show ${type}`;
+function showNotice(id,message,type="error"){
+  const el=$(id);el.textContent=message;el.className=`notice show ${type}`;
 }
-function clearNotice(target="notice"){
-  $(target).textContent="";
-  $(target).className="notice";
-}
-function formatDate(value){
-  if(!value)return "日時不明";
-  const d=new Date(value);
-  if(Number.isNaN(d.getTime()))return "日時不明";
-  return d.toLocaleString("ja-JP");
-}
-function safe(value){
-  return String(value??"").replace(/[&<>"']/g,c=>({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  }[c]));
-}
-
+function clearNotice(id){$(id).textContent="";$(id).className="notice";}
 async function apiFetch(url,options={}){
-  if(!currentUser)throw new Error("ログイン状態を確認できません。");
   const token=await currentUser.getIdToken();
   const headers=new Headers(options.headers||{});
   headers.set("Authorization",`Bearer ${token}`);
-  headers.set("X-Session-Id",sessionId());
+  headers.set("X-Session-Id",getSessionId());
   if(options.body)headers.set("Content-Type","application/json");
   const response=await fetch(url,{...options,headers,cache:"no-store"});
   const data=await response.json().catch(()=>({}));
-  if(!response.ok||data.success===false){
-    throw new Error(data.error||`APIエラー (${response.status})`);
-  }
+  if(!response.ok||data.success===false)throw new Error(data.error||`APIエラー (${response.status})`);
   return data;
 }
-
-async function checkHealth(){
-  const start=performance.now();
-  const response=await fetch("/api/health",{cache:"no-store"});
-  const elapsed=Math.round(performance.now()-start);
-  if(!response.ok)throw new Error("API応答異常");
-  $("apiLatency").textContent=`${elapsed} ms`;
-  $("serverStatus").textContent="正常";
-  $("serverStatus").className="pill ok";
-  $("serverDetail").textContent="正常・応答あり";
-  return elapsed;
+function dateText(value){
+  if(!value)return "";
+  const d=new Date(value);
+  return Number.isNaN(d.getTime())?"":d.toLocaleString("ja-JP");
 }
-
-function renderStatus(overview,settings){
-  const active=overview.maintenance===true;
-  $("statusBanner").classList.toggle("warning",active);
-  $("statusText").textContent=active
-    ?"メンテナンス中です。一般ユーザーの利用は停止されています。"
-    :"システムは通常稼働中です。";
-  $("maintenanceStatus").innerHTML=active
-    ?'<span class="pill warning">実施中</span>'
-    :'<span class="pill ok">通常稼働</span>';
+function renderSettings(settings){
+  const active=settings.maintenance===true;
+  $("maintenanceStatus").textContent=active?"実施中":"通常稼働";
   $("maintenanceBadge").textContent=active?"実施中":"停止中";
-  $("maintenanceBadge").className=active?"pill warning":"pill off";
+  $("maintenanceBadge").className=active?"pill warn":"pill ok";
+  $("statusBanner").classList.toggle("warning",active);
+  $("statusText").textContent=active?"システムメンテナンスを実施しています。":"システムは通常稼働中です。";
   $("maintenanceMessage").value=settings.maintenanceMessage||"";
-  $("scheduleStatus").textContent=settings.maintenanceSchedule?.startAt
-    ?`${formatDate(settings.maintenanceSchedule.startAt)} ～ ${formatDate(settings.maintenanceSchedule.endAt)}`
-    :"未設定";
+  const schedule=settings.maintenanceSchedule;
+  if(schedule?.enabled&&schedule.startAt&&schedule.endAt){
+    $("scheduleStatus").textContent=`予約あり：${dateText(schedule.startAt)} ～ ${dateText(schedule.endAt)}`;
+    $("scheduleMessage").value=schedule.message||"";
+  }else{
+    $("scheduleStatus").textContent="予約なし";
+  }
 }
-
-function renderLogs(logs){
-  const el=$("auditLogs");
-  if(!logs?.length){el.innerHTML='<div class="empty">監査ログはありません。</div>';return;}
-  el.innerHTML=logs.map(x=>`
-    <div class="log-item">
-      <div class="log-action">${safe(x.action)} — ${safe(x.target||"")}</div>
-      <div class="log-meta">${safe(x.adminEmail||x.adminUid||"管理者")} ・ ${safe(formatDate(x.createdAt))}</div>
-      <div class="log-meta">${safe(x.details||"")}</div>
-    </div>`).join("");
-}
-
-function renderSecurity(events){
-  const el=$("securityEvents");
-  const list=events||[];
-  $("securityCount").textContent=`${list.length} 件`;
-  const counts={
-    login_failed:list.filter(x=>x.type==="login_failed").length,
-    session_limit:list.filter(x=>x.type==="session_limit").length,
-    session_revoked:list.filter(x=>x.type==="session_revoked").length
-  };
-  $("failedLoginCount").textContent=counts.login_failed;
-  $("sessionLimitCount").textContent=counts.session_limit;
-  $("revokedCount").textContent=counts.session_revoked;
-
-  if(!list.length){el.innerHTML='<div class="empty">セキュリティイベントはありません。</div>';return;}
-  el.innerHTML=list.map(x=>`
-    <div class="log-item">
-      <div class="log-action">${safe(x.label||x.type||"イベント")}</div>
-      <div class="log-meta">${safe(x.email||x.uid||"ユーザー不明")} ・ ${safe(formatDate(x.createdAt))}</div>
-      <div class="log-meta">${safe(x.details||"")}</div>
-    </div>`).join("");
-}
-
-async function loadDashboard(){
-  if(busy)return;
-  busy=true;
-  $("refreshButton").disabled=true;
-  $("refreshButton").textContent="更新中...";
-  clearNotice();
-
+async function refresh(){
+  if(refreshBusy||!currentUser)return;
+  refreshBusy=true;$("refreshButton").disabled=true;clearNotice("pageNotice");
   try{
-    const [overview,settings,logs,security,health]=await Promise.all([
+    const [overview,settings]=await Promise.all([
       apiFetch("/api/admin/overview"),
-      apiFetch("/api/admin/settings"),
-      apiFetch("/api/admin/logs?limit=20"),
-      apiFetch("/api/admin/security?limit=30"),
-      checkHealth()
+      apiFetch("/api/admin/settings")
     ]);
-
-    const o=overview.overview||{};
-    const s=settings.settings||{};
     const stats=overview.statistics||{};
-
     $("studentCount").textContent=stats.students??"--";
     $("teacherCount").textContent=stats.teachers??"--";
     $("lessonCount").textContent=stats.lessons??"--";
-    $("activeSessions").textContent=o.activeSessions??"--";
-    $("sessionLimit").textContent=o.maxSessionsPerUser??4;
-    $("serverStatus").textContent="正常";
-    renderStatus(o,s);
-    renderLogs(logs.logs||[]);
-    renderSecurity(security.events||[]);
-    $("updatedAt").textContent=`最終更新：${new Date().toLocaleString("ja-JP")} / API ${health}ms`;
+    renderSettings(settings.settings||{});
+    $("updatedAt").textContent=`最終更新：${new Date().toLocaleString("ja-JP")}`;
   }catch(error){
-    console.error(error);
-    notice(error.message);
+    console.error(error);showNotice("pageNotice",error.message);
   }finally{
-    busy=false;
-    $("refreshButton").disabled=false;
-    $("refreshButton").textContent="情報を更新";
+    refreshBusy=false;$("refreshButton").disabled=false;
   }
 }
-
 async function changeMaintenance(enabled){
   const message=$("maintenanceMessage").value.trim();
-  if(enabled&&!confirm("メンテナンスを開始します。一般ユーザーは利用できなくなります。よろしいですか？"))return;
-  if(!enabled&&!confirm("メンテナンスを解除します。よろしいですか？"))return;
-
+  if(!confirm(enabled?"メンテナンスを開始します。一般ユーザーは利用できなくなります。":"メンテナンスを解除します。"))return;
   try{
     await apiFetch("/api/admin/settings",{
       method:"PATCH",
-      body:JSON.stringify({
-        maintenance:enabled,
-        maintenanceMessage:message
-      })
+      body:JSON.stringify({maintenance:enabled,maintenanceMessage:message})
     });
-    notice(enabled?"メンテナンスを開始しました。":"メンテナンスを解除しました。","success","maintenanceNotice");
-    await loadDashboard();
-  }catch(error){
-    notice(error.message,"error","maintenanceNotice");
-  }
+    showNotice("maintenanceNotice",enabled?"メンテナンスを開始しました。":"メンテナンスを解除しました。","success");
+    await refresh();
+  }catch(error){showNotice("maintenanceNotice",error.message);}
 }
-
 $("enableMaintenance").addEventListener("click",()=>changeMaintenance(true));
 $("disableMaintenance").addEventListener("click",()=>changeMaintenance(false));
 
-$("scheduleForm").addEventListener("submit",async event=>{
-  event.preventDefault();
+$("saveSchedule").addEventListener("click",async()=>{
   clearNotice("scheduleNotice");
-  const start=new Date($("scheduleStart").value);
-  const end=new Date($("scheduleEnd").value);
-
-  if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start){
-    notice("終了日時は開始日時より後に設定してください。","error","scheduleNotice");
-    return;
+  const start=new Date($("scheduleStart").value),end=new Date($("scheduleEnd").value);
+  if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start||start<=new Date()){
+    showNotice("scheduleNotice","開始日時と終了日時を正しく入力してください。終了は開始より後に設定してください。");return;
   }
-  if(start<=new Date()){
-    notice("開始日時は現在より後の日時にしてください。","error","scheduleNotice");
-    return;
-  }
-
   try{
     await apiFetch("/api/admin/maintenance/schedule",{
       method:"PUT",
-      body:JSON.stringify({
-        startAt:start.toISOString(),
-        endAt:end.toISOString(),
-        message:$("scheduleMessage").value.trim()
-      })
+      body:JSON.stringify({startAt:start.toISOString(),endAt:end.toISOString(),message:$("scheduleMessage").value.trim()})
     });
-    notice("メンテナンス予約を登録しました。","success","scheduleNotice");
-    await loadDashboard();
-  }catch(error){
-    notice(error.message,"error","scheduleNotice");
-  }
+    showNotice("scheduleNotice","予約を登録しました。","success");
+    await refresh();
+  }catch(error){showNotice("scheduleNotice",error.message);}
 });
-
 $("cancelSchedule").addEventListener("click",async()=>{
-  if(!confirm("予約メンテナンスを解除しますか？"))return;
+  if(!confirm("メンテナンス予約を解除しますか？"))return;
   try{
     await apiFetch("/api/admin/maintenance/schedule",{method:"DELETE"});
-    notice("メンテナンス予約を解除しました。","success","scheduleNotice");
-    await loadDashboard();
-  }catch(error){
-    notice(error.message,"error","scheduleNotice");
-  }
+    showNotice("scheduleNotice","予約を解除しました。","success");
+    await refresh();
+  }catch(error){showNotice("scheduleNotice",error.message);}
 });
 
-$("refreshButton").addEventListener("click",loadDashboard);
+$("refreshButton").addEventListener("click",refresh);
 $("menuToggle").addEventListener("click",()=>document.body.classList.toggle("sidebar-closed"));
-
 $("logoutButton").addEventListener("click",async()=>{
   try{
-    await apiFetch("/api/sessions/logout",{
+    const token=await currentUser.getIdToken();
+    await fetch("/api/sessions/logout",{
       method:"POST",
-      body:JSON.stringify({sessionId:sessionId()})
-    }).catch(()=>{});
-    await signOut(auth);
-  }finally{
-    localStorage.removeItem(SESSION_KEY);
-    location.replace("/login.html");
-  }
+      headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json","X-Session-Id":getSessionId()},
+      body:JSON.stringify({sessionId:getSessionId()})
+    });
+  }catch(error){console.warn(error);}
+  localStorage.removeItem(SESSION_KEY);
+  await signOut(auth);
+  location.replace("/login.html");
 });
-
-async function initialize(user){
-  currentUser=user;
-  const snapshot=await getDoc(doc(db,"users",user.uid));
-  if(!snapshot.exists())throw new Error("ユーザー情報が登録されていません。");
-  currentProfile=snapshot.data();
-  if(currentProfile.role!=="admin")throw new Error("管理者権限が必要です。");
-
-  $("adminName").textContent=currentProfile.displayName||user.email||"管理者";
-  $("profileName").textContent=currentProfile.displayName||"未設定";
-  $("profileEmail").textContent=user.email||"--";
-
-  await loadDashboard();
-  if(refreshTimer)clearInterval(refreshTimer);
-  refreshTimer=setInterval(loadDashboard,60000);
-}
 
 await authPersistenceReady;
 onAuthStateChanged(auth,async user=>{
   if(!user){location.replace("/login.html");return;}
+  currentUser=user;
   try{
-    await initialize(user);
+    const snapshot=await getDoc(doc(db,"users",user.uid));
+    if(!snapshot.exists())throw new Error("ユーザー情報が登録されていません。");
+    const profile=snapshot.data();
+    if(profile.role!=="admin")throw new Error("管理者権限が必要です。");
+    $("adminName").textContent=profile.displayName||user.email||"管理者";
+    await refresh();
+    if(refreshTimer)clearInterval(refreshTimer);
+    refreshTimer=setInterval(refresh,60000);
   }catch(error){
-    console.error(error);
-    notice(error.message);
+    console.error(error);showNotice("pageNotice",error.message);
   }
 });
 </script>
