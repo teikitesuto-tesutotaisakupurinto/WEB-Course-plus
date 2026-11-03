@@ -1,25 +1,26 @@
-import { auth } from "/assets/js/firebase.js";
-import { signOut } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
-const SESSION_KEY = "wcp_session_id";
-const API_BASE = "";
+import { auth } from "/assets/js/firebase.js";
+
+import {
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+const SESSION_KEY = "web-course-plus-device-session";
 
 let heartbeatTimer = null;
 let heartbeatRunning = false;
+let logoutInProgress = false;
 
-/* ==============================
-   セッション管理
-============================== */
+/* ========================================
+   端末セッション
+======================================== */
 
 export function getSessionId() {
-  return sessionStorage.getItem(SESSION_KEY) ||
-         localStorage.getItem(SESSION_KEY) ||
-         "";
+  return localStorage.getItem(SESSION_KEY) || "";
 }
 
 export function setSessionId(value) {
   if (!value) {
-    sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
     return;
   }
@@ -28,16 +29,90 @@ export function setSessionId(value) {
 }
 
 export function createSessionId() {
-  if (crypto.randomUUID) {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
 
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
-/* ==============================
+/* ========================================
+   日時変換
+======================================== */
+
+export function toDate(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value.toDate === "function") {
+    const date = value.toDate();
+    return date instanceof Date && !Number.isNaN(date.getTime())
+      ? date
+      : null;
+  }
+
+  if (typeof value === "number" || typeof value === "string") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (typeof value === "object" && value.seconds !== undefined) {
+    const date = new Date(
+      Number(value.seconds) * 1000 +
+      Math.floor(Number(value.nanoseconds || 0) / 1000000)
+    );
+
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  return null;
+}
+
+export function formatDate(value) {
+  const date = toDate(value);
+
+  if (!date) return "-";
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
+export function formatDateTime(value) {
+  const date = toDate(value);
+
+  if (!date) return "-";
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+export function formatTime(value) {
+  const date = toDate(value);
+
+  if (!date) return "-";
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+/* ========================================
    サイドバー
-============================== */
+======================================== */
 
 export function initializeSidebar() {
   const sidebar = document.querySelector(
@@ -45,7 +120,7 @@ export function initializeSidebar() {
   );
 
   const toggleButtons = document.querySelectorAll(
-    "[data-sidebar-toggle], .menu-toggle"
+    "[data-sidebar-toggle]"
   );
 
   if (!sidebar) return;
@@ -58,39 +133,28 @@ export function initializeSidebar() {
     button.addEventListener("click", event => {
       event.preventDefault();
 
-      sidebar.classList.toggle("is-open");
-      document.body.classList.toggle("sidebar-open");
+      const opened = sidebar.classList.toggle("is-open");
 
-      button.setAttribute(
-        "aria-expanded",
-        sidebar.classList.contains("is-open") ? "true" : "false"
-      );
+      document.body.classList.toggle("sidebar-open", opened);
+
+      button.setAttribute("aria-expanded", String(opened));
     });
   });
 
   document.addEventListener("click", event => {
     if (window.innerWidth > 800) return;
 
-    const clickedInsideSidebar = sidebar.contains(event.target);
-
-    const clickedToggle = event.target.closest(
-      "[data-sidebar-toggle], .menu-toggle"
-    );
-
-    if (!clickedInsideSidebar && !clickedToggle) {
+    if (
+      sidebar.classList.contains("is-open") &&
+      !sidebar.contains(event.target) &&
+      !event.target.closest("[data-sidebar-toggle]")
+    ) {
       sidebar.classList.remove("is-open");
       document.body.classList.remove("sidebar-open");
 
       toggleButtons.forEach(button => {
         button.setAttribute("aria-expanded", "false");
       });
-    }
-  });
-
-  window.addEventListener("resize", () => {
-    if (window.innerWidth > 800) {
-      sidebar.classList.remove("is-open");
-      document.body.classList.remove("sidebar-open");
     }
   });
 
@@ -105,14 +169,21 @@ export function initializeSidebar() {
         link.classList.add("active");
       }
     } catch (error) {
-      console.warn("メニューURL確認エラー:", error);
+      console.warn("メニューURLの確認に失敗しました。", error);
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 800) {
+      sidebar.classList.remove("is-open");
+      document.body.classList.remove("sidebar-open");
     }
   });
 }
 
-/* ==============================
+/* ========================================
    フッター
-============================== */
+======================================== */
 
 export function renderFooter() {
   const footer = document.getElementById("app-footer");
@@ -123,9 +194,9 @@ export function renderFooter() {
     "© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.";
 }
 
-/* ==============================
-   メッセージ表示
-============================== */
+/* ========================================
+   メッセージ
+======================================== */
 
 export function showMessage(
   message,
@@ -137,7 +208,6 @@ export function showMessage(
   if (!target) return;
 
   target.textContent = String(message ?? "");
-
   target.className = `message message-${type}`;
   target.hidden = false;
 }
@@ -151,9 +221,9 @@ export function hideMessage(targetId = "message") {
   target.textContent = "";
 }
 
-/* ==============================
+/* ========================================
    HTMLエスケープ
-============================== */
+======================================== */
 
 export function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => {
@@ -171,62 +241,9 @@ export function escapeHTML(value) {
 
 export const escapeHtml = escapeHTML;
 
-/* ==============================
-   日付・時刻
-============================== */
-
-export function formatDate(value) {
-  if (!value) return "-";
-
-  const date = value?.toDate
-    ? value.toDate()
-    : new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(date);
-}
-
-export function formatDateTime(value) {
-  if (!value) return "-";
-
-  const date = value?.toDate
-    ? value.toDate()
-    : new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-export function formatTime(value) {
-  if (!value) return "-";
-
-  const date = value?.toDate
-    ? value.toDate()
-    : new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-/* ==============================
+/* ========================================
    API通信
-============================== */
+======================================== */
 
 export async function apiFetch(path, options = {}) {
   const user = auth.currentUser;
@@ -235,11 +252,11 @@ export async function apiFetch(path, options = {}) {
     throw new Error("ログインしてください。");
   }
 
-  const idToken = await user.getIdToken();
+  const token = await user.getIdToken();
 
   const headers = new Headers(options.headers || {});
 
-  headers.set("Authorization", `Bearer ${idToken}`);
+  headers.set("Authorization", `Bearer ${token}`);
 
   const sessionId = getSessionId();
 
@@ -256,19 +273,18 @@ export async function apiFetch(path, options = {}) {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(path, {
     ...options,
     headers,
-    credentials: "same-origin"
+    credentials: "same-origin",
+    cache: "no-store"
   });
 
-  const result = await response.json().catch(() => ({
-    success: false,
-    message: "サーバーから正しい応答を受信できませんでした。"
-  }));
+  const result = await response.json().catch(() => ({}));
 
   if (!response.ok || result.success === false) {
     const error = new Error(
+      result.error ||
       result.message ||
       `通信に失敗しました。(HTTP ${response.status})`
     );
@@ -290,24 +306,32 @@ export async function apiFetch(path, options = {}) {
   return result;
 }
 
-/* ==============================
+/* ========================================
    強制ログアウト
-============================== */
+======================================== */
 
 export async function forceLogout() {
+  if (logoutInProgress) return;
+
+  logoutInProgress = true;
+
   stopSessionHeartbeat();
   setSessionId("");
 
-  await signOut(auth).catch(() => {});
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.warn("Firebaseログアウト処理:", error);
+  }
 
   if (location.pathname !== "/login.html") {
     location.replace("/login.html?reason=session");
   }
 }
 
-/* ==============================
+/* ========================================
    端末セッション登録
-============================== */
+======================================== */
 
 export async function registerDeviceSession() {
   const user = auth.currentUser;
@@ -323,44 +347,37 @@ export async function registerDeviceSession() {
     setSessionId(sessionId);
   }
 
-  try {
-    const result = await apiFetch("/api/sessions/register", {
-      method: "POST",
-      body: JSON.stringify({
-        sessionId,
-        deviceName: navigator.userAgent.slice(0, 180)
-      })
-    });
+  const result = await apiFetch("/api/sessions/register", {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId,
+      deviceName: navigator.userAgent.slice(0, 180)
+    })
+  });
 
-    if (!result.success) {
-      throw new Error(
-        result.message || "端末登録に失敗しました。"
-      );
-    }
-
-    startSessionHeartbeat();
-
-    return result;
-
-  } catch (error) {
-    console.error("端末登録エラー:", error);
-    throw error;
+  if (!result.success) {
+    throw new Error(
+      result.error || result.message || "端末登録に失敗しました。"
+    );
   }
+
+  startSessionHeartbeat();
+
+  return result;
 }
 
-/* ==============================
+/* ========================================
    セッション定期確認
-============================== */
+======================================== */
 
 export function startSessionHeartbeat() {
   stopSessionHeartbeat();
 
   if (!auth.currentUser || !getSessionId()) return;
 
-  const sendHeartbeat = async () => {
+  const heartbeat = async () => {
     if (heartbeatRunning) return;
-    if (!auth.currentUser) return;
-    if (!getSessionId()) return;
+    if (!auth.currentUser || !getSessionId()) return;
 
     heartbeatRunning = true;
 
@@ -371,9 +388,8 @@ export function startSessionHeartbeat() {
           sessionId: getSessionId()
         })
       });
-
     } catch (error) {
-      console.error("セッション確認エラー:", error);
+      console.error("端末セッション確認エラー:", error);
 
       if (
         error.status === 401 ||
@@ -383,17 +399,16 @@ export function startSessionHeartbeat() {
       ) {
         await forceLogout();
       }
-
     } finally {
       heartbeatRunning = false;
     }
   };
 
-  sendHeartbeat();
+  heartbeat();
 
   heartbeatTimer = window.setInterval(
-    sendHeartbeat,
-    30000
+    heartbeat,
+    30 * 1000
   );
 }
 
@@ -406,14 +421,12 @@ export function stopSessionHeartbeat() {
   heartbeatRunning = false;
 }
 
-/* ==============================
+/* ========================================
    ログアウト
-============================== */
+======================================== */
 
 export function initializeLogout() {
-  document.querySelectorAll(
-    "[data-logout], .logout-button, .logout"
-  ).forEach(button => {
+  document.querySelectorAll("[data-logout]").forEach(button => {
     if (button.dataset.logoutInitialized === "true") return;
 
     button.dataset.logoutInitialized = "true";
@@ -421,12 +434,11 @@ export function initializeLogout() {
     button.addEventListener("click", async event => {
       event.preventDefault();
 
-      if (button.disabled) return;
+      if (button.disabled || logoutInProgress) return;
 
       button.disabled = true;
 
       const originalText = button.textContent;
-
       button.textContent = "ログアウト中...";
 
       try {
@@ -435,14 +447,9 @@ export function initializeLogout() {
         if (auth.currentUser && sessionId) {
           await apiFetch("/api/sessions/logout", {
             method: "POST",
-            body: JSON.stringify({
-              sessionId
-            })
+            body: JSON.stringify({ sessionId })
           }).catch(error => {
-            console.warn(
-              "サーバー側ログアウト通知:",
-              error
-            );
+            console.warn("サーバー側ログアウト通知:", error);
           });
         }
 
@@ -452,7 +459,6 @@ export function initializeLogout() {
         await signOut(auth);
 
         location.replace("/login.html");
-
       } catch (error) {
         console.error("ログアウトエラー:", error);
 
@@ -468,9 +474,9 @@ export function initializeLogout() {
   });
 }
 
-/* ==============================
+/* ========================================
    共通初期化
-============================== */
+======================================== */
 
 export function initializeCommonLayout() {
   initializeSidebar();
