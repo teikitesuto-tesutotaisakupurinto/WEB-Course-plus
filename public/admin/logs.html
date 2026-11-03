@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>操作ログ | WEB Course-plus</title>
+<style>
+:root{font-family:Inter,"Noto Sans JP",sans-serif;color:#182334;background:#f4f7fb;--navy:#14263f;--blue:#2563eb;--border:#dfe6ef;--muted:#64748b}*{box-sizing:border-box}body{margin:0}.topbar{height:66px;position:fixed;z-index:5;inset:0 0 auto;background:var(--navy);color:white;display:flex;align-items:center;padding:0 22px;gap:16px}.toggle{background:none;border:1px solid #ffffff55;color:white;border-radius:7px;padding:8px 12px;cursor:pointer}.brand{font-weight:750}.right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:13px}.logout{background:transparent;color:white;border:1px solid #ffffff55;border-radius:7px;padding:8px 12px;cursor:pointer}.sidebar{position:fixed;top:66px;bottom:0;width:250px;background:white;border-right:1px solid var(--border);padding:22px 14px;z-index:4;transition:.2s}.navhead{font-size:11px;color:#94a3b8;font-weight:bold;padding:9px 12px}.nav{display:block;padding:12px;border-radius:7px;text-decoration:none;color:#475569;font-size:13px;font-weight:600;margin:3px 0}.nav:hover{background:#f1f5f9}.active{background:#eff6ff;color:#1d4ed8}main{margin-left:250px;padding:96px 30px 30px;transition:.2s}body.closed .sidebar{transform:translateX(-100%)}body.closed main{margin-left:0}h1{font-size:25px;color:var(--navy);margin:0 0 7px}.sub{font-size:13px;color:var(--muted);margin:0 0 24px}.panel{background:white;border:1px solid var(--border);border-radius:10px;margin-bottom:18px;overflow:hidden}.head{padding:17px 19px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}.head h2{font-size:14px;margin:0}.body{padding:19px}.filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:15px}input,select{padding:10px 12px;border:1px solid #cbd5e1;border-radius:7px;background:white;font:inherit;font-size:13px;min-width:150px}.btn{padding:10px 14px;border:0;border-radius:7px;background:var(--blue);color:white;font-size:12px;font-weight:650;cursor:pointer}.secondary{background:#e2e8f0;color:#334155}.btn:disabled{opacity:.5;cursor:not-allowed}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:760px}th,td{text-align:left;padding:13px 12px;border-bottom:1px solid #edf1f5;font-size:12px;vertical-align:top}th{color:#64748b;background:#f8fafc;font-weight:700}td{color:#334155}.action{font-weight:700}.meta{color:#64748b;overflow-wrap:anywhere}.empty{text-align:center;color:#94a3b8;padding:30px}.notice{display:none;padding:12px;border-radius:7px;font-size:12px;margin-bottom:14px}.notice.show{display:block}.error{background:#fef2f2;color:#991b1b}.success{background:#f0fdf4;color:#166534}.pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:15px;font-size:12px;color:#64748b}.pagination button{padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:white;cursor:pointer}.pagination button:disabled{opacity:.4;cursor:not-allowed}.muted{font-size:11px;color:#94a3b8}footer{text-align:center;border-top:1px solid var(--border);padding:20px;color:#94a3b8;font-size:11px;margin-top:30px}@media(max-width:700px){.sidebar{box-shadow:8px 0 20px #14263f12}main{margin-left:0;padding:88px 14px 25px}.topbar{padding:0 13px}.brand{font-size:14px}.right span{display:none}.pagination{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header class="topbar"><button class="toggle" id="menuToggle">☰</button><div class="brand">WEB Course-plus</div><div class="right"><span>システム管理者</span><span id="adminName">確認中</span><button class="logout" id="logout">ログアウト</button></div></header>
+<aside class="sidebar"><div class="navhead">ADMINISTRATION</div><a class="nav" href="/admin/dashboard.html">ダッシュボード</a><a class="nav" href="/admin/sessions.html">端末セッション管理</a><a class="nav" href="/admin/settings.html">システム設定</a><a class="nav active" href="/admin/logs.html">操作ログ</a></aside>
+<main>
+<h1>管理者操作ログ</h1><p class="sub">管理者による設定変更や端末セッション操作などの履歴を確認できます。</p>
+<div id="notice" class="notice"></div>
+<section class="panel">
+<div class="head"><h2>操作履歴</h2><button class="btn secondary" id="refresh">再読み込み</button></div>
+<div class="body">
+<div class="filters">
+<input type="search" id="keyword" placeholder="管理者・操作内容で検索">
+<select id="actionFilter"><option value="">すべての操作</option><option value="maintenance">メンテナンス</option><option value="session">セッション</option><option value="settings">設定変更</option><option value="login">ログイン</option></select>
+<input type="date" id="fromDate" aria-label="開始日">
+<input type="date" id="toDate" aria-label="終了日">
+<button class="btn" id="search">検索</button>
+<button class="btn secondary" id="clear">条件クリア</button>
+</div>
+<div class="tablewrap">
+<table>
+<thead><tr><th>日時</th><th>管理者</th><th>操作内容</th><th>対象</th><th>詳細</th></tr></thead>
+<tbody id="logRows"><tr><td colspan="5" class="empty">読み込み中...</td></tr></tbody>
+</table>
+</div>
+<div class="pagination">
+<span id="pageInfo">0件</span>
+<div><button id="prev">前へ</button> <button id="next">次へ</button></div>
+</div>
+<p class="muted">※ この画面からログの編集・削除はできません。監査記録の保全を優先しています。</p>
+</div>
+</section>
+<footer>© 2026 定期テスト対策プリント運営事務局. All Rights Reserved.</footer>
+</main>
+<script type="module">
+import{auth,db,authPersistenceReady}from"/assets/js/firebase.js";
+import{onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+import{doc,getDoc}from"https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+const $=id=>document.getElementById(id),KEY="web-course-plus-device-session",PAGE_SIZE=30;
+let user=null,page=0,logs=[],filtered=[];
+function sid(){let x=localStorage.getItem(KEY);if(!x){x=crypto.randomUUID();localStorage.setItem(KEY,x)}return x}
+async function api(url,opt={}){const h=new Headers(opt.headers||{});h.set("Authorization","Bearer "+await user.getIdToken());h.set("X-Session-Id",sid());if(opt.body)h.set("Content-Type","application/json");const r=await fetch(url,{...opt,headers:h,cache:"no-store"});if(r.status===401){await signOut(auth);location.replace("/login.html");throw Error("セッションが無効です。再ログインしてください。")}return r}
+function notice(msg,type="error"){$("notice").textContent=msg;$("notice").className="notice show "+type}
+function timestamp(v){if(!v)return null;if(typeof v==="number")return new Date(v);if(typeof v==="string")return new Date(v);if(v.seconds)return new Date(v.seconds*1000);if(v._seconds)return new Date(v._seconds*1000);return null}
+function fmt(v){const d=timestamp(v);return d&&!Number.isNaN(d.getTime())?d.toLocaleString("ja-JP"):"日時不明"}
+function classify(l){const a=String(l.action||"").toLowerCase();if(a.includes("maintenance"))return"maintenance";if(a.includes("session")||a.includes("revoke"))return"session";if(a.includes("setting"))return"settings";if(a.includes("login"))return"login";return"other"}
+function render(){const q=$("keyword").value.trim().toLowerCase(),f=$("actionFilter").value,from=$("fromDate").value,to=$("toDate").value;filtered=logs.filter(l=>{const hay=[l.action,l.adminEmail,l.adminUid,l.target,l.targetId,l.details,l.description].join(" ").toLowerCase();const d=timestamp(l.createdAt||l.timestamp);const day=d&&!Number.isNaN(d.getTime())?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`:"";return(!q||hay.includes(q))&&(!f||classify(l)===f)&&(!from||(day&&day>=from))&&(!to||(day&&day<=to))});page=0;draw()}
+function draw(){const body=$("logRows");body.replaceChildren();const start=page*PAGE_SIZE,items=filtered.slice(start,start+PAGE_SIZE);if(!items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="該当する操作ログはありません。";tr.append(td);body.append(tr)}for(const l of items){const tr=document.createElement("tr");const values=[fmt(l.createdAt||l.timestamp),l.adminEmail||l.adminUid||"管理者不明",l.action||"操作",l.target||l.targetId||"—",l.details||l.description||"—"];values.forEach((v,i)=>{const td=document.createElement("td");td.textContent=String(v);if(i===2)td.className="action";if(i===4)td.className="meta";tr.append(td)});body.append(tr)}$("pageInfo").textContent=`${filtered.length}件中 ${filtered.length?start+1:0}〜${Math.min(start+PAGE_SIZE,filtered.length)}件を表示`; $("prev").disabled=page===0;$("next").disabled=start+PAGE_SIZE>=filtered.length}
+async function load(){ $("logRows").innerHTML='<tr><td colspan="5" class="empty">読み込み中...</td></tr>';try{const r=await api("/api/admin/logs?limit=500");const d=await r.json();if(!r.ok||!d.success)throw Error(d.error||"操作ログを取得できません。");logs=Array.isArray(d.logs)?d.logs:[];render()}catch(e){notice(e.message);$("logRows").innerHTML='<tr><td colspan="5" class="empty">読み込みに失敗しました。</td></tr>'}}
+$("search").onclick=render;$("refresh").onclick=load;$("clear").onclick=()=>{$("keyword").value="";$("actionFilter").value="";$("fromDate").value="";$("toDate").value="";render()};$("keyword").addEventListener("keydown",e=>{if(e.key==="Enter")render()});$("prev").onclick=()=>{if(page>0){page--;draw()}};$("next").onclick=()=>{if((page+1)*PAGE_SIZE<filtered.length){page++;draw()}};$("menuToggle").onclick=()=>document.body.classList.toggle("closed");
+$("logout").onclick=async()=>{if(!confirm("ログアウトしますか？"))return;try{await api("/api/sessions/logout",{method:"POST",body:JSON.stringify({sessionId:sid()})})}catch(e){}await signOut(auth);localStorage.removeItem(KEY);location.replace("/login.html")};
+await authPersistenceReady;onAuthStateChanged(auth,async u=>{if(!u){location.replace("/login.html");return}user=u;try{const p=await getDoc(doc(db,"users",u.uid));if(!p.exists()||p.data().role!=="admin")throw Error("管理者権限がありません。");$("adminName").textContent=p.data().displayName||u.email;const h=await api("/api/sessions/heartbeat",{method:"POST",body:JSON.stringify({sessionId:sid()})});if(!h.ok)throw Error("端末セッションを確認できません。");await load()}catch(e){alert(e.message);await signOut(auth);location.replace("/login.html")}});
+</script>
+</body>
+</html>
