@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アクセス権限がありません | WEB Course-plus</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #f3f6fb;
+      color: #172b4d;
+      font-family: Arial, "Noto Sans JP", sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      padding: 40px 32px;
+      text-align: center;
+      background: #fff;
+      border: 1px solid #e1e7f0;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(20, 38, 63, .08);
+    }
+
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: #fff3e0;
+      color: #d97706;
+      font-size: 30px;
+      font-weight: bold;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: 23px;
+    }
+
+    .description {
+      margin: 0 0 26px;
+      color: #64748b;
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    .account {
+      margin-bottom: 24px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #f7f9fc;
+      text-align: left;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .account strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 46px;
+      border: 0;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    .message {
+      margin-top: 16px;
+      color: #dc2626;
+      font-size: 13px;
+    }
+
+    footer {
+      margin-top: 28px;
+      color: #94a3b8;
+      font-size: 11px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <div class="icon">!</div>
+
+    <h1>アクセス権限がありません</h1>
+
+    <p class="description">
+      このページを利用するための権限がありません。<br>
+      ご利用のアカウントに割り当てられた権限をご確認ください。<br>
+      必要な場合は、運営管理者にお問い合わせください。
+    </p>
+
+    <div class="account">
+      <strong>ログイン中のアカウント</strong>
+      <div id="userName">確認中...</div>
+      <div id="userEmail"></div>
+      <div id="userRole"></div>
+    </div>
+
+    <button id="logoutButton" type="button" disabled>
+      ログアウト
+    </button>
+
+    <div id="message" class="message"></div>
+
+    <footer>
+      © 2026 定期テスト対策プリント運営事務局. All Rights Reserved.
+    </footer>
+  </main>
+
+  <script type="module">
+    import {
+      getAuthenticatedProfile,
+      logout
+    } from "./assets/js/auth.js";
+
+    const userName = document.getElementById("userName");
+    const userEmail = document.getElementById("userEmail");
+    const userRole = document.getElementById("userRole");
+    const logoutButton = document.getElementById("logoutButton");
+    const message = document.getElementById("message");
+
+    const roleNames = {
+      admin: "管理者",
+      teacher: "講師",
+      student: "生徒"
+    };
+
+    async function initializePage() {
+      try {
+        const result = await getAuthenticatedProfile();
+
+        if (!result) {
+          window.location.replace("/login.html");
+          return;
+        }
+
+        const { user, profile } = result;
+
+        userName.textContent =
+          profile.displayName ||
+          profile.name ||
+          user.displayName ||
+          "ユーザー";
+
+        userEmail.textContent = user.email || "";
+
+        userRole.textContent =
+          "現在の権限：" + (roleNames[profile.role] || "未設定");
+
+        logoutButton.disabled = false;
+
+      } catch (error) {
+        console.error("[Permission] 認証確認エラー:", error);
+
+        if (error.status === 401 || error.status === 403) {
+          window.location.replace("/login.html?reason=session");
+          return;
+        }
+
+        message.textContent =
+          "アカウント情報を確認できませんでした。ページを再読み込みしてください。";
+      }
+    }
+
+    logoutButton.addEventListener("click", async () => {
+      logoutButton.disabled = true;
+      logoutButton.textContent = "ログアウト中...";
+
+      try {
+        await logout();
+      } catch (error) {
+        message.textContent = error.message;
+        logoutButton.disabled = false;
+        logoutButton.textContent = "ログアウト";
+      }
+    });
+
+    initializePage();
+  </script>
+</body>
+</html>
