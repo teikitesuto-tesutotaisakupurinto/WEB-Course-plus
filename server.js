@@ -214,22 +214,14 @@ async function authenticate(req, res, next) {
       profile
     };
 
-    /*
-     * メンテナンス中に許可するAPI
-     * ・セッション登録
-     * ・Heartbeat
-     * ・ログアウト
-     * ・ログイン後アクセス判定
-     *
-     * 管理者はすべて利用可能。
-     */
-
+    // メンテナンス中も認証・セッション維持に必要なAPIは許可する。
     const maintenanceExemptPaths = new Set([
       "/api/sessions/register",
       "/api/sessions/heartbeat",
       "/api/sessions/logout",
       "/api/system/access",
-      "/api/system/status"
+      "/api/system/status",
+      "/api/me"
     ]);
 
     if (
@@ -420,7 +412,6 @@ async function cleanStaleSessions(uid) {
 
 async function initializeFirestore() {
   await getSystemSettings();
-
   console.log("Firestore settings/system initialized");
 }
 
@@ -510,10 +501,7 @@ app.get(
         "アクセス状態を確認できませんでした。"
       );
     }
-  }
-);
-
-/* セッション登録 */
+    /* セッション登録 */
 
 app.post(
   "/api/sessions/register",
@@ -546,7 +534,6 @@ app.post(
 
           const activeOthers = allSnap.docs.filter(docSnap => {
             if (docSnap.id === sid) return false;
-
             return docSnap.data().revoked !== true;
           });
 
@@ -567,7 +554,9 @@ app.post(
               sessionId: sid,
               email: req.user.email || "",
               displayName:
-                req.user.profile.displayName || "",
+                req.user.profile.displayName ||
+                req.user.profile.name ||
+                "",
               role: req.user.profile.role,
               active: true,
               revoked: false,
@@ -712,8 +701,12 @@ app.get(
         email: req.user.email,
         role: req.user.profile.role,
         displayName:
-          req.user.profile.displayName || "",
-        status: req.user.profile.status || "active"
+          req.user.profile.displayName ||
+          req.user.profile.name ||
+          "",
+        name: req.user.profile.name || "",
+        status: req.user.profile.status || "active",
+        active: req.user.profile.active !== false
       }
     });
   }
@@ -893,7 +886,6 @@ app.get(
 
       for (const userDoc of users.docs) {
         const profile = userDoc.data();
-
         const snap = await sessionCollection(userDoc.id).get();
 
         for (const sessionDoc of snap.docs) {
@@ -906,6 +898,7 @@ app.get(
             displayName:
               s.displayName ||
               profile.displayName ||
+              profile.name ||
               "",
             role: s.role || profile.role || "",
             sessionId: sessionDoc.id,
@@ -1039,8 +1032,7 @@ app.delete(
     }
   }
 );
-
-/* 管理者：設定取得 */
+    /* 管理者：設定取得 */
 
 app.get(
   "/api/admin/settings",
@@ -1122,7 +1114,10 @@ app.patch(
             )
           : "settings_updated",
         "settings/system",
-        JSON.stringify(updates)
+        JSON.stringify({
+          ...updates,
+          updatedAt: undefined
+        })
       );
 
       res.json({ success: true });
@@ -1150,7 +1145,7 @@ app.get(
     try {
       const limit = Math.min(
         Math.max(Number(req.query.limit) || 50, 1),
-        200
+        500
       );
 
       const snap = await db.collection("adminLogs")
@@ -1322,7 +1317,7 @@ app.get(
     try {
       const limit = Math.min(
         Math.max(Number(req.query.limit) || 30, 1),
-        200
+        500
       );
 
       const snap = await db.collection("securityEvents")
@@ -1424,8 +1419,7 @@ app.post("/api/security/event", async (req, res) => {
     );
   }
 });
-
-/* 予約メンテナンスの自動開始・終了 */
+    /* 予約メンテナンスの自動開始・終了 */
 
 async function processMaintenanceSchedule() {
   const ref = db.collection("settings").doc("system");
@@ -1499,7 +1493,6 @@ function toDate(value) {
 
   if (typeof value === "string") {
     const d = new Date(value);
-
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
@@ -1671,6 +1664,7 @@ app.post(
 
       const displayName =
         profile.displayName ||
+        profile.name ||
         req.user.email ||
         (
           profile.role === "teacher"
@@ -1731,7 +1725,7 @@ if (fs.existsSync(publicDirectory)) {
     express.static(publicDirectory, {
       index: false,
       extensions: ["html"],
-      maxAge: "1h"
+      maxAge: 0
     })
   );
 
@@ -1812,3 +1806,5 @@ async function startServer() {
 }
 
 startServer();
+  }
+);
