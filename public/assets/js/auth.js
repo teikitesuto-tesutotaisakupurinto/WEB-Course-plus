@@ -31,14 +31,16 @@ export async function getCurrentUser() {
   await authPersistenceReady;
 
   return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(
+    let unsubscribe = null;
+
+    unsubscribe = onAuthStateChanged(
       auth,
       user => {
-        unsubscribe();
+        if (unsubscribe) unsubscribe();
         resolve(user);
       },
       error => {
-        unsubscribe();
+        if (unsubscribe) unsubscribe();
         reject(error);
       }
     );
@@ -46,38 +48,17 @@ export async function getCurrentUser() {
 }
 
 /* ========================================
-   プロフィール取得
-======================================== */
-
-export async function getProfile(uid) {
-  if (!uid) {
-    throw new Error("ユーザーIDが指定されていません。");
-  }
-
-  const snapshot = await getDoc(
-    doc(db, "users", uid)
-  );
-
-  if (!snapshot.exists()) {
-    throw new Error("利用者情報が登録されていません。");
-  }
-
-  return {
-    uid,
-    ...snapshot.data()
-  };
-}
-
-/* ========================================
    利用状態確認
 ======================================== */
 
-function isActiveProfile(profile) {
+export function isActiveProfile(profile) {
   if (!profile || profile.active === false) {
     return false;
   }
 
-  const status = String(profile.status || "active").toLowerCase();
+  const status = String(
+    profile.status || "active"
+  ).toLowerCase();
 
   return ![
     "inactive",
@@ -85,6 +66,76 @@ function isActiveProfile(profile) {
     "suspended",
     "deleted"
   ].includes(status);
+}
+
+/* ========================================
+   プロフィール取得
+
+   Firestoreの直接読み取りが拒否された場合は
+   サーバー側のAdmin SDK APIへフォールバックする。
+======================================== */
+
+export async function getProfile(uid) {
+  if (!uid) {
+    throw new Error(
+      "ユーザーIDが指定されていません。"
+    );
+  }
+
+  if (
+    auth.currentUser &&
+    auth.currentUser.uid !== uid
+  ) {
+    throw new Error(
+      "他のユーザーのプロフィールは取得できません。"
+    );
+  }
+
+  try {
+    const snapshot = await getDoc(
+      doc(db, "users", uid)
+    );
+
+    if (snapshot.exists()) {
+      return {
+        uid,
+        ...snapshot.data()
+      };
+    }
+
+  } catch (firestoreError) {
+    console.warn(
+      "[Auth] Firestoreプロフィール取得に失敗。サーバーAPIを使用します。",
+      firestoreError
+    );
+  }
+
+  if (!auth.currentUser || !getSessionId()) {
+    throw new Error(
+      "利用者情報を取得できません。再度ログインしてください。"
+    );
+  }
+
+  const response = await apiFetch(
+    "/api/me",
+    {
+      method: "GET"
+    }
+  );
+
+  if (
+    !response.user ||
+    response.user.uid !== uid
+  ) {
+    throw new Error(
+      "サーバーから正しい利用者情報を取得できませんでした。"
+    );
+  }
+
+  return {
+    ...response.user,
+    uid
+  };
 }
 
 /* ========================================
@@ -103,7 +154,19 @@ export async function getAuthenticatedProfile() {
   const profile = await getProfile(user.uid);
 
   if (!isActiveProfile(profile)) {
-    throw new Error("このアカウントは利用できません。");
+    throw new Error(
+      "このアカウントは利用できません。"
+    );
+  }
+
+  if (
+    !["admin", "teacher", "student"].includes(
+      profile.role
+    )
+  ) {
+    throw new Error(
+      "アカウントの権限が正しくありません。"
+    );
   }
 
   return {
@@ -124,19 +187,67 @@ export async function verifyDeviceSession() {
   const sessionId = getSessionId();
 
   if (!sessionId) {
-    throw new Error("端末セッションが登録されていません。");
+    throw new Error(
+      "端末セッションが登録されていません。再度ログインしてください。"
+    );
   }
 
-  const result = await apiFetch("/api/sessions/heartbeat", {
-    method: "POST",
-    body: JSON.stringify({ sessionId })
-  });
+  const result = await apiFetch(
+    "/api/sessions/heartbeat",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        sessionId
+      })
+    }
+  );
 
   if (!result.success) {
-    throw new Error("端末セッションを確認できません。");
+    throw new Error(
+      result.error ||
+      "端末セッションを確認できません。"
+    );
   }
 
   startSessionHeartbeat();
+
+  return true;
+}
+
+/* ========================================
+   メンテナンス判定
+
+   メンテナンス中はログアウトせず、
+   専用画面へ移動する。
+======================================== */
+
+async function checkMaintenanceAccess(role) {
+  const result = await apiFetch(
+    "/api/system/access",
+    {
+      method: "GET"
+    }
+  );
+
+  if (
+    result.role &&
+    result.role !== role
+  ) {
+    throw new Error(
+      "サーバーの権限情報と利用者情報が一致しません。"
+    );
+  }
+
+  if (
+    result.maintenance === true &&
+    role !== "admin"
+  ) {
+    window.location.replace(
+      "/maintenance.html"
+    );
+
+    return false;
+  }
 
   return true;
 }
@@ -149,10 +260,16 @@ export async function requireRole(expectedRole) {
   try {
     await authPersistenceReady;
 
-    const result = await getAuthenticatedProfile();
+    const result =
+      await getAuthenticatedProfile();
 
     if (!result) {
-      window.location.replace("/login.html");
+      stopSessionHeartbeat();
+
+      window.location.replace(
+        "/login.html"
+      );
+
       return null;
     }
 
@@ -163,17 +280,24 @@ export async function requireRole(expectedRole) {
       : [expectedRole];
 
     if (!allowedRoles.includes(profile.role)) {
-      const destination = getDashboardUrl(profile.role);
-
-      if (destination === "/login.html") {
-        await signOut(auth);
-      }
+      const destination =
+        getDashboardUrl(profile.role);
 
       window.location.replace(destination);
+
       return null;
     }
 
+    // メンテナンス中もセッション確認は実施する。
     await verifyDeviceSession();
+
+    // サーバー側でメンテナンス状態を確認する。
+    const allowed =
+      await checkMaintenanceAccess(profile.role);
+
+    if (!allowed) {
+      return null;
+    }
 
     return {
       user,
@@ -181,16 +305,53 @@ export async function requireRole(expectedRole) {
     };
 
   } catch (error) {
-    console.error("[Auth] Access check failed:", error);
+    console.error(
+      "[Auth] Access check failed:",
+      error
+    );
 
-    stopSessionHeartbeat();
-    setSessionId("");
+    // メンテナンス応答ではログアウトしない。
+    if (
+      error.maintenance === true ||
+      error.status === 503
+    ) {
+      window.location.replace(
+        "/maintenance.html"
+      );
 
-    if (auth.currentUser) {
-      await signOut(auth).catch(() => {});
+      return null;
     }
 
-    window.location.replace("/login.html?reason=session");
+    // 401・403は認証または権限の問題として扱う。
+    if (
+      error.status === 401 ||
+      error.status === 403
+    ) {
+      stopSessionHeartbeat();
+      setSessionId("");
+
+      if (auth.currentUser) {
+        await signOut(auth).catch(() => {});
+      }
+
+      window.location.replace(
+        "/login.html?reason=session"
+      );
+
+      return null;
+    }
+
+    // 通信障害や一時的なエラーでは、
+    // 認証情報を勝手に削除しない。
+    const message = encodeURIComponent(
+      error.message ||
+      "認証情報を確認できませんでした。"
+    );
+
+    window.location.replace(
+      `/login.html?reason=error&message=${message}`
+    );
+
     return null;
   }
 }
@@ -203,11 +364,24 @@ export async function logout() {
   try {
     const sessionId = getSessionId();
 
-    if (auth.currentUser && sessionId) {
-      await apiFetch("/api/sessions/logout", {
-        method: "POST",
-        body: JSON.stringify({ sessionId })
-      }).catch(() => {});
+    if (
+      auth.currentUser &&
+      sessionId
+    ) {
+      await apiFetch(
+        "/api/sessions/logout",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            sessionId
+          })
+        }
+      ).catch(error => {
+        console.warn(
+          "サーバー側セッション終了:",
+          error
+        );
+      });
     }
 
     stopSessionHeartbeat();
@@ -215,11 +389,19 @@ export async function logout() {
 
     await signOut(auth);
 
-    window.location.replace("/login.html");
+    window.location.replace(
+      "/login.html"
+    );
 
   } catch (error) {
-    console.error("[Auth] Logout failed:", error);
-    throw new Error("ログアウトに失敗しました。");
+    console.error(
+      "[Auth] Logout failed:",
+      error
+    );
+
+    throw new Error(
+      "ログアウトに失敗しました。"
+    );
   }
 }
 
@@ -233,7 +415,9 @@ export async function getAccessToken() {
   const user = auth.currentUser;
 
   if (!user) {
-    throw new Error("ログインしてください。");
+    throw new Error(
+      "ログインしてください。"
+    );
   }
 
   return user.getIdToken();
@@ -258,7 +442,10 @@ export function getDashboardUrl(role) {
 ======================================== */
 
 export function observeAuthState(callback) {
-  return onAuthStateChanged(auth, callback);
+  return onAuthStateChanged(
+    auth,
+    callback
+  );
 }
 
 /* ========================================
@@ -268,6 +455,7 @@ export function observeAuthState(callback) {
 export const Auth = {
   getCurrentUser,
   getProfile,
+  isActiveProfile,
   getAuthenticatedProfile,
   verifyDeviceSession,
   requireRole,
