@@ -2,6 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() {
       return request.auth != null;
     }
@@ -11,7 +12,8 @@ service cloud.firestore {
     }
 
     function hasUserProfile() {
-      return signedIn() && exists(userPath(request.auth.uid));
+      return signedIn()
+        && exists(userPath(request.auth.uid));
     }
 
     function myProfile() {
@@ -21,32 +23,84 @@ service cloud.firestore {
     function activeUser() {
       return hasUserProfile()
         && myProfile().active != false
-        && (!('status' in myProfile())
-          || !(myProfile().status in ['inactive', 'disabled', 'suspended', 'deleted']));
+        && (
+          !('status' in myProfile())
+          || !(myProfile().status in [
+            'inactive',
+            'disabled',
+            'suspended',
+            'deleted'
+          ])
+        );
     }
 
     function isAdmin() {
-      return activeUser() && myProfile().role == 'admin';
+      return activeUser()
+        && myProfile().role == 'admin';
     }
 
     function isTeacher() {
-      return activeUser() && myProfile().role == 'teacher';
+      return activeUser()
+        && myProfile().role == 'teacher';
     }
 
     function isStudent() {
-      return activeUser() && myProfile().role == 'student';
+      return activeUser()
+        && myProfile().role == 'student';
     }
 
+    function lessonExists(lessonId) {
+      return exists(
+        /databases/$(database)/documents/lessons/$(lessonId)
+      );
+    }
+
+    function lessonData(lessonId) {
+      return get(
+        /databases/$(database)/documents/lessons/$(lessonId)
+      ).data;
+    }
+
+    function isLessonParticipant(lessonId) {
+      return activeUser()
+        && lessonExists(lessonId)
+        && (
+          (
+            isTeacher()
+            && lessonData(lessonId).teacherId == request.auth.uid
+          )
+          ||
+          (
+            isStudent()
+            && lessonData(lessonId).studentId == request.auth.uid
+          )
+        );
+    }
+
+    function validText(value, maxLength) {
+      return value is string
+        && value.size() <= maxLength;
+    }
+
+    /* 利用者 */
+
     match /users/{uid} {
-      // 自分のプロフィール、管理者の利用者情報、授業相手として必要な講師名のみ取得可能
+
       allow get: if signedIn() && (
         request.auth.uid == uid
         || isAdmin()
-        || (isStudent() && resource.data.role == 'teacher')
+        || (
+          isStudent()
+          && resource.data.role == 'teacher'
+        )
       );
-      // 講師は生徒選択に必要な生徒プロフィール一覧のみ取得可能
-      allow list: if isAdmin() || (isTeacher() && resource.data.role == 'student');
-      // プロフィール更新は信頼されたサーバー側処理に限定
+
+      allow list: if isAdmin()
+        || (
+          isTeacher()
+          && resource.data.role == 'student'
+        );
+
       allow create, update, delete: if false;
 
       match /sessions/{sessionId} {
@@ -54,19 +108,31 @@ service cloud.firestore {
       }
     }
 
+    /* システム設定 */
+
     match /settings/{settingId} {
-      allow get: if signedIn() && settingId == 'system';
+      allow get: if signedIn()
+        && settingId == 'system';
+
       allow list, create, update, delete: if false;
     }
 
+    /* 授業 */
+
     match /lessons/{lessonId} {
-      // クエリには必ず studentId または teacherId の本人条件を含める
+
       allow get, list: if activeUser() && (
         isAdmin()
-        || (isTeacher() && resource.data.teacherId == request.auth.uid)
-        || (isStudent() && resource.data.studentId == request.auth.uid)
+        || (
+          isTeacher()
+          && resource.data.teacherId == request.auth.uid
+        )
+        || (
+          isStudent()
+          && resource.data.studentId == request.auth.uid
+        )
       );
-      // 講師は自分をteacherIdとして、生徒をstudentIdに指定した授業のみ作成可能
+
       allow create: if isTeacher()
         && request.resource.data.teacherId == request.auth.uid
         && request.resource.data.studentId is string
@@ -77,44 +143,92 @@ service cloud.firestore {
         && request.resource.data.endAt is timestamp
         && request.resource.data.endAt > request.resource.data.startAt;
 
-      // 講師は自分が作成した授業だけ変更・削除可能。相手生徒と作成者の差し替えは禁止
       allow update: if isTeacher()
         && resource.data.teacherId == request.auth.uid
         && request.resource.data.teacherId == resource.data.teacherId
         && request.resource.data.studentId == resource.data.studentId;
+
       allow delete: if isTeacher()
         && resource.data.teacherId == request.auth.uid;
-
-      match /{subcollection}/{documentId} {
-        allow read, write: if false;
-      }
     }
 
+    /* 授業記録 */
+
     match /lessonRecords/{recordId} {
+
       allow get, list: if activeUser() && (
         isAdmin()
-        || (isTeacher() && resource.data.teacherId == request.auth.uid)
-        || (isStudent() && resource.data.studentId == request.auth.uid)
+        || (
+          isTeacher()
+          && resource.data.teacherId == request.auth.uid
+        )
+        || (
+          isStudent()
+          && resource.data.studentId == request.auth.uid
+        )
       );
+
       allow create: if isTeacher()
         && request.resource.data.teacherId == request.auth.uid
         && request.resource.data.studentId is string
         && request.resource.data.lessonId is string
-        && exists(/databases/$(database)/documents/lessons/$(request.resource.data.lessonId))
-        && get(/databases/$(database)/documents/lessons/$(request.resource.data.lessonId)).data.teacherId == request.auth.uid
-        && get(/databases/$(database)/documents/lessons/$(request.resource.data.lessonId)).data.studentId == request.resource.data.studentId;
-      allow update, delete: if isTeacher()
+        && lessonExists(request.resource.data.lessonId)
+        && lessonData(request.resource.data.lessonId).teacherId == request.auth.uid
+        && lessonData(request.resource.data.lessonId).studentId == request.resource.data.studentId;
+
+      allow update: if isTeacher()
         && resource.data.teacherId == request.auth.uid
-        && request.resource.data.teacherId == request.auth.uid;
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.studentId == resource.data.studentId;
+
+      allow delete: if isTeacher()
+        && resource.data.teacherId == request.auth.uid;
     }
+
+    /* 授業ホワイトボード */
+
+    match /lessonBoards/{lessonId}/strokes/{strokeId} {
+
+      allow read: if isLessonParticipant(lessonId);
+
+      allow create: if isLessonParticipant(lessonId)
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.mode in ['pen', 'eraser']
+        && request.resource.data.points is list
+        && request.resource.data.points.size() <= 5000;
+
+      allow delete: if isLessonParticipant(lessonId);
+
+      allow update: if false;
+    }
+
+    /* 授業チャット */
+
+    match /lessonMessages/{lessonId}/messages/{messageId} {
+
+      allow read: if isLessonParticipant(lessonId);
+
+      allow create: if isLessonParticipant(lessonId)
+        && request.resource.data.senderId == request.auth.uid
+        && validText(request.resource.data.senderName, 100)
+        && validText(request.resource.data.text, 2000);
+
+      allow update, delete: if false;
+    }
+
+    /* 管理ログ */
 
     match /adminLogs/{logId} {
       allow read, write: if false;
     }
 
+    /* セキュリティイベント */
+
     match /securityEvents/{eventId} {
       allow read, write: if false;
     }
+
+    /* その他はすべて拒否 */
 
     match /{document=**} {
       allow read, write: if false;
