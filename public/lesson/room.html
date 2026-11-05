@@ -295,6 +295,7 @@
 
   <script type="module">
     import { auth, db, authPersistenceReady } from "../assets/js/firebase.js";
+    import { getSessionId } from "../assets/js/common.js";
 
     import {
       doc, getDoc, collection, addDoc, getDocs, onSnapshot, query,
@@ -1117,19 +1118,28 @@
 
     async function connectLiveKit() {
       const idToken = await currentUser.getIdToken();
+      const sessionId = getSessionId();
+
+      if (!sessionId || !/^[A-Za-z0-9_-]{16,100}$/.test(sessionId)) {
+        throw new Error(
+          "端末セッションIDを取得できません。いったんログアウトして再ログインしてください。"
+        );
+      }
 
       const response = await fetch("/api/livekit/token",{
         method:"POST",
         headers:{
           "Content-Type":"application/json",
-          "Authorization":"Bearer "+idToken
+          "Authorization":"Bearer "+idToken,
+          "X-Session-Id":sessionId
         },
-        body:JSON.stringify({lessonId})
+        body:JSON.stringify({lessonId,sessionId}),
+        cache:"no-store"
       });
 
       const data = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
+      if (!response.ok || data.success === false) {
         throw new Error(data.error || data.message || "接続トークンを取得できませんでした。");
       }
 
