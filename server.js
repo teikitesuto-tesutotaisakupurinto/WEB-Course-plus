@@ -501,7 +501,10 @@ app.get(
         "アクセス状態を確認できませんでした。"
       );
     }
-    /* セッション登録 */
+  }
+);
+
+/* セッション登録 */
 
 app.post(
   "/api/sessions/register",
@@ -791,7 +794,6 @@ app.get(
     }
   }
 );
-
 /* 管理者：概要 */
 
 app.get(
@@ -1032,7 +1034,8 @@ app.delete(
     }
   }
 );
-    /* 管理者：設定取得 */
+
+/* 管理者：設定取得 */
 
 app.get(
   "/api/admin/settings",
@@ -1305,7 +1308,6 @@ app.delete(
     }
   }
 );
-
 /* 管理者：セキュリティイベント */
 
 app.get(
@@ -1419,7 +1421,8 @@ app.post("/api/security/event", async (req, res) => {
     );
   }
 });
-    /* 予約メンテナンスの自動開始・終了 */
+
+/* 予約メンテナンスの自動開始・終了 */
 
 async function processMaintenanceSchedule() {
   const ref = db.collection("settings").doc("system");
@@ -1806,5 +1809,3 @@ async function startServer() {
 }
 
 startServer();
-  }
-);
