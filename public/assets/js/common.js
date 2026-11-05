@@ -6,34 +6,61 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
 const SESSION_KEY = "web-course-plus-device-session";
+const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]{16,100}$/;
 
 let heartbeatTimer = null;
 let heartbeatRunning = false;
 let logoutInProgress = false;
+let sessionRegistered = false;
 
 /* ========================================
    端末セッション
 ======================================== */
 
 export function getSessionId() {
-  return localStorage.getItem(SESSION_KEY) || "";
+  const value = String(
+    localStorage.getItem(SESSION_KEY) || ""
+  ).trim();
+
+  if (!SESSION_ID_PATTERN.test(value)) {
+    localStorage.removeItem(SESSION_KEY);
+    sessionRegistered = false;
+    return "";
+  }
+
+  return value;
 }
 
 export function setSessionId(value) {
-  if (!value) {
+  const sessionId = String(value || "").trim();
+
+  if (!SESSION_ID_PATTERN.test(sessionId)) {
     localStorage.removeItem(SESSION_KEY);
+    sessionRegistered = false;
     return;
   }
 
-  localStorage.setItem(SESSION_KEY, value);
+  localStorage.setItem(SESSION_KEY, sessionId);
 }
 
 export function createSessionId() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
 
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+  const random = () => {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+
+    return Array.from(bytes)
+      .map(byte => byte.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
+  return random();
 }
 
 /* ========================================
@@ -51,6 +78,7 @@ export function toDate(value) {
 
   if (typeof value.toDate === "function") {
     const date = value.toDate();
+
     return date instanceof Date && !Number.isNaN(date.getTime())
       ? date
       : null;
@@ -58,6 +86,7 @@ export function toDate(value) {
 
   if (typeof value === "number" || typeof value === "string") {
     const date = new Date(value);
+
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
@@ -260,6 +289,15 @@ export async function apiFetch(path, options = {}) {
 
   const sessionId = getSessionId();
 
+  // セッション登録API以外ではID必須
+  const isRegisterApi = path === "/api/sessions/register";
+
+  if (!isRegisterApi && !sessionId) {
+    throw new Error(
+      "端末セッションIDがありません。ログインし直してください。"
+    );
+  }
+
   if (sessionId) {
     headers.set("X-Session-Id", sessionId);
   }
@@ -340,6 +378,9 @@ export async function registerDeviceSession() {
     throw new Error("ログインしてください。");
   }
 
+  stopSessionHeartbeat();
+  sessionRegistered = false;
+
   let sessionId = getSessionId();
 
   if (!sessionId) {
@@ -347,19 +388,40 @@ export async function registerDeviceSession() {
     setSessionId(sessionId);
   }
 
-  const result = await apiFetch("/api/sessions/register", {
+  if (!SESSION_ID_PATTERN.test(sessionId)) {
+    throw new Error("端末セッションIDを生成できませんでした。");
+  }
+
+  const token = await user.getIdToken();
+
+  const headers = new Headers({
+    "Authorization": `Bearer ${token}`,
+    "X-Session-Id": sessionId,
+    "Content-Type": "application/json"
+  });
+
+  const response = await fetch("/api/sessions/register", {
     method: "POST",
+    headers,
     body: JSON.stringify({
       sessionId,
       deviceName: navigator.userAgent.slice(0, 180)
-    })
+    }),
+    credentials: "same-origin",
+    cache: "no-store"
   });
 
-  if (!result.success) {
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok || result.success === false) {
     throw new Error(
-      result.error || result.message || "端末登録に失敗しました。"
+      result.error ||
+      result.message ||
+      "端末登録に失敗しました。"
     );
   }
+
+  sessionRegistered = true;
 
   startSessionHeartbeat();
 
@@ -373,20 +435,33 @@ export async function registerDeviceSession() {
 export function startSessionHeartbeat() {
   stopSessionHeartbeat();
 
-  if (!auth.currentUser || !getSessionId()) return;
+  if (
+    !auth.currentUser ||
+    !getSessionId() ||
+    !sessionRegistered
+  ) {
+    return;
+  }
 
   const heartbeat = async () => {
     if (heartbeatRunning) return;
-    if (!auth.currentUser || !getSessionId()) return;
+
+    if (
+      !auth.currentUser ||
+      !getSessionId() ||
+      !sessionRegistered
+    ) {
+      return;
+    }
 
     heartbeatRunning = true;
 
     try {
+      const sessionId = getSessionId();
+
       await apiFetch("/api/sessions/heartbeat", {
         method: "POST",
-        body: JSON.stringify({
-          sessionId: getSessionId()
-        })
+        body: JSON.stringify({ sessionId })
       });
     } catch (error) {
       console.error("端末セッション確認エラー:", error);
@@ -455,6 +530,7 @@ export function initializeLogout() {
 
         stopSessionHeartbeat();
         setSessionId("");
+        sessionRegistered = false;
 
         await signOut(auth);
 
