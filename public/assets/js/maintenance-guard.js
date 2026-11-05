@@ -1,4 +1,9 @@
-import { auth, db, authPersistenceReady } from "/assets/js/firebase.js";
+
+import {
+  auth,
+  db,
+  authPersistenceReady
+} from "/assets/js/firebase.js";
 
 import {
   onAuthStateChanged
@@ -9,20 +14,13 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-const SESSION_KEY = "web-course-plus-device-session";
+import {
+  getSessionId,
+  apiFetch
+} from "/assets/js/common.js";
 
 let started = false;
-
-function getSessionId() {
-  let id = localStorage.getItem(SESSION_KEY);
-
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(SESSION_KEY, id);
-  }
-
-  return id;
-}
+let checking = false;
 
 async function getSystemStatus() {
   const response = await fetch("/api/system/status", {
@@ -36,19 +34,20 @@ async function getSystemStatus() {
   return response.json();
 }
 
-async function sendHeartbeat(user) {
-  const response = await fetch("/api/sessions/heartbeat", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${await user.getIdToken()}`,
-      "X-Session-Id": getSessionId()
-    },
-    cache: "no-store"
-  });
+async function sendHeartbeat() {
+  const sessionId = getSessionId();
 
-  if (!response.ok) {
-    throw new Error("端末セッションを確認できません。");
+  if (!sessionId) {
+    throw new Error(
+      "端末セッションがありません。ログインし直してください。"
+    );
   }
+
+  // common.js に統一して送信
+  await apiFetch("/api/sessions/heartbeat", {
+    method: "POST",
+    body: JSON.stringify({ sessionId })
+  });
 }
 
 function showError(message) {
@@ -75,7 +74,13 @@ function showError(message) {
           ページを確認できません
         </h1>
         <p style="color:#64748b;line-height:1.8;">
-          ${message}
+          ${String(message).replace(/[&<>"']/g, char => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+          })[char])}
         </p>
         <button
           onclick="location.reload()"
@@ -90,13 +95,29 @@ function showError(message) {
         >
           再試行
         </button>
+        <button
+          onclick="location.replace('/login.html')"
+          style="
+            margin-left:8px;
+            padding:10px 20px;
+            border:1px solid #dfe6ef;
+            border-radius:6px;
+            background:white;
+            color:#14263f;
+            cursor:pointer;
+          "
+        >
+          ログイン画面へ
+        </button>
       </section>
     </main>
   `;
 }
 
 async function checkUser(user) {
-  const snapshot = await getDoc(doc(db, "users", user.uid));
+  const snapshot = await getDoc(
+    doc(db, "users", user.uid)
+  );
 
   if (!snapshot.exists()) {
     throw new Error("ユーザー情報が登録されていません。");
@@ -142,7 +163,7 @@ async function checkUser(user) {
     return;
   }
 
-  await sendHeartbeat(user);
+  await sendHeartbeat();
 }
 
 async function startMaintenanceGuard() {
@@ -153,20 +174,28 @@ async function startMaintenanceGuard() {
     await authPersistenceReady;
 
     onAuthStateChanged(auth, async user => {
+      if (checking) return;
+
       if (!user) {
         location.replace("/login.html");
         return;
       }
 
+      checking = true;
+
       try {
         await checkUser(user);
       } catch (error) {
         console.error("[Maintenance Guard]", error);
-        showError(error.message || "認証情報を確認できません。");
+        showError(
+          error.message || "認証情報を確認できません。"
+        );
+      } finally {
+        checking = false;
       }
     });
   } catch (error) {
-    console.error(error);
+    console.error("[Maintenance Guard]", error);
     showError("認証システムを初期化できませんでした。");
   }
 }
